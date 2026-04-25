@@ -5,7 +5,10 @@ from app.config import get_settings
 
 settings = get_settings()
 
-engine = create_engine(settings.database_url, pool_pre_ping=True)
+# Railway injects DATABASE_URL as postgres:// but SQLAlchemy 2.x requires postgresql://
+_db_url = settings.database_url.replace("postgres://", "postgresql://", 1)
+
+engine = create_engine(_db_url, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

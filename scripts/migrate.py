@@ -14,6 +14,9 @@ if not DATABASE_URL:
     from app.config import get_settings
     DATABASE_URL = get_settings().database_url
 
+# Railway injects postgres:// but psycopg2 needs postgresql://
+DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 
 def migrate() -> None:
     conn = psycopg2.connect(DATABASE_URL)
