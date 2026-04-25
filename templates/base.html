@@ -53,7 +53,7 @@
                 {% endif %}
               </a>
               {% if current_user.is_admin %}
-                <a href="/admin/verifications">Admin</a>
+                <a href="/admin/users">Admin</a>
               {% endif %}
             {% endif %}
           </div>
@@ -110,7 +110,7 @@
         </a>
         <a href="/profile">Profile</a>
         {% if current_user.is_admin %}
-          <a href="/admin/verifications">Admin</a>
+          <a href="/admin/users">Admin</a>
         {% endif %}
         <a href="/logout" class="mobile-logout">Log out</a>
       {% else %}

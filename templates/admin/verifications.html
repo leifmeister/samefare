@@ -5,8 +5,16 @@
 {% block content %}
 <div class="container" style="margin-top:2rem; margin-bottom:4rem;">
   <div class="page-section-header">
-    <h1 class="page-title">Pending verifications</h1>
-    <span class="status-badge status-badge--pending">{{ pending_users|length }} pending</span>
+    <div>
+      <h1 class="page-title">Verifications</h1>
+      <span class="status-badge status-badge--pending" style="margin-top:.25rem; display:inline-block;">
+        {{ pending_users|length }} pending
+      </span>
+    </div>
+    <div class="admin-nav-tabs">
+      <a href="/admin/users"         class="admin-tab">Users</a>
+      <a href="/admin/verifications" class="admin-tab admin-tab--active">Verifications</a>
+    </div>
   </div>
 
   {% if not pending_users %}

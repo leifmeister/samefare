@@ -12,6 +12,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
+from sqlalchemy import or_
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -133,6 +134,58 @@ def _require_admin(current_user: models.User = Depends(get_current_user)):
     if not current_user.is_admin:
         raise __import__("fastapi").HTTPException(status_code=403, detail="Forbidden")
     return current_user
+
+
+@router.get("/admin/users", response_class=HTMLResponse)
+def admin_users(
+    request: Request,
+    ctx:     dict         = Depends(get_template_context),
+    admin:   models.User  = Depends(_require_admin),
+    db:      Session      = Depends(get_db),
+    q:       str          = "",
+):
+    query = db.query(models.User)
+    if q:
+        like = f"%{q.lower()}%"
+        query = query.filter(
+            or_(models.User.full_name.ilike(like), models.User.email.ilike(like))
+        )
+    users = query.order_by(models.User.created_at.desc()).all()
+
+    # Attach computed stats to each user without extra queries
+    for u in users:
+        u._trip_count    = len(u.trips)
+        u._booking_count = len(u.bookings)
+
+    return templates.TemplateResponse("admin/users.html", {
+        **ctx, "users": users, "q": q,
+    })
+
+
+@router.post("/admin/users/{user_id}/toggle-admin", response_class=HTMLResponse)
+def toggle_admin(
+    user_id: int,
+    admin:   models.User = Depends(_require_admin),
+    db:      Session     = Depends(get_db),
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user and user.id != admin.id:   # can't remove your own admin
+        user.is_admin = not user.is_admin
+        db.commit()
+    return RedirectResponse("/admin/users", status_code=303)
+
+
+@router.post("/admin/users/{user_id}/toggle-active", response_class=HTMLResponse)
+def toggle_active(
+    user_id: int,
+    admin:   models.User = Depends(_require_admin),
+    db:      Session     = Depends(get_db),
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user and user.id != admin.id:
+        user.is_active = not user.is_active
+        db.commit()
+    return RedirectResponse("/admin/users", status_code=303)
 
 
 @router.get("/admin/verifications", response_class=HTMLResponse)
