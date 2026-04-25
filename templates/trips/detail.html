@@ -188,6 +188,15 @@
           {% else %}
             <div class="driver-cta">
               <p class="driver-cta__text">This is your trip</p>
+              {% if beta_mode %}
+                <form method="post" action="/trips/{{ trip.id }}/complete-beta"
+                      onsubmit="return confirm('Mark as completed? This unlocks reviews for all passengers.')"
+                      style="margin-bottom:.5rem;">
+                  <button type="submit" class="btn btn-primary btn-block">
+                    ✓ Complete trip (Beta)
+                  </button>
+                </form>
+              {% endif %}
               <form method="post" action="/trips/{{ trip.id }}/cancel"
                     onsubmit="return confirm('Cancel this trip and notify all passengers?')">
                 <button type="submit" class="btn btn-danger btn-block">Cancel trip</button>

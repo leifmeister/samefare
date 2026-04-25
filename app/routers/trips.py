@@ -7,8 +7,11 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 
 from app import models, email as mailer
+from app.config import get_settings
 from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
+
+settings = get_settings()
 
 templates = Jinja2Templates(directory="templates")
 router = APIRouter(prefix="/trips", tags=["trips"])
@@ -227,3 +230,23 @@ def cancel_trip(
         for b in affected:
             mailer.trip_cancelled_to_passenger(b)
     return RedirectResponse("/profile", status_code=303)
+
+
+@router.post("/{trip_id}/complete-beta")
+def complete_trip_beta(
+    trip_id:      int,
+    current_user: models.User = Depends(get_current_user),
+    db:           Session     = Depends(get_db),
+):
+    """Beta-only: instantly mark a trip and its confirmed bookings as completed."""
+    if not settings.beta_mode:
+        return RedirectResponse(f"/trips/{trip_id}", status_code=303)
+
+    trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
+    if trip and trip.driver_id == current_user.id and trip.status == models.TripStatus.active:
+        trip.status = models.TripStatus.completed
+        for b in trip.bookings:
+            if b.status == models.BookingStatus.confirmed:
+                b.status = models.BookingStatus.completed
+        db.commit()
+    return RedirectResponse("/bookings", status_code=303)
