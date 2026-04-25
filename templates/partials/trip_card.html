@@ -1,0 +1,54 @@
+<article class="trip-card">
+  <a href="/trips/{{ trip.id }}" class="trip-card__link" aria-label="{{ trip.origin }} to {{ trip.destination }}">
+    <div class="trip-card__header">
+      <div class="trip-card__route">
+        <span class="trip-card__city trip-card__city--from">{{ trip.origin }}</span>
+        <div class="trip-card__route-line">
+          <span class="trip-card__dot"></span>
+          <span class="trip-card__line"></span>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="trip-card__car" width="16" height="16" aria-hidden="true">
+            <path d="M3 10a1 1 0 100 2 1 1 0 000-2zm10 0a1 1 0 100 2 1 1 0 000-2zM1.5 7l1.5-3h9l1.5 3H1.5z"/>
+          </svg>
+        </div>
+        <span class="trip-card__city trip-card__city--to">{{ trip.destination }}</span>
+      </div>
+      <div class="trip-card__price">
+        <span class="trip-card__price-amount">{{ "{:,}".format(trip.price_per_seat) }}</span>
+        <span class="trip-card__price-unit">ISK / seat</span>
+      </div>
+    </div>
+
+    <div class="trip-card__meta">
+      <div class="trip-card__meta-item">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+        {{ trip.departure_datetime.strftime("%d %b") }}
+      </div>
+      <div class="trip-card__meta-item">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+        {{ trip.departure_datetime.strftime("%H:%M") }}
+      </div>
+      <div class="trip-card__meta-item">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+        {{ trip.seats_available }} seat{{ 's' if trip.seats_available != 1 }}
+      </div>
+    </div>
+
+    <div class="trip-card__footer">
+      <div class="trip-card__driver">
+        <div class="avatar avatar--sm">{{ trip.driver.full_name[0].upper() }}</div>
+        <span class="trip-card__driver-name">{{ trip.driver.full_name.split()[0] }}</span>
+        {% if trip.driver.average_rating %}
+          <span class="trip-card__rating">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="12" height="12" class="star-icon" aria-hidden="true"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            {{ trip.driver.average_rating }}
+          </span>
+        {% endif %}
+      </div>
+      <div class="trip-card__badges">
+        {% if trip.allows_luggage %}<span class="badge badge--green" title="Luggage allowed">🧳</span>{% endif %}
+        {% if trip.allows_pets %}<span class="badge badge--green" title="Pets welcome">🐾</span>{% endif %}
+        {% if trip.smoking %}<span class="badge badge--muted" title="Smoking">🚬</span>{% endif %}
+      </div>
+    </div>
+  </a>
+</article>

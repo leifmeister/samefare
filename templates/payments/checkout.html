@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}Complete payment — {{ booking.trip.origin }} → {{ booking.trip.destination }}{% endblock %}
+
+{% block content %}
+<div class="container container--narrow" style="margin-top:2rem; margin-bottom:4rem;">
+  <a href="/bookings" class="back-link">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+    Back to my trips
+  </a>
+
+  <div class="form-page" style="margin-top:1.25rem;">
+    <div class="form-page__header">
+      <h1 class="form-page__title">Complete your payment</h1>
+      <p class="form-page__sub">
+        {{ booking.trip.origin }} → {{ booking.trip.destination }} &nbsp;·&nbsp;
+        {{ booking.trip.departure_datetime.strftime("%a %-d %b, %H:%M") }}
+      </p>
+    </div>
+
+    {% if error %}
+      <div class="alert alert--error" role="alert">{{ error }}</div>
+    {% endif %}
+
+    <div class="booking-layout">
+      <form method="post" action="/payments/checkout/{{ booking.id }}" class="form-card"
+            x-data="cardForm()" @submit="handleSubmit">
+
+        <h2 class="section-label">Payment details</h2>
+
+        <div class="form-group">
+          <label for="card_name" class="label">Name on card <span class="required">*</span></label>
+          <input id="card_name" name="card_name" type="text" class="input"
+                 placeholder="Jón Jónsson" autocomplete="cc-name" required />
+        </div>
+
+        <div class="form-group">
+          <label for="card_number" class="label">Card number <span class="required">*</span></label>
+          <div class="input-icon-wrap">
+            <input id="card_number" name="card_number" type="text" class="input"
+                   placeholder="1234 5678 9012 3456"
+                   maxlength="19"
+                   autocomplete="cc-number"
+                   x-model="rawNumber"
+                   @input="formatCard"
+                   required />
+            <span class="input-icon" x-text="brand" style="font-size:.8rem;font-weight:600;color:var(--color-primary)"></span>
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="card_expiry" class="label">Expiry <span class="required">*</span></label>
+            <input id="card_expiry" name="card_expiry" type="text" class="input"
+                   placeholder="MM / YY" maxlength="7"
+                   autocomplete="cc-exp"
+                   @input="formatExpiry"
+                   required />
+          </div>
+          <div class="form-group">
+            <label for="card_cvc" class="label">CVC <span class="required">*</span></label>
+            <input id="card_cvc" name="card_cvc" type="text" class="input"
+                   placeholder="123" maxlength="4"
+                   autocomplete="cc-csc"
+                   required />
+          </div>
+        </div>
+
+        <!-- Price breakdown -->
+        <div class="booking-summary" style="margin-top:1.5rem;">
+          <h3 class="booking-summary__title">Price breakdown</h3>
+          <div class="price-row">
+            <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }} × {{ "{:,}".format(booking.trip.price_per_seat) }} ISK</span>
+            <span>{{ "{:,}".format(contribution) }} ISK</span>
+          </div>
+          <div class="price-row price-row--muted">
+            <span>Service fee ({{ fee_pct }}%)</span>
+            <span>{{ "{:,}".format(service_fee) }} ISK</span>
+          </div>
+          <div class="price-row price-row--total">
+            <span>Total charged</span>
+            <span>{{ "{:,}".format(total) }} ISK</span>
+          </div>
+          <p class="price-note">
+            The driver receives {{ "{:,}".format(driver_payout) }} ISK (your cost contribution).
+            The service fee covers platform costs and is non-refundable.
+          </p>
+        </div>
+
+        <!-- Refund policy summary -->
+        <div class="policy-box">
+          <p class="policy-box__title">Cancellation policy</p>
+          <ul class="policy-box__list">
+            <li><strong>≥ 24 h before departure</strong> — full contribution refunded</li>
+            <li><strong>&lt; 24 h before departure</strong> — 50% of contribution refunded</li>
+            <li><strong>After departure</strong> — no refund</li>
+          </ul>
+          <p class="policy-box__note">Service fee is never refunded. Driver-initiated cancellations receive a full refund including the service fee.</p>
+        </div>
+
+        <div class="form-actions">
+          <a href="/bookings" class="btn btn-ghost">Cancel</a>
+          <button type="submit" class="btn btn-primary btn-lg" :disabled="submitting">
+            <span x-show="!submitting">Pay {{ "{:,}".format(total) }} ISK</span>
+            <span x-show="submitting">Processing…</span>
+          </button>
+        </div>
+
+        <p class="secure-note">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+          Your payment is secure. Card details are not stored.
+        </p>
+      </form>
+
+      <!-- Trip summary sidebar -->
+      <div class="booking-driver">
+        <div class="driver-card">
+          <div class="driver-card__avatar">{{ booking.trip.driver.full_name[0].upper() }}</div>
+          <div class="driver-card__info">
+            <p class="driver-card__name">{{ booking.trip.driver.full_name }}</p>
+            {% if booking.trip.driver.average_rating %}
+              <p class="driver-card__rating-text">★ {{ booking.trip.driver.average_rating }}</p>
+            {% endif %}
+          </div>
+        </div>
+        <div class="trip-mini-detail">
+          <div class="trip-mini-detail__row">
+            <span class="trip-mini-detail__label">From</span>
+            <span>{{ booking.trip.origin }}</span>
+          </div>
+          <div class="trip-mini-detail__row">
+            <span class="trip-mini-detail__label">To</span>
+            <span>{{ booking.trip.destination }}</span>
+          </div>
+          <div class="trip-mini-detail__row">
+            <span class="trip-mini-detail__label">Departs</span>
+            <span>{{ booking.trip.departure_datetime.strftime("%a %-d %b at %H:%M") }}</span>
+          </div>
+          <div class="trip-mini-detail__row">
+            <span class="trip-mini-detail__label">Seats</span>
+            <span>{{ booking.seats_booked }}</span>
+          </div>
+          {% if booking.trip.car_make %}
+          <div class="trip-mini-detail__row">
+            <span class="trip-mini-detail__label">Car</span>
+            <span>{{ booking.trip.car_make }} {{ booking.trip.car_model or '' }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function cardForm() {
+  return {
+    rawNumber: '',
+    brand: '',
+    submitting: false,
+    formatCard(e) {
+      let v = e.target.value.replace(/\D/g, '').slice(0, 16);
+      e.target.value = v.match(/.{1,4}/g)?.join(' ') ?? v;
+      this.rawNumber = v;
+      const d = v[0];
+      this.brand = d === '4' ? 'VISA' : (d === '5' || d === '2') ? 'MC' : d === '3' ? 'AMEX' : '';
+    },
+    formatExpiry(e) {
+      let v = e.target.value.replace(/\D/g, '').slice(0, 4);
+      if (v.length >= 3) v = v.slice(0,2) + ' / ' + v.slice(2);
+      e.target.value = v;
+    },
+    handleSubmit(e) {
+      this.submitting = true;
+    }
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Page not found — SameFare{% endblock %}
+{% block content %}
+<div class="error-page">
+  <div class="error-page__code">404</div>
+  <h1 class="error-page__title">Lost on the Ring Road?</h1>
+  <p class="error-page__body">We couldn't find the page you were looking for. It may have been removed or the link is incorrect.</p>
+  <div class="error-page__actions">
+    <a href="/" class="btn btn-primary">Back to home</a>
+    <a href="/trips" class="btn btn-outline">Find a ride</a>
+  </div>
+</div>
+{% endblock %}

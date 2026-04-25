@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Server error — SameFare{% endblock %}
+{% block content %}
+<div class="error-page">
+  <div class="error-page__code">500</div>
+  <h1 class="error-page__title">Something went wrong</h1>
+  <p class="error-page__body">We hit an unexpected bump in the road. Please try again in a moment.</p>
+  <div class="error-page__actions">
+    <a href="/" class="btn btn-primary">Back to home</a>
+  </div>
+</div>
+{% endblock %}

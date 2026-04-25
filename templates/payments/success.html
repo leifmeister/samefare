@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Booking confirmed — {{ booking.trip.origin }} → {{ booking.trip.destination }}{% endblock %}
+
+{% block content %}
+<div class="container container--narrow" style="margin-top:2rem; margin-bottom:4rem;">
+  <div class="form-page">
+    <div class="success-hero">
+      <div class="success-hero__icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+             stroke-linejoin="round" width="40" height="40" aria-hidden="true">
+          <path d="M20 6L9 17l-5-5"/>
+        </svg>
+      </div>
+      <h1 class="success-hero__title">Booking request sent!</h1>
+      <p class="success-hero__sub">
+        Your payment has been authorised. The driver will confirm your seat shortly.
+      </p>
+    </div>
+
+    <div class="booking-summary" style="margin-top:2rem;">
+      <h3 class="booking-summary__title">Booking summary</h3>
+
+      <div class="price-row">
+        <span>Route</span>
+        <span><strong>{{ booking.trip.origin }} → {{ booking.trip.destination }}</strong></span>
+      </div>
+      <div class="price-row">
+        <span>Departure</span>
+        <span>{{ booking.trip.departure_datetime.strftime("%A %-d %B %Y, %H:%M") }}</span>
+      </div>
+      <div class="price-row">
+        <span>Driver</span>
+        <span>{{ booking.trip.driver.full_name }}</span>
+      </div>
+      <div class="price-row">
+        <span>Seats</span>
+        <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }}</span>
+      </div>
+
+      {% if booking.payment %}
+      <div class="price-row" style="margin-top:.75rem; padding-top:.75rem; border-top:1px solid var(--color-border);">
+        <span>Cost contribution</span>
+        <span>{{ "{:,}".format(booking.payment.driver_payout) }} ISK</span>
+      </div>
+      <div class="price-row price-row--muted">
+        <span>Service fee</span>
+        <span>{{ "{:,}".format(booking.payment.platform_fee) }} ISK</span>
+      </div>
+      <div class="price-row price-row--total">
+        <span>Total paid</span>
+        <span>{{ "{:,}".format(booking.payment.passenger_total) }} ISK</span>
+      </div>
+      <p class="price-note">
+        Charged to {{ booking.payment.card_brand }} ending ····{{ booking.payment.card_last4 }}
+      </p>
+      {% endif %}
+    </div>
+
+    <div class="policy-box" style="margin-top:1.5rem;">
+      <p class="policy-box__title">What happens next?</p>
+      <ul class="policy-box__list">
+        <li>The driver will confirm or decline your request.</li>
+        <li>Your card will only be fully captured once the driver confirms.</li>
+        <li>You can cancel for a full contribution refund up to 24 h before departure.</li>
+      </ul>
+    </div>
+
+    <div class="form-actions" style="margin-top:2rem; justify-content:center; gap:1rem;">
+      <a href="/bookings" class="btn btn-primary">View my trips</a>
+      <a href="/trips/{{ booking.trip_id }}" class="btn btn-outline">View trip details</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

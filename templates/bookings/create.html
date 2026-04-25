@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Book a seat — {{ trip.origin }} → {{ trip.destination }}{% endblock %}
+
+{% block content %}
+<div class="container container--narrow" style="margin-top:2rem; margin-bottom:4rem;">
+  <a href="/trips/{{ trip.id }}" class="back-link">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+    Back to trip
+  </a>
+
+  <div class="form-page" style="margin-top:1.25rem;">
+    <div class="form-page__header">
+      <h1 class="form-page__title">Book your seat</h1>
+      <p class="form-page__sub">
+        {{ trip.origin }} → {{ trip.destination }} &nbsp;·&nbsp;
+        {{ trip.departure_datetime.strftime("%a %-d %b, %H:%M") }}
+      </p>
+    </div>
+
+    {% if error %}
+      <div class="alert alert--error" role="alert">{{ error }}</div>
+    {% endif %}
+
+    <div class="booking-layout">
+      <form method="post" action="/bookings/trip/{{ trip.id }}" class="form-card">
+
+        <div class="form-group">
+          <label for="seats_booked" class="label">Number of seats <span class="required">*</span></label>
+          <select id="seats_booked" name="seats_booked" class="input"
+                  x-data x-model="seats"
+                  @change="calc()">
+            {% for i in range(1, trip.seats_available + 1) %}
+              <option value="{{ i }}">{{ i }} seat{{ 's' if i != 1 }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="message" class="label">Message to driver <span class="optional">(optional)</span></label>
+          <textarea id="message" name="message" class="input textarea" rows="3"
+                    placeholder="e.g. I'll be at the BSÍ bus terminal. Can you pick me up there?"></textarea>
+        </div>
+
+        <!-- Price summary -->
+        <div class="booking-summary" x-data="bookingCalc({{ trip.price_per_seat }})">
+          <h3 class="booking-summary__title">Price summary</h3>
+          <div class="price-row">
+            <span x-text="seats + ' seat' + (seats > 1 ? 's' : '') + ' × {{ "{:,}".format(trip.price_per_seat) }} ISK'">1 seat × {{ "{:,}".format(trip.price_per_seat) }} ISK</span>
+            <span x-text="subtotal.toLocaleString() + ' ISK'">{{ "{:,}".format(trip.price_per_seat) }} ISK</span>
+          </div>
+          <div class="price-row price-row--muted">
+            <span>Service fee (18%)</span>
+            <span x-text="fee.toLocaleString() + ' ISK'">{{ "{:,}".format((trip.price_per_seat * 0.18)|round|int) }} ISK</span>
+          </div>
+          <div class="price-row price-row--total">
+            <span>Total</span>
+            <span x-text="total.toLocaleString() + ' ISK'">{{ "{:,}".format((trip.price_per_seat * 1.18)|round|int) }} ISK</span>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <a href="/trips/{{ trip.id }}" class="btn btn-ghost">Cancel</a>
+          <button type="submit" class="btn btn-primary btn-lg">Confirm booking</button>
+        </div>
+      </form>
+
+      <!-- Driver info sidebar -->
+      <div class="booking-driver">
+        <div class="driver-card">
+          <div class="driver-card__avatar">{{ trip.driver.full_name[0].upper() }}</div>
+          <div class="driver-card__info">
+            <p class="driver-card__name">{{ trip.driver.full_name }}</p>
+            {% if trip.driver.average_rating %}
+              <p class="driver-card__rating-text">★ {{ trip.driver.average_rating }} rating</p>
+            {% endif %}
+            {% if trip.driver.bio %}
+              <p class="driver-card__bio">{{ trip.driver.bio }}</p>
+            {% endif %}
+          </div>
+        </div>
+        <div class="trip-mini-detail">
+          <div class="trip-mini-detail__row">
+            <span class="trip-mini-detail__label">Route</span>
+            <span>{{ trip.origin }} → {{ trip.destination }}</span>
+          </div>
+          <div class="trip-mini-detail__row">
+            <span class="trip-mini-detail__label">Departs</span>
+            <span>{{ trip.departure_datetime.strftime("%a %-d %b at %H:%M") }}</span>
+          </div>
+          {% if trip.car_make %}
+          <div class="trip-mini-detail__row">
+            <span class="trip-mini-detail__label">Car</span>
+            <span>{{ trip.car_make }} {{ trip.car_model or '' }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+function bookingCalc(pricePerSeat) {
+  return {
+    seats: 1,
+    pricePerSeat: pricePerSeat,
+    get subtotal() { return this.seats * this.pricePerSeat; },
+    get fee()      { return Math.round(this.subtotal * 0.18); },
+    get total()    { return this.subtotal + this.fee; },
+    init() {
+      document.getElementById('seats_booked').addEventListener('change', e => {
+        this.seats = parseInt(e.target.value);
+      });
+    }
+  }
+}
+</script>
+{% endblock %}
+{% endblock %}

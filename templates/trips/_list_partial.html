@@ -1,0 +1,16 @@
+{% if trips %}
+  <div class="trips-grid" id="trips-results">
+    {% for trip in trips %}
+      {% include "partials/trip_card.html" %}
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state" id="trips-results">
+    <div class="empty-state__icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6-3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0L9 7"/></svg>
+    </div>
+    <h3 class="empty-state__title">No rides found</h3>
+    <p class="empty-state__body">Try adjusting your search, or check back soon — new trips are posted daily.</p>
+    <a href="/trips/new" class="btn btn-primary">Offer a ride instead</a>
+  </div>
+{% endif %}

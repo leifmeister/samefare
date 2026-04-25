@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Log in — SameFare{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-card__header">
+      <a href="/" class="auth-card__logo">SameFare</a>
+      <h1 class="auth-card__title">Welcome back</h1>
+      <p class="auth-card__sub">Log in to manage your trips and bookings</p>
+    </div>
+
+    {% if error %}
+      <div class="alert alert--error" role="alert">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/login" class="auth-form">
+      <div class="form-group">
+        <label for="email" class="label">Email address</label>
+        <input id="email" name="email" type="email" class="input" required
+               autocomplete="email" placeholder="you@example.com" />
+      </div>
+
+      <div class="form-group">
+        <label for="password" class="label">Password</label>
+        <input id="password" name="password" type="password" class="input" required
+               autocomplete="current-password" placeholder="••••••••" />
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top:1.5rem;">
+        Log in
+      </button>
+    </form>
+
+    <p class="auth-card__footer">
+      Don't have an account? <a href="/register" class="link">Join SameFare free</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
