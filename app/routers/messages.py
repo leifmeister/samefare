@@ -158,11 +158,9 @@ def send_message(
         recipient = _other_person(booking, current_user)
         mailer.new_message_to_recipient(msg, recipient)
 
-    return templates.TemplateResponse("messages/_bubbles.html", {
-        "request":      request,
-        "messages":     [msg],
-        "current_user": current_user,
-    })
+    # Return empty — the client-side poll will fetch and render the new message,
+    # preventing the double-append race condition between POST and poll.
+    return HTMLResponse("")
 
 
 # ── Poll ──────────────────────────────────────────────────────────────────────

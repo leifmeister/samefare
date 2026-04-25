@@ -40,10 +40,11 @@
   <div class="chat-body"
        id="chat-body"
        hx-get="/messages/{{ booking.id }}/poll"
-       hx-trigger="every 3s"
+       hx-trigger="every 3s, refresh from:body"
        hx-vals="js:{after: [...document.querySelectorAll('[data-msg-id]')].pop()?.dataset?.msgId || {{ last_id }}}"
        hx-swap="beforeend"
        hx-target="#chat-body"
+       hx-sync="this:replace"
        hx-on::after-swap="this.scrollTop = this.scrollHeight">
 
     {% if not messages %}
@@ -61,9 +62,8 @@
   <div class="chat-footer">
     <form class="chat-form"
           hx-post="/messages/{{ booking.id }}"
-          hx-target="#chat-body"
-          hx-swap="beforeend"
-          hx-on::after-request="this.reset(); document.getElementById('chat-empty')?.remove(); document.getElementById('chat-body').scrollTop = 999999">
+          hx-swap="none"
+          hx-on::after-request="if(event.detail.successful){this.reset(); document.getElementById('chat-empty')?.remove(); htmx.trigger(document.body, 'refresh');}">
       <textarea name="body" class="chat-form__input" rows="1"
                 placeholder="Type a message…" required
                 onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); this.form.requestSubmit();}"></textarea>
