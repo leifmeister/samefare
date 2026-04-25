@@ -225,6 +225,19 @@ def create_trip(
         instant_book=instant_book,
     )
     db.add(trip)
+
+    # Save car details back to the user's profile so next ride is pre-filled
+    if car_make:
+        current_user.default_car_make = car_make
+    if car_model:
+        current_user.default_car_model = car_model
+    if car_year and car_year.isdigit():
+        current_user.default_car_year = int(car_year)
+    try:
+        current_user.default_car_type = models.CarType(car_type)
+    except ValueError:
+        pass
+
     db.commit()
     db.refresh(trip)
     return RedirectResponse(f"/trips/{trip.id}", status_code=303)
