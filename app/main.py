@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime
 
@@ -12,7 +13,8 @@ from app.config import get_settings
 from app.database import Base, engine, SessionLocal
 from app.dependencies import get_current_user_optional
 from app import models  # noqa: F401 — register models before create_all
-from app.routers import auth, bookings, language, messages, payments, trips, users, verification
+from app.routers import auth, bookings, language, messages, payments, reviews, trips, users, verification
+from app.tasks import auto_complete_loop, _run_auto_complete
 
 settings = get_settings()
 
@@ -105,7 +107,11 @@ async def lifespan(app: FastAPI):
     with engine.begin() as conn:
         for stmt in _MIGRATIONS:
             conn.execute(text(stmt))
+    # Run once immediately on startup, then every 10 minutes
+    _run_auto_complete()
+    task = asyncio.create_task(auto_complete_loop())
     yield
+    task.cancel()
 
 
 app = FastAPI(
@@ -127,6 +133,7 @@ app.include_router(users.router)
 app.include_router(language.router)
 app.include_router(verification.router)
 app.include_router(messages.router)
+app.include_router(reviews.router)
 
 templates = Jinja2Templates(directory="templates")
 

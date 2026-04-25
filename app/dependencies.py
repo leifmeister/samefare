@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, status
@@ -67,4 +68,5 @@ def get_template_context(request: Request, db: Session = Depends(get_db)):
         "unread_message_count": unread_count,
         "now":                  datetime.utcnow(),
         "beta_mode":            settings.beta_mode,
+        "timedelta":            timedelta,
     }

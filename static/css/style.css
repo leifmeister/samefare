@@ -2164,3 +2164,45 @@ button, input, select, textarea { font: inherit; }
 
 /* ── Avatar xs ──────────────────────────────────────────────────────────────── */
 .avatar--xs { width: 30px; height: 30px; font-size: .7rem; flex-shrink: 0; }
+
+/* ── Star rating ─────────────────────────────────────────────────────────────── */
+.star-rating {
+  display: flex;
+  justify-content: center;
+  gap: .25rem;
+  margin-bottom: .5rem;
+}
+.star-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: .15rem;
+  color: #D1D5DB;
+  transition: color var(--t-fast), transform var(--t-fast);
+  line-height: 1;
+}
+.star-btn:hover,
+.star-btn--active { color: #F59E0B; }
+.star-btn:hover   { transform: scale(1.15); }
+.star-label {
+  text-align: center;
+  font-size: .9375rem;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  min-height: 1.4rem;
+  margin-bottom: .25rem;
+}
+.btn--disabled { opacity: .5; pointer-events: none; }
+
+/* ── Reviewed badge ──────────────────────────────────────────────────────────── */
+.reviewed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: .8125rem;
+  font-weight: 600;
+  color: var(--c-success);
+  padding: .3rem .7rem;
+  background: var(--c-success-light);
+  border-radius: var(--r-full);
+}

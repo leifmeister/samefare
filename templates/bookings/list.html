@@ -13,6 +13,11 @@
       ✓ Your request has been sent. The driver will review it and you'll be notified here once accepted.
     </div>
   {% endif %}
+  {% if request.query_params.get('reviewed') %}
+    <div class="alert alert--success" style="margin-bottom:1.5rem;">
+      ✓ Thanks for leaving a review!
+    </div>
+  {% endif %}
 
   {% if not bookings %}
     <div class="empty-state" style="margin-top:3rem;">
@@ -97,6 +102,19 @@
                 style="display:inline;">
             <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">Cancel</button>
           </form>
+        </div>
+        {% elif booking.status == 'completed' %}
+        <div class="booking-row__actions">
+          <a href="/trips/{{ booking.trip_id }}" class="btn btn-ghost btn-sm">View trip</a>
+          {% set already_reviewed = booking.review and booking.review.reviewer_id == current_user.id %}
+          {% set review_deadline = booking.trip.departure_datetime + timedelta(days=14) %}
+          {% if not already_reviewed and now < review_deadline %}
+            <a href="/reviews/new/{{ booking.id }}" class="btn btn-primary btn-sm">
+              ★ Leave a review
+            </a>
+          {% elif already_reviewed %}
+            <span class="reviewed-badge">✓ Reviewed</span>
+          {% endif %}
         </div>
         {% else %}
         <div class="booking-row__actions">
