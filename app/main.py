@@ -5,9 +5,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
-
-from sqlalchemy.orm import joinedload
+from sqlalchemy import text
+from sqlalchemy.orm import joinedload, Session
 
 from app.config import get_settings
 from app.database import Base, engine, SessionLocal
@@ -17,10 +16,57 @@ from app.routers import auth, bookings, language, messages, payments, trips, use
 
 settings = get_settings()
 
+# ── Column migrations (idempotent — safe to run on every startup) ─────────────
+_MIGRATIONS = [
+    # enum type
+    """DO $$ BEGIN
+        CREATE TYPE verificationstatus AS ENUM
+            ('unverified','pending','approved','rejected');
+    EXCEPTION WHEN duplicate_object THEN NULL; END $$""",
+    # trips
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS pickup_address  VARCHAR(255)",
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS dropoff_address VARCHAR(255)",
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS instant_book    BOOLEAN NOT NULL DEFAULT TRUE",
+    # users
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified       BOOLEAN   NOT NULL DEFAULT FALSE",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_otp            VARCHAR(6)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_otp_expires    TIMESTAMP",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token          VARCHAR(64)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires  TIMESTAMP",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS id_verification      verificationstatus NOT NULL DEFAULT 'unverified'",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS license_verification verificationstatus NOT NULL DEFAULT 'unverified'",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS id_doc_filename      VARCHAR(255)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS license_doc_filename VARCHAR(255)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS id_rejection_reason      TEXT",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS license_rejection_reason TEXT",
+    # bookings
+    "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS service_fee INTEGER NOT NULL DEFAULT 0",
+    # payments
+    "ALTER TABLE payments ADD COLUMN IF NOT EXISTS card_last4    VARCHAR(4)",
+    "ALTER TABLE payments ADD COLUMN IF NOT EXISTS card_brand    VARCHAR(20)",
+    "ALTER TABLE payments ADD COLUMN IF NOT EXISTS refund_amount INTEGER NOT NULL DEFAULT 0",
+    # messages table
+    """CREATE TABLE IF NOT EXISTS messages (
+        id         SERIAL  PRIMARY KEY,
+        booking_id INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+        sender_id  INTEGER NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
+        body       TEXT    NOT NULL,
+        is_read    BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMP NOT NULL DEFAULT now()
+    )""",
+    "CREATE INDEX IF NOT EXISTS ix_messages_booking_id ON messages(booking_id)",
+    "CREATE INDEX IF NOT EXISTS ix_messages_sender_id  ON messages(sender_id)",
+]
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Create any brand-new tables defined in models
     Base.metadata.create_all(bind=engine)
+    # Apply column-level migrations that create_all() won't handle
+    with engine.begin() as conn:
+        for stmt in _MIGRATIONS:
+            conn.execute(text(stmt))
     yield
 
 

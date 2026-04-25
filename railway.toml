@@ -3,7 +3,7 @@ builder = "nixpacks"
 
 [deploy]
 startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
-preDeployCommand = "python scripts/migrate.py"
+preDeployCommand = "/opt/venv/bin/python scripts/migrate.py"
 healthcheckPath = "/"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
