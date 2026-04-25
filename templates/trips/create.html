@@ -21,12 +21,14 @@
           <div class="form-group">
             <label for="origin" class="label">Departing from <span class="required">*</span></label>
             <input id="origin" name="origin" type="text" class="input" required
-                   placeholder="e.g. Reykjavík" list="cities-list" autocomplete="off" />
+                   placeholder="e.g. Reykjavík" list="cities-list" autocomplete="off"
+                   value="{{ vals.origin }}" />
           </div>
           <div class="form-group">
             <label for="destination" class="label">Going to <span class="required">*</span></label>
             <input id="destination" name="destination" type="text" class="input" required
-                   placeholder="e.g. Akureyri" list="cities-list" autocomplete="off" />
+                   placeholder="e.g. Akureyri" list="cities-list" autocomplete="off"
+                   value="{{ vals.destination }}" />
           </div>
         </div>
         <datalist id="cities-list">
@@ -36,13 +38,15 @@
           <div class="form-group">
             <label for="pickup_address" class="label">Pickup address <span class="optional">(optional)</span></label>
             <input id="pickup_address" name="pickup_address" type="text" class="input"
-                   placeholder="e.g. BSÍ Bus Terminal, Reykjavík" autocomplete="off" />
+                   placeholder="e.g. BSÍ Bus Terminal, Reykjavík" autocomplete="off"
+                   value="{{ vals.pickup_address }}" />
             <p class="field-hint">Exact street or landmark where passengers should meet you.</p>
           </div>
           <div class="form-group">
             <label for="dropoff_address" class="label">Dropoff address <span class="optional">(optional)</span></label>
             <input id="dropoff_address" name="dropoff_address" type="text" class="input"
-                   placeholder="e.g. Akureyri bus station" autocomplete="off" />
+                   placeholder="e.g. Akureyri bus station" autocomplete="off"
+                   value="{{ vals.dropoff_address }}" />
             <p class="field-hint">Where you will drop passengers off at the destination.</p>
           </div>
         </div>
@@ -53,11 +57,13 @@
         <div class="form-row">
           <div class="form-group">
             <label for="departure_date" class="label">Departure date <span class="required">*</span></label>
-            <input id="departure_date" name="departure_date" type="date" class="input" required />
+            <input id="departure_date" name="departure_date" type="date" class="input" required
+                   value="{{ vals.departure_date }}" />
           </div>
           <div class="form-group">
             <label for="departure_time" class="label">Departure time <span class="required">*</span></label>
-            <input id="departure_time" name="departure_time" type="time" class="input" required value="09:00" />
+            <input id="departure_time" name="departure_time" type="time" class="input" required
+                   value="{{ vals.departure_time }}" />
           </div>
         </div>
       </fieldset>
@@ -68,17 +74,15 @@
           <div class="form-group">
             <label for="seats_total" class="label">Seats available <span class="required">*</span></label>
             <select id="seats_total" name="seats_total" class="input" required>
-              <option value="1">1 seat</option>
-              <option value="2">2 seats</option>
-              <option value="3" selected>3 seats</option>
-              <option value="4">4 seats</option>
-              <option value="5">5 seats</option>
+              {% for n in [1,2,3,4,5] %}
+              <option value="{{ n }}" {{ 'selected' if vals.seats_total == n }}>{{ n }} seat{{ 's' if n != 1 }}</option>
+              {% endfor %}
             </select>
           </div>
           <div class="form-group">
             <label for="price_per_seat" class="label">Price per seat (ISK) <span class="required">*</span></label>
             <input id="price_per_seat" name="price_per_seat" type="number" class="input" required
-                   min="1" placeholder="e.g. 3500" />
+                   min="1" placeholder="e.g. 3500" value="{{ vals.price_per_seat or '' }}" />
             <p class="input-hint">Cover your fuel costs — not a profit. Typical range: 800–6,000 ISK.</p>
           </div>
         </div>
@@ -121,7 +125,7 @@
             <p class="instant-book-toggle__sub">Passengers book immediately without waiting for your approval. Turn off to review and accept each request individually.</p>
           </div>
           <label class="toggle-switch" aria-label="Instant booking">
-            <input type="checkbox" name="instant_book" value="true" checked id="instant_book_checkbox" />
+            <input type="checkbox" name="instant_book" value="true" {{ 'checked' if vals.instant_book }} id="instant_book_checkbox" />
             <span class="toggle-switch__track"></span>
           </label>
         </div>
@@ -131,17 +135,17 @@
         <legend class="form-section__title">Preferences</legend>
         <div class="check-list">
           <label class="check-option">
-            <input type="checkbox" name="allows_luggage" value="true" checked />
+            <input type="checkbox" name="allows_luggage" value="true" {{ 'checked' if vals.allows_luggage }} />
             <span class="check-option__box"></span>
             <span>🧳 Luggage allowed</span>
           </label>
           <label class="check-option">
-            <input type="checkbox" name="allows_pets" value="true" />
+            <input type="checkbox" name="allows_pets" value="true" {{ 'checked' if vals.allows_pets }} />
             <span class="check-option__box"></span>
             <span>🐾 Pets welcome</span>
           </label>
           <label class="check-option">
-            <input type="checkbox" name="smoking" value="true" />
+            <input type="checkbox" name="smoking" value="true" {{ 'checked' if vals.smoking }} />
             <span class="check-option__box"></span>
             <span>🚬 Smoking permitted</span>
           </label>
@@ -153,7 +157,7 @@
         <div class="form-group">
           <label for="description" class="label">Message to passengers</label>
           <textarea id="description" name="description" class="input textarea" rows="3"
-                    placeholder="e.g. I'll pick up from BSÍ bus terminal. Happy to stop at the Blue Lagoon."></textarea>
+                    placeholder="e.g. I'll pick up from BSÍ bus terminal. Happy to stop at the Blue Lagoon.">{{ vals.description }}</textarea>
         </div>
       </fieldset>
 

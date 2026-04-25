@@ -120,6 +120,15 @@ def new_trip_page(
             "car_year":  current_user.default_car_year  or "",
             "car_type":  str(current_user.default_car_type) if current_user.default_car_type else "sedan",
         },
+        "vals": {
+            "origin": "", "destination": "",
+            "departure_date": "", "departure_time": "09:00",
+            "seats_total": 3, "price_per_seat": "",
+            "pickup_address": "", "dropoff_address": "",
+            "allows_luggage": True, "allows_pets": False,
+            "smoking": False, "instant_book": True,
+            "description": "",
+        },
     })
 
 
@@ -160,6 +169,21 @@ def create_trip(
             "car_model": car_model,
             "car_year":  car_year,
             "car_type":  car_type,
+        },
+        "vals": {
+            "origin":         origin,
+            "destination":    destination,
+            "departure_date": str(departure_date) if departure_date else "",
+            "departure_time": departure_time,
+            "seats_total":    seats_total,
+            "price_per_seat": price_per_seat,
+            "pickup_address":  pickup_address,
+            "dropoff_address": dropoff_address,
+            "allows_luggage":  allows_luggage,
+            "allows_pets":     allows_pets,
+            "smoking":         smoking,
+            "instant_book":    instant_book,
+            "description":     description,
         },
     }
 
