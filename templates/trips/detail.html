@@ -205,6 +205,9 @@
           {% else %}
             <div class="driver-cta">
               <p class="driver-cta__text">This is your trip</p>
+              <a href="/trips/{{ trip.id }}/edit" class="btn btn-outline btn-block" style="margin-bottom:.5rem;">
+                ✎ Edit ride
+              </a>
               {% if beta_mode %}
                 <form method="post" action="/trips/{{ trip.id }}/complete-beta"
                       onsubmit="return confirm('Mark as completed? This unlocks reviews for all passengers.')"

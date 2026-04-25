@@ -152,13 +152,19 @@ def create_trip(
     description:        str   = Form(""),
     pickup_address:     str   = Form(""),
     dropoff_address:    str   = Form(""),
-    allows_luggage:     bool  = Form(True),
-    allows_pets:        bool  = Form(False),
-    smoking:            bool  = Form(False),
-    instant_book:       bool  = Form(True),
+    # Checkboxes: unchecked sends nothing — use Optional[str] and convert
+    allows_luggage_raw: Optional[str] = Form(None),
+    allows_pets_raw:    Optional[str] = Form(None),
+    smoking_raw:        Optional[str] = Form(None),
+    instant_book_raw:   Optional[str] = Form(None),
 ):
     if current_user.license_verification != models.VerificationStatus.approved:
         return RedirectResponse("/verify?next=driver", status_code=303)
+
+    allows_luggage = allows_luggage_raw is not None
+    allows_pets    = allows_pets_raw    is not None
+    smoking        = smoking_raw        is not None
+    instant_book   = instant_book_raw   is not None
 
     err_ctx = {
         **ctx,
@@ -240,6 +246,155 @@ def create_trip(
 
     db.commit()
     db.refresh(trip)
+    return RedirectResponse(f"/trips/{trip.id}", status_code=303)
+
+
+@router.get("/{trip_id}/edit", response_class=HTMLResponse)
+def edit_trip_page(
+    trip_id: int,
+    request: Request,
+    ctx: dict = Depends(get_template_context),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
+    if not trip or trip.driver_id != current_user.id:
+        return RedirectResponse("/profile", status_code=303)
+    if trip.status != models.TripStatus.active:
+        return RedirectResponse(f"/trips/{trip_id}", status_code=303)
+
+    return templates.TemplateResponse("trips/edit.html", {
+        **ctx,
+        "trip":      trip,
+        "car_types": ALL_CAR_TYPES,
+        "cities":    ICELANDIC_CITIES,
+        "error":     None,
+        "vals": {
+            "origin":         trip.origin,
+            "destination":    trip.destination,
+            "departure_date": trip.departure_datetime.date().isoformat(),
+            "departure_time": trip.departure_datetime.strftime("%H:%M"),
+            "seats_total":    trip.seats_total,
+            "price_per_seat": trip.price_per_seat,
+            "pickup_address":  trip.pickup_address  or "",
+            "dropoff_address": trip.dropoff_address or "",
+            "allows_luggage":  trip.allows_luggage,
+            "allows_pets":     trip.allows_pets,
+            "smoking":         trip.smoking,
+            "instant_book":    trip.instant_book,
+            "description":     trip.description or "",
+        },
+        "defaults": {
+            "car_make":  trip.car_make  or "",
+            "car_model": trip.car_model or "",
+            "car_year":  trip.car_year  or "",
+            "car_type":  str(trip.car_type) if trip.car_type else "sedan",
+        },
+    })
+
+
+@router.post("/{trip_id}/edit", response_class=HTMLResponse)
+def update_trip(
+    trip_id: int,
+    request: Request,
+    ctx: dict = Depends(get_template_context),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+
+    origin:          str  = Form(...),
+    destination:     str  = Form(...),
+    departure_date:  date = Form(...),
+    departure_time:  str  = Form(...),
+    seats_total:     int  = Form(...),
+    price_per_seat:  int  = Form(...),
+    car_make:        str  = Form(""),
+    car_model:       str  = Form(""),
+    car_year:        str  = Form(""),
+    car_type:        str  = Form("sedan"),
+    description:     str  = Form(""),
+    pickup_address:  str  = Form(""),
+    dropoff_address: str  = Form(""),
+    allows_luggage_raw: Optional[str] = Form(None),
+    allows_pets_raw:    Optional[str] = Form(None),
+    smoking_raw:        Optional[str] = Form(None),
+    instant_book_raw:   Optional[str] = Form(None),
+):
+    trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
+    if not trip or trip.driver_id != current_user.id:
+        return RedirectResponse("/profile", status_code=303)
+    if trip.status != models.TripStatus.active:
+        return RedirectResponse(f"/trips/{trip_id}", status_code=303)
+
+    allows_luggage = allows_luggage_raw is not None
+    allows_pets    = allows_pets_raw    is not None
+    smoking        = smoking_raw        is not None
+    instant_book   = instant_book_raw   is not None
+
+    err_ctx = {
+        **ctx,
+        "trip":      trip,
+        "car_types": ALL_CAR_TYPES,
+        "cities":    ICELANDIC_CITIES,
+        "defaults": {
+            "car_make": car_make, "car_model": car_model,
+            "car_year": car_year, "car_type":  car_type,
+        },
+        "vals": {
+            "origin": origin, "destination": destination,
+            "departure_date": str(departure_date) if departure_date else "",
+            "departure_time": departure_time,
+            "seats_total": seats_total, "price_per_seat": price_per_seat,
+            "pickup_address": pickup_address, "dropoff_address": dropoff_address,
+            "allows_luggage": allows_luggage, "allows_pets": allows_pets,
+            "smoking": smoking, "instant_book": instant_book,
+            "description": description,
+        },
+    }
+
+    try:
+        hour, minute = map(int, departure_time.split(":"))
+        departure_dt = datetime(departure_date.year, departure_date.month,
+                                departure_date.day, hour, minute)
+    except (ValueError, AttributeError):
+        return templates.TemplateResponse("trips/edit.html",
+            {**err_ctx, "error": "Invalid date or time."}, status_code=400)
+
+    if departure_dt <= datetime.utcnow():
+        return templates.TemplateResponse("trips/edit.html",
+            {**err_ctx, "error": "Departure must be in the future."}, status_code=400)
+
+    if origin.strip().lower() == destination.strip().lower():
+        return templates.TemplateResponse("trips/edit.html",
+            {**err_ctx, "error": "Origin and destination cannot be the same."}, status_code=400)
+
+    # seats_total can't drop below already-confirmed seats
+    confirmed_seats = sum(
+        b.seats_booked for b in trip.bookings
+        if b.status in (models.BookingStatus.confirmed, models.BookingStatus.pending)
+    )
+    if seats_total < confirmed_seats:
+        return templates.TemplateResponse("trips/edit.html",
+            {**err_ctx, "error": f"Can't reduce seats below {confirmed_seats} — already booked."}, status_code=400)
+
+    trip.origin             = origin.strip()
+    trip.destination        = destination.strip()
+    trip.departure_datetime = departure_dt
+    trip.seats_available    = seats_total - confirmed_seats
+    trip.seats_total        = seats_total
+    trip.price_per_seat     = price_per_seat
+    trip.car_make           = car_make  or None
+    trip.car_model          = car_model or None
+    trip.car_year           = int(car_year) if car_year.isdigit() else None
+    trip.car_type           = car_type
+    trip.description        = description     or None
+    trip.pickup_address     = pickup_address  or None
+    trip.dropoff_address    = dropoff_address or None
+    trip.allows_luggage     = allows_luggage
+    trip.allows_pets        = allows_pets
+    trip.smoking            = smoking
+    trip.instant_book       = instant_book
+
+    db.commit()
     return RedirectResponse(f"/trips/{trip.id}", status_code=303)
 
 

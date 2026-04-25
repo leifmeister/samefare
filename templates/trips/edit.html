@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Edit ride — SameFare{% endblock %}
+
+{% block content %}
+<div class="container container--narrow" style="margin-top:2rem; margin-bottom:4rem;">
+  <div class="form-page">
+    <div class="form-page__header">
+      <h1 class="form-page__title">Edit ride</h1>
+      <p class="form-page__sub">{{ trip.origin }} → {{ trip.destination }}</p>
+    </div>
+
+    {% if error %}
+      <div class="alert alert--error" role="alert">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/trips/{{ trip.id }}/edit" class="form-card">
+
+      <fieldset class="form-section">
+        <legend class="form-section__title">Route</legend>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="origin" class="label">Departing from <span class="required">*</span></label>
+            <input id="origin" name="origin" type="text" class="input" required
+                   placeholder="e.g. Reykjavík" list="cities-list" autocomplete="off"
+                   value="{{ vals.origin }}" />
+          </div>
+          <div class="form-group">
+            <label for="destination" class="label">Going to <span class="required">*</span></label>
+            <input id="destination" name="destination" type="text" class="input" required
+                   placeholder="e.g. Akureyri" list="cities-list" autocomplete="off"
+                   value="{{ vals.destination }}" />
+          </div>
+        </div>
+        <datalist id="cities-list">
+          {% for city in cities %}<option value="{{ city }}"/>{% endfor %}
+        </datalist>
+        <div class="form-row" style="margin-top:1rem;">
+          <div class="form-group">
+            <label for="pickup_address" class="label">Pickup address <span class="optional">(optional)</span></label>
+            <input id="pickup_address" name="pickup_address" type="text" class="input"
+                   placeholder="e.g. BSÍ Bus Terminal, Reykjavík" autocomplete="off"
+                   value="{{ vals.pickup_address }}" />
+            <p class="field-hint">Exact street or landmark where passengers should meet you.</p>
+          </div>
+          <div class="form-group">
+            <label for="dropoff_address" class="label">Dropoff address <span class="optional">(optional)</span></label>
+            <input id="dropoff_address" name="dropoff_address" type="text" class="input"
+                   placeholder="e.g. Akureyri bus station" autocomplete="off"
+                   value="{{ vals.dropoff_address }}" />
+            <p class="field-hint">Where you will drop passengers off at the destination.</p>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="form-section">
+        <legend class="form-section__title">Date &amp; time</legend>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="departure_date" class="label">Departure date <span class="required">*</span></label>
+            <input id="departure_date" name="departure_date" type="date" class="input" required
+                   value="{{ vals.departure_date }}" />
+          </div>
+          <div class="form-group">
+            <label for="departure_time" class="label">Departure time <span class="required">*</span></label>
+            <input id="departure_time" name="departure_time" type="time" class="input" required
+                   value="{{ vals.departure_time }}" />
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="form-section">
+        <legend class="form-section__title">Seats &amp; price</legend>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="seats_total" class="label">Seats available <span class="required">*</span></label>
+            <select id="seats_total" name="seats_total" class="input" required>
+              {% for n in [1,2,3,4,5] %}
+              <option value="{{ n }}" {{ 'selected' if vals.seats_total == n }}>{{ n }} seat{{ 's' if n != 1 }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="price_per_seat" class="label">Price per seat (ISK) <span class="required">*</span></label>
+            <input id="price_per_seat" name="price_per_seat" type="number" class="input" required
+                   min="1" placeholder="e.g. 3500" value="{{ vals.price_per_seat or '' }}" />
+            <p class="input-hint">Cover your fuel costs — not a profit. Typical range: 800–6,000 ISK.</p>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="form-section">
+        <legend class="form-section__title">Vehicle <span class="optional">(optional)</span></legend>
+        <div class="form-row form-row--3">
+          <div class="form-group">
+            <label for="car_make" class="label">Make</label>
+            <input id="car_make" name="car_make" type="text" class="input" placeholder="e.g. Toyota"
+                   value="{{ defaults.car_make }}" />
+          </div>
+          <div class="form-group">
+            <label for="car_model" class="label">Model</label>
+            <input id="car_model" name="car_model" type="text" class="input" placeholder="e.g. RAV4"
+                   value="{{ defaults.car_model }}" />
+          </div>
+          <div class="form-group">
+            <label for="car_year" class="label">Year</label>
+            <input id="car_year" name="car_year" type="number" class="input" placeholder="e.g. 2021"
+                   min="1970" max="2030" value="{{ defaults.car_year }}" />
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:1rem;">
+          <label for="car_type" class="label">Vehicle type</label>
+          <select id="car_type" name="car_type" class="input">
+            {% for ct in car_types %}
+              <option value="{{ ct }}" {{ 'selected' if ct == defaults.car_type }}>{{ ct|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </fieldset>
+
+      <fieldset class="form-section">
+        <legend class="form-section__title">Booking</legend>
+        <div class="instant-book-toggle">
+          <div class="instant-book-toggle__labels">
+            <p class="instant-book-toggle__title">Instant booking</p>
+            <p class="instant-book-toggle__sub">Passengers book immediately without waiting for your approval. Turn off to review and accept each request individually.</p>
+          </div>
+          <label class="toggle-switch" aria-label="Instant booking">
+            <input type="checkbox" name="instant_book" value="true" {{ 'checked' if vals.instant_book }} id="instant_book_checkbox" />
+            <span class="toggle-switch__track"></span>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset class="form-section">
+        <legend class="form-section__title">Preferences</legend>
+        <div class="check-list">
+          <label class="check-option">
+            <input type="checkbox" name="allows_luggage" value="true" {{ 'checked' if vals.allows_luggage }} />
+            <span class="check-option__box"></span>
+            <span>🧳 Luggage allowed</span>
+          </label>
+          <label class="check-option">
+            <input type="checkbox" name="allows_pets" value="true" {{ 'checked' if vals.allows_pets }} />
+            <span class="check-option__box"></span>
+            <span>🐾 Pets welcome</span>
+          </label>
+          <label class="check-option">
+            <input type="checkbox" name="smoking" value="true" {{ 'checked' if vals.smoking }} />
+            <span class="check-option__box"></span>
+            <span>🚬 Smoking permitted</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset class="form-section">
+        <legend class="form-section__title">Additional info <span class="optional">(optional)</span></legend>
+        <div class="form-group">
+          <label for="description" class="label">Message to passengers</label>
+          <textarea id="description" name="description" class="input textarea" rows="3"
+                    placeholder="e.g. I'll pick up from BSÍ bus terminal. Happy to stop at the Blue Lagoon.">{{ vals.description }}</textarea>
+        </div>
+      </fieldset>
+
+      <div class="form-actions">
+        <a href="/trips/{{ trip.id }}" class="btn btn-ghost">Cancel</a>
+        <button type="submit" class="btn btn-primary btn-lg">Save changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
