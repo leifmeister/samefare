@@ -243,6 +243,7 @@ button, input, select, textarea { font: inherit; }
 .alert--success { background: var(--c-success-light); color: #065F46; border-color: #6EE7B7; }
 .alert--warning { background: var(--c-warning-light); color: #92400E; border-color: #FCD34D; }
 .alert--info    { background: var(--c-primary-light); color: var(--c-primary-dark); border-color: #A7D9D1; }
+.alert__link    { font-weight: 600; text-decoration: underline; color: inherit; margin-left: .25rem; }
 
 /* ── Avatar ──────────────────────────────────────────────────── */
 .avatar {

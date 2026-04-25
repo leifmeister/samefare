@@ -49,10 +49,16 @@ def login(
 ):
     ctx = {"request": request, "current_user": None}
     user = db.query(models.User).filter(models.User.email == email.lower()).first()
-    if not user or not verify_password(password, user.hashed_password):
+    if not user:
         return templates.TemplateResponse(
             "auth/login.html",
-            {**ctx, "error": "Invalid email or password.", "email": email},
+            {**ctx, "error": "no_account", "email": email},
+            status_code=status.HTTP_401_UNAUTHORIZED,
+        )
+    if not verify_password(password, user.hashed_password):
+        return templates.TemplateResponse(
+            "auth/login.html",
+            {**ctx, "error": "wrong_password", "email": email},
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
     token = create_access_token(user.id)

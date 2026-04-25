@@ -10,8 +10,16 @@
       <p class="auth-card__sub">Log in to manage your trips and bookings</p>
     </div>
 
-    {% if error %}
-      <div class="alert alert--error" role="alert">{{ error }}</div>
+    {% if error == 'no_account' %}
+      <div class="alert alert--error" role="alert">
+        No account found for <strong>{{ email }}</strong>.
+        <a href="/register" class="alert__link">Create one free →</a>
+      </div>
+    {% elif error == 'wrong_password' %}
+      <div class="alert alert--error" role="alert">
+        Wrong password.
+        <a href="/forgot-password" class="alert__link">Forgot it?</a>
+      </div>
     {% endif %}
 
     <form method="post" action="/login" class="auth-form">
