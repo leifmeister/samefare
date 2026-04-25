@@ -151,7 +151,17 @@ def create_trip(
     if current_user.license_verification != models.VerificationStatus.approved:
         return RedirectResponse("/verify?next=driver", status_code=303)
 
-    err_ctx = {**ctx, "car_types": ALL_CAR_TYPES, "cities": ICELANDIC_CITIES}
+    err_ctx = {
+        **ctx,
+        "car_types": ALL_CAR_TYPES,
+        "cities":    ICELANDIC_CITIES,
+        "defaults": {
+            "car_make":  car_make,
+            "car_model": car_model,
+            "car_year":  car_year,
+            "car_type":  car_type,
+        },
+    }
 
     # Parse departure datetime
     try:
