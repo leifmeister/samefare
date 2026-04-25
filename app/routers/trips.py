@@ -112,8 +112,14 @@ def new_trip_page(
     return templates.TemplateResponse("trips/create.html", {
         **ctx,
         "car_types": ALL_CAR_TYPES,
-        "cities": ICELANDIC_CITIES,
-        "error": None,
+        "cities":    ICELANDIC_CITIES,
+        "error":     None,
+        "defaults":  {
+            "car_make":  current_user.default_car_make  or "",
+            "car_model": current_user.default_car_model or "",
+            "car_year":  current_user.default_car_year  or "",
+            "car_type":  str(current_user.default_car_type) if current_user.default_car_type else "sedan",
+        },
     })
 
 

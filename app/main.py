@@ -61,6 +61,10 @@ _MIGRATIONS = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS license_doc_filename VARCHAR(255)",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS id_rejection_reason      TEXT",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS license_rejection_reason TEXT",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS default_car_make  VARCHAR(100)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS default_car_model VARCHAR(100)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS default_car_year  INTEGER",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS default_car_type  cartype NOT NULL DEFAULT 'sedan'",
 
     # ── trips ─────────────────────────────────────────────────────────────────
     "ALTER TABLE trips ADD COLUMN IF NOT EXISTS car_make      VARCHAR(100)",

@@ -64,6 +64,14 @@ def migrate() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS id_rejection_reason      TEXT"))
     steps.append(("users.license_rejection_reason",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS license_rejection_reason TEXT"))
+    steps.append(("users.default_car_make",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS default_car_make  VARCHAR(100)"))
+    steps.append(("users.default_car_model",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS default_car_model VARCHAR(100)"))
+    steps.append(("users.default_car_year",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS default_car_year  INTEGER"))
+    steps.append(("users.default_car_type",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS default_car_type  cartype NOT NULL DEFAULT 'sedan'"))
 
     # ── 4. bookings ────────────────────────────────────────────────────────────
     steps.append(("bookings.service_fee",

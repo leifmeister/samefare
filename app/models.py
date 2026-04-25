@@ -90,6 +90,12 @@ class User(Base):
     updated_at      = Column(DateTime, nullable=False, default=datetime.utcnow,
                              onupdate=datetime.utcnow)
 
+    # Saved vehicle (pre-fills trip creation form)
+    default_car_make  = Column(String(100))
+    default_car_model = Column(String(100))
+    default_car_year  = Column(Integer)
+    default_car_type  = Column(Enum(CarType), nullable=False, default=CarType.sedan)
+
     # Phone verification
     phone_verified      = Column(Boolean, nullable=False, default=False)
     phone_otp           = Column(String(6))

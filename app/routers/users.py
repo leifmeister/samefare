@@ -45,17 +45,28 @@ def profile(
 
 @router.post("/profile/edit", response_class=HTMLResponse)
 def edit_profile(
-    request: Request,
-    ctx: dict = Depends(get_template_context),
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-    full_name: str = Form(...),
-    phone: str = Form(""),
-    bio: str = Form(""),
+    request:          Request,
+    ctx:              dict         = Depends(get_template_context),
+    current_user:     models.User  = Depends(get_current_user),
+    db:               Session      = Depends(get_db),
+    full_name:        str          = Form(...),
+    phone:            str          = Form(""),
+    bio:              str          = Form(""),
+    default_car_make:  str         = Form(""),
+    default_car_model: str         = Form(""),
+    default_car_year:  str         = Form(""),
+    default_car_type:  str         = Form("sedan"),
 ):
     current_user.full_name = full_name
-    current_user.phone = phone or None
-    current_user.bio = bio or None
+    current_user.phone     = phone or None
+    current_user.bio       = bio or None
+    current_user.default_car_make  = default_car_make  or None
+    current_user.default_car_model = default_car_model or None
+    current_user.default_car_year  = int(default_car_year) if default_car_year.strip() else None
+    try:
+        current_user.default_car_type = models.CarType(default_car_type)
+    except ValueError:
+        current_user.default_car_type = models.CarType.sedan
     db.commit()
     return RedirectResponse("/profile", status_code=303)
 

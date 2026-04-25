@@ -89,23 +89,25 @@
         <div class="form-row form-row--3">
           <div class="form-group">
             <label for="car_make" class="label">Make</label>
-            <input id="car_make" name="car_make" type="text" class="input" placeholder="e.g. Toyota" />
+            <input id="car_make" name="car_make" type="text" class="input" placeholder="e.g. Toyota"
+                   value="{{ defaults.car_make }}" />
           </div>
           <div class="form-group">
             <label for="car_model" class="label">Model</label>
-            <input id="car_model" name="car_model" type="text" class="input" placeholder="e.g. RAV4" />
+            <input id="car_model" name="car_model" type="text" class="input" placeholder="e.g. RAV4"
+                   value="{{ defaults.car_model }}" />
           </div>
           <div class="form-group">
             <label for="car_year" class="label">Year</label>
             <input id="car_year" name="car_year" type="number" class="input" placeholder="e.g. 2021"
-                   min="1970" max="2030" />
+                   min="1970" max="2030" value="{{ defaults.car_year }}" />
           </div>
         </div>
         <div class="form-group" style="margin-top:1rem;">
           <label for="car_type" class="label">Vehicle type</label>
           <select id="car_type" name="car_type" class="input">
             {% for ct in car_types %}
-              <option value="{{ ct }}">{{ ct|capitalize }}</option>
+              <option value="{{ ct }}" {{ 'selected' if ct == defaults.car_type }}>{{ ct|capitalize }}</option>
             {% endfor %}
           </select>
         </div>
