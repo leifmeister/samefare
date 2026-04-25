@@ -119,7 +119,7 @@
         </div>
         {% endif %}
 
-        <!-- Confirmed passengers -->
+        <!-- Confirmed / completed passengers -->
         {% if confirmed_bookings %}
         <div class="detail-card">
           <h3 class="detail-card__title">Passengers ({{ confirmed_bookings|length }})</h3>
@@ -129,14 +129,31 @@
               {{ avatar(booking.passenger, cls="avatar--sm") }}
               <span>{{ booking.passenger.full_name.split()[0] }}</span>
               <span class="passenger-seats">{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }}</span>
-              {% if current_user and current_user.id == trip.driver_id and booking.passenger.phone %}
-                <a href="tel:{{ booking.passenger.phone }}" class="contact-phone contact-phone--sm" style="margin-left:auto;">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                       width="12" height="12" aria-hidden="true">
-                    <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
-                  </svg>
-                  {{ booking.passenger.phone }}
-                </a>
+              {% if current_user and current_user.id == trip.driver_id %}
+                {% if booking.passenger.phone and booking.status == 'confirmed' %}
+                  <a href="tel:{{ booking.passenger.phone }}" class="contact-phone contact-phone--sm" style="margin-left:auto;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                         width="12" height="12" aria-hidden="true">
+                      <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+                    </svg>
+                    {{ booking.passenger.phone }}
+                  </a>
+                {% endif %}
+                {% if booking.status == 'completed' %}
+                  {% set reviewed = namespace(done=false) %}
+                  {% for r in booking.trip.reviews %}
+                    {% if r.reviewer_id == current_user.id and r.reviewee_id == booking.passenger_id %}
+                      {% set reviewed.done = true %}
+                    {% endif %}
+                  {% endfor %}
+                  {% if reviewed.done %}
+                    <span class="reviewed-badge" style="margin-left:auto;">✓ Reviewed</span>
+                  {% elif now < booking.trip.departure_datetime + timedelta(days=14) %}
+                    <a href="/reviews/new/{{ booking.id }}" class="btn btn-primary btn-xs" style="margin-left:auto;">
+                      ★ Review
+                    </a>
+                  {% endif %}
+                {% endif %}
               {% endif %}
             </div>
             {% endfor %}

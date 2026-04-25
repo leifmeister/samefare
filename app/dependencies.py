@@ -40,10 +40,61 @@ def get_current_user(
     return user
 
 
+def _pending_reviews(user: models.User, db: Session) -> list:
+    """
+    Returns list of booking_ids where user has a completed trip/booking
+    but hasn't left a review yet, within the 14-day window.
+    Used to show the review nudge banner.
+    """
+    from datetime import datetime
+    cutoff = datetime.utcnow() - timedelta(days=14)
+    pending = []
+    try:
+        # IDs of reviews already written by this user
+        reviewed_ids = {
+            r.booking_id for r in
+            db.query(models.Review.booking_id)
+            .filter(models.Review.reviewer_id == user.id)
+            .all()
+        }
+
+        # Completed bookings as passenger
+        for b in (
+            db.query(models.Booking)
+            .join(models.Trip)
+            .filter(
+                models.Booking.passenger_id == user.id,
+                models.Booking.status       == models.BookingStatus.completed,
+                models.Trip.departure_datetime >= cutoff,
+            )
+            .all()
+        ):
+            if b.id not in reviewed_ids:
+                pending.append(b.id)
+
+        # Completed bookings on driver's trips
+        for trip in (
+            db.query(models.Trip)
+            .filter(
+                models.Trip.driver_id          == user.id,
+                models.Trip.status             == models.TripStatus.completed,
+                models.Trip.departure_datetime >= cutoff,
+            )
+            .all()
+        ):
+            for b in trip.bookings:
+                if b.status == models.BookingStatus.completed and b.id not in reviewed_ids:
+                    pending.append(b.id)
+    except Exception:
+        pass
+    return pending
+
+
 def get_template_context(request: Request, db: Session = Depends(get_db)):
     from datetime import datetime
     user = get_current_user_optional(request, db)
     unread_count = 0
+    pending_reviews = []
     if user:
         try:
             unread_count = (
@@ -61,11 +112,13 @@ def get_template_context(request: Request, db: Session = Depends(get_db)):
                 .scalar() or 0
             )
         except Exception:
-            unread_count = 0   # table may not exist yet on first run
+            unread_count = 0
+        pending_reviews = _pending_reviews(user, db)
     return {
         "request":              request,
         "current_user":         user,
         "unread_message_count": unread_count,
+        "pending_reviews":      pending_reviews,
         "now":                  datetime.utcnow(),
         "beta_mode":            settings.beta_mode,
         "timedelta":            timedelta,

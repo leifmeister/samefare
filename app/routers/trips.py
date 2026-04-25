@@ -202,7 +202,8 @@ def trip_detail(
         return templates.TemplateResponse("errors/404.html", {**ctx}, status_code=404)
 
     confirmed_bookings = [b for b in trip.bookings
-                          if b.status == models.BookingStatus.confirmed]
+                          if b.status in (models.BookingStatus.confirmed,
+                                          models.BookingStatus.completed)]
     return templates.TemplateResponse("trips/detail.html", {
         **ctx,
         "trip": trip,

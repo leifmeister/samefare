@@ -2206,3 +2206,26 @@ button, input, select, textarea { font: inherit; }
   background: var(--c-success-light);
   border-radius: var(--r-full);
 }
+
+/* ── Review nudge banner ─────────────────────────────────────────────────────── */
+.review-nudge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  background: #EEF2FF;
+  color: #3730A3;
+  font-size: .875rem;
+  font-weight: 500;
+  padding: .6rem 1.25rem;
+  border-bottom: 1px solid #C7D2FE;
+}
+.review-nudge svg { flex-shrink: 0; color: #F59E0B; }
+.review-nudge__btn {
+  font-weight: 700;
+  color: #3730A3;
+  text-decoration: underline;
+  margin-left: .25rem;
+  white-space: nowrap;
+}
+.review-nudge__btn:hover { color: #1E1B6E; }
