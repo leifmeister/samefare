@@ -18,7 +18,8 @@
       <div class="form-group">
         <label for="email" class="label">Email address</label>
         <input id="email" name="email" type="email" class="input" required
-               autocomplete="email" placeholder="you@example.com" />
+               autocomplete="email" placeholder="you@example.com"
+               value="{{ email or '' }}" />
       </div>
 
       <div class="form-group">
@@ -32,6 +33,9 @@
       </button>
     </form>
 
+    <p class="auth-card__footer" style="margin-top:.75rem;">
+      <a href="/forgot-password" class="link">Forgot password?</a>
+    </p>
     <p class="auth-card__footer">
       Don't have an account? <a href="/register" class="link">Join SameFare free</a>
     </p>

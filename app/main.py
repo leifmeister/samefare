@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -13,7 +13,7 @@ from app.config import get_settings
 from app.database import Base, engine, SessionLocal
 from app.dependencies import get_current_user_optional
 from app import models  # noqa: F401 — register models before create_all
-from app.routers import auth, bookings, language, payments, trips, users
+from app.routers import auth, bookings, language, messages, payments, trips, users, verification
 
 settings = get_settings()
 
@@ -41,8 +41,42 @@ app.include_router(bookings.router)
 app.include_router(payments.router)
 app.include_router(users.router)
 app.include_router(language.router)
+app.include_router(verification.router)
+app.include_router(messages.router)
 
 templates = Jinja2Templates(directory="templates")
+
+
+@app.get("/terms", response_class=HTMLResponse)
+def terms(request: Request):
+    db = SessionLocal()
+    try:
+        current_user = get_current_user_optional(request, db)
+    finally:
+        db.close()
+    return templates.TemplateResponse("legal/terms.html", {"request": request, "current_user": current_user})
+
+
+@app.get("/privacy", response_class=HTMLResponse)
+def privacy(request: Request):
+    db = SessionLocal()
+    try:
+        current_user = get_current_user_optional(request, db)
+    finally:
+        db.close()
+    return templates.TemplateResponse("legal/privacy.html", {"request": request, "current_user": current_user})
+
+
+@app.get("/offer-ride", response_class=HTMLResponse)
+def offer_ride_page(request: Request):
+    db = SessionLocal()
+    try:
+        current_user = get_current_user_optional(request, db)
+        if current_user:
+            return RedirectResponse("/trips/new", status_code=303)
+    finally:
+        db.close()
+    return templates.TemplateResponse("offer_ride.html", {"request": request, "current_user": None})
 
 
 @app.get("/", response_class=HTMLResponse)

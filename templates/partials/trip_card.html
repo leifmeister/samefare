@@ -1,3 +1,4 @@
+{% from "partials/avatar.html" import avatar %}
 <article class="trip-card">
   <a href="/trips/{{ trip.id }}" class="trip-card__link" aria-label="{{ trip.origin }} to {{ trip.destination }}">
     <div class="trip-card__header">
@@ -35,7 +36,7 @@
 
     <div class="trip-card__footer">
       <div class="trip-card__driver">
-        <div class="avatar avatar--sm">{{ trip.driver.full_name[0].upper() }}</div>
+        {{ avatar(trip.driver, cls="avatar--sm") }}
         <span class="trip-card__driver-name">{{ trip.driver.full_name.split()[0] }}</span>
         {% if trip.driver.average_rating %}
           <span class="trip-card__rating">
@@ -48,6 +49,7 @@
         {% if trip.allows_luggage %}<span class="badge badge--green" title="Luggage allowed">🧳</span>{% endif %}
         {% if trip.allows_pets %}<span class="badge badge--green" title="Pets welcome">🐾</span>{% endif %}
         {% if trip.smoking %}<span class="badge badge--muted" title="Smoking">🚬</span>{% endif %}
+        {% if not trip.instant_book %}<span class="badge badge--approval" title="Driver approves requests">Approval required</span>{% endif %}
       </div>
     </div>
   </a>

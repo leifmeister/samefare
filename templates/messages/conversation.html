@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% from "partials/avatar.html" import avatar %}
+{% block title %}{{ partner.full_name.split()[0] }} — SameFare{% endblock %}
+
+{% block content %}
+<div class="chat-page">
+
+  <!-- Header -->
+  <div class="chat-header">
+    <a href="/messages" class="chat-header__back" aria-label="Back to inbox">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+           width="20" height="20" aria-hidden="true">
+        <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
+      </svg>
+    </a>
+
+    {{ avatar(partner, cls="avatar--sm") }}
+
+    <div class="chat-header__info">
+      <p class="chat-header__name">{{ partner.full_name }}</p>
+      <div class="chat-header__sub">
+        <a href="/trips/{{ booking.trip_id }}" class="chat-header__trip-link">
+          {{ booking.trip.origin }} → {{ booking.trip.destination }}
+          · {{ booking.trip.departure_datetime.strftime("%-d %b") }}
+        </a>
+        {% if booking.status == 'confirmed' and partner.phone %}
+          <a href="tel:{{ partner.phone }}" class="contact-phone contact-phone--sm">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                 width="12" height="12" aria-hidden="true">
+              <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+            </svg>
+            {{ partner.phone }}
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div class="chat-body"
+       id="chat-body"
+       hx-get="/messages/{{ booking.id }}/poll"
+       hx-trigger="every 3s"
+       hx-vals="js:{after: [...document.querySelectorAll('[data-msg-id]')].pop()?.dataset?.msgId || {{ last_id }}}"
+       hx-swap="beforeend"
+       hx-target="#chat-body"
+       hx-on::after-swap="this.scrollTop = this.scrollHeight">
+
+    {% if not messages %}
+      <div class="chat-empty" id="chat-empty">
+        <p>No messages yet.</p>
+        <p>Send {{ partner.full_name.split()[0] }} a message to coordinate your trip.</p>
+      </div>
+    {% endif %}
+
+    {% include "messages/_bubbles.html" %}
+
+  </div>
+
+  <!-- Send form -->
+  <div class="chat-footer">
+    <form class="chat-form"
+          hx-post="/messages/{{ booking.id }}"
+          hx-target="#chat-body"
+          hx-swap="beforeend"
+          hx-on::after-request="this.reset(); document.getElementById('chat-empty')?.remove(); document.getElementById('chat-body').scrollTop = 999999">
+      <textarea name="body" class="chat-form__input" rows="1"
+                placeholder="Type a message…" required
+                onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); this.form.requestSubmit();}"></textarea>
+      <button type="submit" class="chat-form__send" aria-label="Send message">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+             width="20" height="20" aria-hidden="true">
+          <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z"/>
+        </svg>
+      </button>
+    </form>
+  </div>
+
+</div>
+
+<script>
+  // Scroll to bottom on load
+  (function() {
+    var el = document.getElementById('chat-body');
+    if (el) el.scrollTop = el.scrollHeight;
+  })();
+</script>
+{% endblock %}

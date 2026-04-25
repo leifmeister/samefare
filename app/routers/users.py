@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, Form, Request
+import os
+import uuid
+
+from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -53,5 +56,38 @@ def edit_profile(
     current_user.full_name = full_name
     current_user.phone = phone or None
     current_user.bio = bio or None
+    db.commit()
+    return RedirectResponse("/profile", status_code=303)
+
+
+@router.post("/profile/avatar", response_class=HTMLResponse)
+def upload_avatar(
+    request: Request,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    photo: UploadFile = File(...),
+):
+    allowed = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
+    ext = os.path.splitext(photo.filename or "")[-1].lower()
+    if ext not in allowed:
+        return RedirectResponse("/profile", status_code=303)
+
+    content = photo.file.read()
+    if len(content) > 5 * 1024 * 1024:  # 5 MB limit
+        return RedirectResponse("/profile", status_code=303)
+
+    os.makedirs("static/avatars", exist_ok=True)
+
+    # Delete old avatar file if it exists
+    if current_user.avatar_url:
+        old_path = current_user.avatar_url.lstrip("/")
+        if os.path.exists(old_path):
+            os.remove(old_path)
+
+    filename = f"{uuid.uuid4().hex}{ext}"
+    with open(f"static/avatars/{filename}", "wb") as f:
+        f.write(content)
+
+    current_user.avatar_url = f"/static/avatars/{filename}"
     db.commit()
     return RedirectResponse("/profile", status_code=303)

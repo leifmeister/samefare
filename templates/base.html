@@ -43,9 +43,18 @@
           <div class="navbar__nav">
             <a href="/">Home</a>
             <a href="/trips">Find a ride</a>
+            <a href="{% if current_user %}/trips/new{% else %}/offer-ride{% endif %}" class="nav-highlight">Offer a ride</a>
             {% if current_user %}
-              <a href="/trips/new" class="nav-highlight">Offer a ride</a>
               <a href="/bookings">My trips</a>
+              <a href="/messages" class="nav-messages-link">
+                Messages
+                {% if unread_message_count %}
+                  <span class="nav-badge">{{ unread_message_count }}</span>
+                {% endif %}
+              </a>
+              {% if current_user.is_admin %}
+                <a href="/admin/verifications">Admin</a>
+              {% endif %}
             {% endif %}
           </div>
 
@@ -93,7 +102,16 @@
       {% if current_user %}
         <a href="/trips/new">Offer a ride</a>
         <a href="/bookings">My trips</a>
+        <a href="/messages">
+          Messages
+          {% if unread_message_count %}
+            <span class="nav-badge">{{ unread_message_count }}</span>
+          {% endif %}
+        </a>
         <a href="/profile">Profile</a>
+        {% if current_user.is_admin %}
+          <a href="/admin/verifications">Admin</a>
+        {% endif %}
         <a href="/logout" class="mobile-logout">Log out</a>
       {% else %}
         <a href="/login">Log in</a>
@@ -101,6 +119,16 @@
       {% endif %}
     </div>
   </header>
+
+  <!-- Beta banner -->
+  {% if beta_mode %}
+  <div class="beta-banner" role="alert">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true">
+      <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+    </svg>
+    <strong>Beta mode</strong> — This is a test build for friends &amp; testers. No real payments are processed.
+  </div>
+  {% endif %}
 
   <!-- Flash messages -->
   {% if flash %}
@@ -146,15 +174,14 @@
         <div>
           <p class="footer__col-title">Company</p>
           <nav class="footer__links">
-            <a href="#">About</a>
-            <a href="#">Safety</a>
-            <a href="#">Terms</a>
-            <a href="#">Privacy</a>
+            <a href="/terms">Terms &amp; Conditions</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="mailto:support@samefare.com">Contact us</a>
           </nav>
         </div>
       </div>
       <div class="footer__bar">
-        <span>© 2024 SameFare ehf. — Iceland</span>
+        <span>© 2025 SameFare ehf. — Iceland</span>
         <span class="footer__flag">🇮🇸</span>
       </div>
     </div>

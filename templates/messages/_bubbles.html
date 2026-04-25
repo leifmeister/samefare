@@ -1,0 +1,13 @@
+{% from "partials/avatar.html" import avatar %}
+{% for msg in messages %}
+<div class="bubble {% if msg.sender_id == current_user.id %}bubble--mine{% else %}bubble--theirs{% endif %}"
+     data-msg-id="{{ msg.id }}">
+  {% if msg.sender_id != current_user.id %}
+    {{ avatar(msg.sender, cls="avatar--xs") }}
+  {% endif %}
+  <div class="bubble__inner">
+    <p class="bubble__text">{{ msg.body }}</p>
+    <time class="bubble__time">{{ msg.created_at.strftime("%-H:%M") }}</time>
+  </div>
+</div>
+{% endfor %}

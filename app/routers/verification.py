@@ -1,0 +1,227 @@
+"""
+Verification router.
+
+Passengers must have an approved ID before booking.
+Drivers must have an approved driver's licence before posting a trip.
+
+Admin routes (is_admin=True) let staff review and approve / reject documents.
+"""
+
+import os
+import uuid
+
+from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
+
+from app import models
+from app.config import get_settings
+from app.database import get_db
+from app.dependencies import get_current_user, get_template_context
+
+settings = get_settings()
+
+templates  = Jinja2Templates(directory="templates")
+router     = APIRouter(tags=["verification"])
+
+UPLOAD_DIR = "uploads/verifications"
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf", ".heic"}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+
+
+def _save_upload(file: UploadFile) -> str:
+    """Save an uploaded file and return the stored filename."""
+    ext = os.path.splitext(file.filename or "")[-1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise ValueError(f"File type {ext} not allowed.")
+    stored = f"{uuid.uuid4().hex}{ext}"
+    path   = os.path.join(UPLOAD_DIR, stored)
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    content = file.file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise ValueError("File too large (max 10 MB).")
+    with open(path, "wb") as f:
+        f.write(content)
+    return stored
+
+
+# ── User-facing ───────────────────────────────────────────────────────────────
+
+@router.get("/verify", response_class=HTMLResponse)
+def verify_page(
+    request: Request,
+    ctx: dict = Depends(get_template_context),
+    current_user: models.User = Depends(get_current_user),
+):
+    return templates.TemplateResponse("verification/index.html", {
+        **ctx, "error": None, "success": None,
+    })
+
+
+@router.post("/verify/identity", response_class=HTMLResponse)
+def upload_identity(
+    request: Request,
+    ctx: dict = Depends(get_template_context),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    document: UploadFile = File(...),
+):
+    if current_user.id_verification == models.VerificationStatus.approved:
+        return RedirectResponse("/verify", status_code=303)
+
+    try:
+        filename = _save_upload(document)
+    except ValueError as e:
+        return templates.TemplateResponse("verification/index.html", {
+            **ctx, "error": str(e), "success": None,
+        }, status_code=400)
+
+    current_user.id_doc_filename     = filename
+    current_user.id_rejection_reason = None
+    if settings.beta_mode:
+        current_user.id_verification = models.VerificationStatus.approved
+        success_msg = "ID document submitted and automatically approved (beta mode)."
+    else:
+        current_user.id_verification = models.VerificationStatus.pending
+        success_msg = "ID document submitted — we'll review it shortly."
+    db.commit()
+    return templates.TemplateResponse("verification/index.html", {
+        **ctx,
+        "error":   None,
+        "success": success_msg,
+    })
+
+
+@router.post("/verify/license", response_class=HTMLResponse)
+def upload_license(
+    request: Request,
+    ctx: dict = Depends(get_template_context),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    document: UploadFile = File(...),
+):
+    if current_user.license_verification == models.VerificationStatus.approved:
+        return RedirectResponse("/verify", status_code=303)
+
+    try:
+        filename = _save_upload(document)
+    except ValueError as e:
+        return templates.TemplateResponse("verification/index.html", {
+            **ctx, "error": str(e), "success": None,
+        }, status_code=400)
+
+    current_user.license_doc_filename      = filename
+    current_user.license_rejection_reason  = None
+    if settings.beta_mode:
+        current_user.license_verification = models.VerificationStatus.approved
+        success_msg = "Driver's licence submitted and automatically approved (beta mode)."
+    else:
+        current_user.license_verification = models.VerificationStatus.pending
+        success_msg = "Driver's licence submitted — we'll review it shortly."
+    db.commit()
+    return templates.TemplateResponse("verification/index.html", {
+        **ctx,
+        "error":   None,
+        "success": success_msg,
+    })
+
+
+# ── Admin ─────────────────────────────────────────────────────────────────────
+
+def _require_admin(current_user: models.User = Depends(get_current_user)):
+    if not current_user.is_admin:
+        raise __import__("fastapi").HTTPException(status_code=403, detail="Forbidden")
+    return current_user
+
+
+@router.get("/admin/verifications", response_class=HTMLResponse)
+def admin_verifications(
+    request: Request,
+    ctx: dict = Depends(get_template_context),
+    admin: models.User = Depends(_require_admin),
+    db: Session = Depends(get_db),
+):
+    pending = (
+        db.query(models.User)
+        .filter(
+            (models.User.id_verification      == models.VerificationStatus.pending) |
+            (models.User.license_verification == models.VerificationStatus.pending)
+        )
+        .all()
+    )
+    return templates.TemplateResponse("admin/verifications.html", {
+        **ctx, "pending_users": pending,
+    })
+
+
+@router.get("/admin/verifications/doc/{filename}")
+def serve_doc(
+    filename: str,
+    admin: models.User = Depends(_require_admin),
+):
+    """Serve uploaded documents only to admins."""
+    path = os.path.join(UPLOAD_DIR, filename)
+    if not os.path.exists(path) or ".." in filename:
+        raise __import__("fastapi").HTTPException(status_code=404)
+    return FileResponse(path)
+
+
+@router.post("/admin/verifications/{user_id}/approve-id")
+def approve_id(
+    user_id: int,
+    admin: models.User = Depends(_require_admin),
+    db: Session = Depends(get_db),
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user:
+        user.id_verification      = models.VerificationStatus.approved
+        user.id_rejection_reason  = None
+        db.commit()
+    return RedirectResponse("/admin/verifications", status_code=303)
+
+
+@router.post("/admin/verifications/{user_id}/reject-id")
+def reject_id(
+    user_id: int,
+    reason: str = Form(""),
+    admin: models.User = Depends(_require_admin),
+    db: Session = Depends(get_db),
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user:
+        user.id_verification      = models.VerificationStatus.rejected
+        user.id_rejection_reason  = reason or "Document could not be verified."
+        user.id_doc_filename      = None
+        db.commit()
+    return RedirectResponse("/admin/verifications", status_code=303)
+
+
+@router.post("/admin/verifications/{user_id}/approve-license")
+def approve_license(
+    user_id: int,
+    admin: models.User = Depends(_require_admin),
+    db: Session = Depends(get_db),
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user:
+        user.license_verification      = models.VerificationStatus.approved
+        user.license_rejection_reason  = None
+        db.commit()
+    return RedirectResponse("/admin/verifications", status_code=303)
+
+
+@router.post("/admin/verifications/{user_id}/reject-license")
+def reject_license(
+    user_id: int,
+    reason: str = Form(""),
+    admin: models.User = Depends(_require_admin),
+    db: Session = Depends(get_db),
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user:
+        user.license_verification      = models.VerificationStatus.rejected
+        user.license_rejection_reason  = reason or "Document could not be verified."
+        user.license_doc_filename      = None
+        db.commit()
+    return RedirectResponse("/admin/verifications", status_code=303)

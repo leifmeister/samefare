@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% from "partials/avatar.html" import avatar %}
+{% block title %}Messages — SameFare{% endblock %}
+
+{% block content %}
+<div class="container" style="margin-top:2rem; margin-bottom:4rem;">
+
+  <div class="page-section-header">
+    <h1 class="page-title">Messages</h1>
+  </div>
+
+  {% if not conversations %}
+    <div class="empty-state">
+      <div class="empty-state__icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.5" width="48" height="48" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+        </svg>
+      </div>
+      <p class="empty-state__text">No conversations yet.</p>
+      <p class="empty-state__sub">Once you book a ride or a passenger books yours, you can message each other here.</p>
+      <a href="/trips" class="btn btn-primary" style="margin-top:1rem;">Find a ride</a>
+    </div>
+  {% else %}
+    <div class="msg-inbox">
+      {% for conv in conversations %}
+        {% set b       = conv.booking %}
+        {% set partner = conv.partner %}
+        {% set last    = conv.last_message %}
+        {% set unread  = conv.unread_count %}
+        <a href="/messages/{{ b.id }}"
+           class="msg-conv {% if unread %}msg-conv--unread{% endif %}">
+
+          <!-- Avatar -->
+          <div class="msg-conv__avatar">
+            {{ avatar(partner, cls="avatar--md") }}
+          </div>
+
+          <!-- Main -->
+          <div class="msg-conv__body">
+            <div class="msg-conv__top">
+              <span class="msg-conv__name">{{ partner.full_name.split()[0] }}</span>
+              <span class="msg-conv__route">
+                {{ b.trip.origin }}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                     width="12" height="12" style="vertical-align:middle" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+                {{ b.trip.destination }}
+              </span>
+            </div>
+            <p class="msg-conv__snippet">
+              {% if last %}
+                {% if last.sender_id == current_user.id %}<span class="msg-conv__you">You: </span>{% endif %}
+                {{ last.body | truncate(60, true, '…') }}
+              {% else %}
+                <span class="msg-conv__empty">No messages yet — say hello!</span>
+              {% endif %}
+            </p>
+          </div>
+
+          <!-- Meta -->
+          <div class="msg-conv__meta">
+            {% if last %}
+              <time class="msg-conv__time">
+                {{ last.created_at.strftime("%-d %b") if (last.created_at.date() != now.date()) else last.created_at.strftime("%-H:%M") }}
+              </time>
+            {% endif %}
+            {% if unread %}
+              <span class="msg-conv__badge">{{ unread }}</span>
+            {% endif %}
+          </div>
+
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

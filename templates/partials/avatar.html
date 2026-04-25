@@ -1,0 +1,8 @@
+{% macro avatar(user, cls="avatar--md", style="") %}
+{% if user.avatar_url %}
+<img src="{{ user.avatar_url }}" alt="{{ user.full_name }}"
+     class="avatar-img {{ cls }}" style="{{ style }}" />
+{% else %}
+<div class="avatar {{ cls }}" style="{{ style }}">{{ user.full_name[0].upper() }}</div>
+{% endif %}
+{% endmacro %}

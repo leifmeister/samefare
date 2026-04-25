@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 
-from app import models
+from app import models, email as mailer
 from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
 
@@ -104,6 +104,8 @@ def new_trip_page(
     ctx: dict = Depends(get_template_context),
     current_user: models.User = Depends(get_current_user),
 ):
+    if current_user.license_verification != models.VerificationStatus.approved:
+        return RedirectResponse("/verify?next=driver", status_code=303)
     return templates.TemplateResponse("trips/create.html", {
         **ctx,
         "car_types": ALL_CAR_TYPES,
@@ -118,6 +120,7 @@ def create_trip(
     ctx: dict = Depends(get_template_context),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
+
     origin:             str   = Form(...),
     destination:        str   = Form(...),
     departure_date:     date  = Form(...),
@@ -129,10 +132,16 @@ def create_trip(
     car_year:           str   = Form(""),
     car_type:           str   = Form("sedan"),
     description:        str   = Form(""),
+    pickup_address:     str   = Form(""),
+    dropoff_address:    str   = Form(""),
     allows_luggage:     bool  = Form(True),
     allows_pets:        bool  = Form(False),
     smoking:            bool  = Form(False),
+    instant_book:       bool  = Form(True),
 ):
+    if current_user.license_verification != models.VerificationStatus.approved:
+        return RedirectResponse("/verify?next=driver", status_code=303)
+
     err_ctx = {**ctx, "car_types": ALL_CAR_TYPES, "cities": ICELANDIC_CITIES}
 
     # Parse departure datetime
@@ -165,9 +174,12 @@ def create_trip(
         car_year=int(car_year) if car_year.isdigit() else None,
         car_type=car_type,
         description=description or None,
+        pickup_address=pickup_address or None,
+        dropoff_address=dropoff_address or None,
         allows_luggage=allows_luggage,
         allows_pets=allows_pets,
         smoking=smoking,
+        instant_book=instant_book,
     )
     db.add(trip)
     db.commit()
@@ -204,9 +216,14 @@ def cancel_trip(
     trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
     if trip and trip.driver_id == current_user.id and trip.status == models.TripStatus.active:
         trip.status = models.TripStatus.cancelled
-        # Cancel all pending/confirmed bookings
+        affected = []
         for b in trip.bookings:
-            if b.status in (models.BookingStatus.pending, models.BookingStatus.confirmed):
+            if b.status in (models.BookingStatus.pending, models.BookingStatus.confirmed,
+                            models.BookingStatus.awaiting_payment):
                 b.status = models.BookingStatus.cancelled
+                affected.append(b)
         db.commit()
+        # Email all affected passengers
+        for b in affected:
+            mailer.trip_cancelled_to_passenger(b)
     return RedirectResponse("/profile", status_code=303)

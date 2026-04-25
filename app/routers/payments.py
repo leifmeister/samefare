@@ -23,9 +23,12 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 
-from app import models
+from app import models, email as mailer
+from app.config import get_settings
 from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
+
+settings = get_settings()
 
 templates = Jinja2Templates(directory="templates")
 router    = APIRouter(prefix="/payments", tags=["payments"])
@@ -149,11 +152,67 @@ def process_payment(
     )
     db.add(payment)
 
-    # Update booking fees to match tiered calculation, move to pending
+    # Update booking fees, mark confirmed
     booking.service_fee  = fee
     booking.total_price  = total
-    booking.status       = models.BookingStatus.pending
+    booking.status       = models.BookingStatus.confirmed
     db.commit()
+    db.refresh(booking)
+
+    # Emails — fire and forget
+    mailer.booking_confirmed_to_passenger(booking)
+    mailer.booking_confirmed_to_driver(booking)
+
+    return RedirectResponse(f"/payments/success/{booking_id}", status_code=303)
+
+
+# ── Beta bypass ───────────────────────────────────────────────────────────────
+
+@router.post("/checkout/{booking_id}/beta", response_class=HTMLResponse)
+def beta_confirm(
+    booking_id: int,
+    request: Request,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """One-click booking confirmation used only when BETA_MODE=true."""
+    if not settings.beta_mode:
+        return RedirectResponse(f"/payments/checkout/{booking_id}", status_code=303)
+
+    booking = (
+        db.query(models.Booking)
+        .options(joinedload(models.Booking.trip).joinedload(models.Trip.driver))
+        .filter(models.Booking.id == booking_id)
+        .first()
+    )
+    if not booking or booking.passenger_id != current_user.id:
+        return RedirectResponse("/bookings", status_code=303)
+    if booking.status != models.BookingStatus.awaiting_payment:
+        return RedirectResponse("/bookings", status_code=303)
+
+    contribution       = booking.subtotal
+    fee, total, payout = calc_fees(contribution)
+
+    # Record a zero-value payment so the data model stays consistent
+    payment = models.Payment(
+        booking_id      = booking.id,
+        passenger_total = 0,
+        driver_payout   = 0,
+        platform_fee    = 0,
+        status          = models.PaymentStatus.authorised,
+        card_last4      = None,
+        card_brand      = "Beta",
+    )
+    db.add(payment)
+
+    booking.service_fee = 0
+    booking.total_price = 0
+    booking.status      = models.BookingStatus.confirmed
+    db.commit()
+    db.refresh(booking)
+
+    mailer.booking_confirmed_to_passenger(booking)
+    mailer.booking_confirmed_to_driver(booking)
 
     return RedirectResponse(f"/payments/success/{booking_id}", status_code=303)
 

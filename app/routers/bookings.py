@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 
-from app import models
+from app import models, email as mailer
 from app.config import get_settings
 from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
@@ -40,6 +40,9 @@ def book_trip_page(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if current_user.id_verification != models.VerificationStatus.approved:
+        return RedirectResponse(f"/verify?next=book&trip={trip_id}", status_code=303)
+
     trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
     if not trip:
         return templates.TemplateResponse("errors/404.html", {**ctx}, status_code=404)
@@ -90,6 +93,14 @@ def create_booking(
     contribution        = trip.price_per_seat * seats_booked
     service_fee, total, _ = calc_fees(contribution)
 
+    if trip.instant_book:
+        # Instant: hold seats now, go straight to payment
+        initial_status = models.BookingStatus.awaiting_payment
+        trip.seats_available = max(0, trip.seats_available - seats_booked)
+    else:
+        # Requires approval: don't hold seats yet, wait for driver
+        initial_status = models.BookingStatus.pending
+
     booking = models.Booking(
         trip_id=trip_id,
         passenger_id=current_user.id,
@@ -97,14 +108,18 @@ def create_booking(
         total_price=total,
         service_fee=service_fee,
         message=message or None,
-        status=models.BookingStatus.awaiting_payment,
+        status=initial_status,
     )
     db.add(booking)
-    # Hold seats while passenger completes payment
-    trip.seats_available = max(0, trip.seats_available - seats_booked)
     db.commit()
     db.refresh(booking)
-    return RedirectResponse(f"/payments/checkout/{booking.id}", status_code=303)
+
+    if trip.instant_book:
+        return RedirectResponse(f"/payments/checkout/{booking.id}", status_code=303)
+    else:
+        # Notify driver of the pending request
+        mailer.booking_request_to_driver(booking)
+        return RedirectResponse("/bookings?requested=1", status_code=303)
 
 
 @router.post("/{booking_id}/cancel")
@@ -128,33 +143,45 @@ def cancel_booking(
     if booking.status not in cancellable:
         return RedirectResponse("/bookings", status_code=303)
 
-    # Release held seats
-    booking.trip.seats_available = min(
-        booking.trip.seats_total,
-        booking.trip.seats_available + booking.seats_booked,
-    )
+    # Only release seats if they were actually held
+    # pending bookings on manual-approval trips never held seats
+    seats_were_held = booking.status != models.BookingStatus.pending
+    if seats_were_held:
+        booking.trip.seats_available = min(
+            booking.trip.seats_total,
+            booking.trip.seats_available + booking.seats_booked,
+        )
     booking.status = models.BookingStatus.cancelled
 
     # Apply refund policy if payment exists
     if booking.payment:
-        now       = datetime.utcnow()
-        departure = booking.trip.departure_datetime
-        hours_left = (departure - now).total_seconds() / 3600
+        now          = datetime.utcnow()
+        departure    = booking.trip.departure_datetime
+        hours_left   = (departure - now).total_seconds() / 3600
+        mins_since   = (now - booking.created_at).total_seconds() / 60
         contribution = booking.payment.driver_payout
 
-        if hours_left >= 24:
-            refund = contribution          # full contribution back
+        # Grace period: cancelled within 30 min of booking AND departure still > 24 h away
+        if mins_since <= 30 and hours_left >= 24:
+            refund = booking.payment.passenger_total  # full refund incl. service fee
+            booking.payment.status = models.PaymentStatus.refunded
+        elif hours_left >= 24:
+            refund = contribution                     # contribution back; service fee kept
             booking.payment.status = models.PaymentStatus.refunded
         elif hours_left > 0:
-            refund = round(contribution * 0.5)   # 50 % back
+            refund = round(contribution * 0.5)        # 50% back; service fee kept
             booking.payment.status = models.PaymentStatus.partial_refund
         else:
-            refund = 0                     # no refund after departure
+            refund = 0                                # no refund after departure
             booking.payment.status = models.PaymentStatus.partial_refund
 
         booking.payment.refund_amount = refund
 
     db.commit()
+    db.refresh(booking)
+    # Notify driver (only if booking was actually active, not just a pending request)
+    if seats_were_held:
+        mailer.booking_cancelled_to_driver(booking)
     return RedirectResponse("/bookings", status_code=303)
 
 
@@ -164,11 +191,24 @@ def confirm_booking(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
+    booking = (
+        db.query(models.Booking)
+        .options(joinedload(models.Booking.trip))
+        .filter(models.Booking.id == booking_id)
+        .first()
+    )
     if booking and booking.trip.driver_id == current_user.id:
         if booking.status == models.BookingStatus.pending:
-            booking.status = models.BookingStatus.confirmed
-            db.commit()
+            # Check there are still enough seats (no seats held yet for manual-approval trips)
+            if booking.trip.seats_available >= booking.seats_booked:
+                booking.trip.seats_available = max(
+                    0, booking.trip.seats_available - booking.seats_booked
+                )
+                booking.status = models.BookingStatus.awaiting_payment
+                db.commit()
+                db.refresh(booking)
+                mailer.booking_approved_to_passenger(booking)
+            # If not enough seats, silently do nothing (driver sees it's still pending)
     return RedirectResponse("/profile", status_code=303)
 
 
@@ -178,14 +218,15 @@ def reject_booking(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
+    booking = (
+        db.query(models.Booking)
+        .options(joinedload(models.Booking.trip))
+        .filter(models.Booking.id == booking_id)
+        .first()
+    )
     if booking and booking.trip.driver_id == current_user.id:
         if booking.status == models.BookingStatus.pending:
-            # Release seats back
-            booking.trip.seats_available = min(
-                booking.trip.seats_total,
-                booking.trip.seats_available + booking.seats_booked,
-            )
+            # Pending on manual-approval trips never held seats — nothing to release
             booking.status = models.BookingStatus.rejected
             db.commit()
     return RedirectResponse("/profile", status_code=303)

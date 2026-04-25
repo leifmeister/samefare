@@ -32,6 +32,20 @@
         <datalist id="cities-list">
           {% for city in cities %}<option value="{{ city }}"/>{% endfor %}
         </datalist>
+        <div class="form-row" style="margin-top:1rem;">
+          <div class="form-group">
+            <label for="pickup_address" class="label">Pickup address <span class="optional">(optional)</span></label>
+            <input id="pickup_address" name="pickup_address" type="text" class="input"
+                   placeholder="e.g. BSÍ Bus Terminal, Reykjavík" autocomplete="off" />
+            <p class="field-hint">Exact street or landmark where passengers should meet you.</p>
+          </div>
+          <div class="form-group">
+            <label for="dropoff_address" class="label">Dropoff address <span class="optional">(optional)</span></label>
+            <input id="dropoff_address" name="dropoff_address" type="text" class="input"
+                   placeholder="e.g. Akureyri bus station" autocomplete="off" />
+            <p class="field-hint">Where you will drop passengers off at the destination.</p>
+          </div>
+        </div>
       </fieldset>
 
       <fieldset class="form-section">
@@ -94,6 +108,20 @@
               <option value="{{ ct }}">{{ ct|capitalize }}</option>
             {% endfor %}
           </select>
+        </div>
+      </fieldset>
+
+      <fieldset class="form-section">
+        <legend class="form-section__title">Booking</legend>
+        <div class="instant-book-toggle">
+          <div class="instant-book-toggle__labels">
+            <p class="instant-book-toggle__title">Instant booking</p>
+            <p class="instant-book-toggle__sub">Passengers book immediately without waiting for your approval. Turn off to review and accept each request individually.</p>
+          </div>
+          <label class="toggle-switch" aria-label="Instant booking">
+            <input type="checkbox" name="instant_book" value="true" checked id="instant_book_checkbox" />
+            <span class="toggle-switch__track"></span>
+          </label>
         </div>
       </fieldset>
 

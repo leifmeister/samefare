@@ -89,6 +89,27 @@
 </section>
 
 <!-- ═══════════════════════════════════════
+     DRIVER CARD
+═══════════════════════════════════════ -->
+<section class="section section--light" style="padding-top:2rem; padding-bottom:2rem;">
+  <div class="container">
+    <div class="driver-card-cta">
+      <div class="driver-card-cta__icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0M13 17H9m10 0h1a1 1 0 001-1v-4a1 1 0 00-.293-.707L21 9.586A2 2 0 0019.586 9H17V7a2 2 0 00-2-2H5a2 2 0 00-2 2v9a1 1 0 001 1h1"/></svg>
+      </div>
+      <div class="driver-card-cta__text">
+        <h2 class="driver-card-cta__title">Offer your ride. Share the cost.</h2>
+        <p class="driver-card-cta__sub">Post your trip and let passengers cover part of your fuel. Iceland's roads are long — they don't have to be expensive.</p>
+      </div>
+      <a href="{% if current_user %}/trips/new{% else %}/offer-ride{% endif %}" class="btn btn-primary driver-card-cta__btn">
+        Offer a ride
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
      POPULAR ROUTES
 ═══════════════════════════════════════ -->
 <section class="section section--light">

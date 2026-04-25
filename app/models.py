@@ -13,14 +13,22 @@ from app.database import Base
 
 
 # ── Enumerations ──────────────────────────────────────────────────────────────
+# Python 3.11+ changed str(StrEnum.member) to return "ClassName.member".
+# The __str__ override restores the previous behaviour (returns the value)
+# so templates, CSS classes, and DB comparisons all work without .value calls.
 
-class UserRole(str, PyEnum):
+class _StrEnum(str, PyEnum):
+    def __str__(self) -> str:
+        return self.value
+
+
+class UserRole(_StrEnum):
     driver    = "driver"
     passenger = "passenger"
     both      = "both"
 
 
-class CarType(str, PyEnum):
+class CarType(_StrEnum):
     sedan        = "sedan"
     suv          = "suv"
     van          = "van"
@@ -29,13 +37,13 @@ class CarType(str, PyEnum):
     camper       = "camper"
 
 
-class TripStatus(str, PyEnum):
+class TripStatus(_StrEnum):
     active    = "active"
     completed = "completed"
     cancelled = "cancelled"
 
 
-class BookingStatus(str, PyEnum):
+class BookingStatus(_StrEnum):
     awaiting_payment = "awaiting_payment"
     pending          = "pending"
     confirmed        = "confirmed"
@@ -44,16 +52,23 @@ class BookingStatus(str, PyEnum):
     completed        = "completed"
 
 
-class PaymentStatus(str, PyEnum):
-    authorised     = "authorised"     # passenger paid, awaiting driver confirm
-    captured       = "captured"       # trip complete, driver paid out
-    refunded       = "refunded"       # full refund issued
-    partial_refund = "partial_refund" # late cancel — 50 % back
+class PaymentStatus(_StrEnum):
+    authorised     = "authorised"
+    captured       = "captured"
+    refunded       = "refunded"
+    partial_refund = "partial_refund"
 
 
-class ReviewType(str, PyEnum):
+class ReviewType(_StrEnum):
     passenger_to_driver = "passenger_to_driver"
     driver_to_passenger = "driver_to_passenger"
+
+
+class VerificationStatus(_StrEnum):
+    unverified = "unverified"
+    pending    = "pending"
+    approved   = "approved"
+    rejected   = "rejected"
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────
@@ -68,11 +83,31 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     role            = Column(Enum(UserRole), nullable=False, default=UserRole.both)
     is_active       = Column(Boolean, nullable=False, default=True)
+    is_admin        = Column(Boolean, nullable=False, default=False)
     avatar_url      = Column(String(512))
     bio             = Column(Text)
     created_at      = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at      = Column(DateTime, nullable=False, default=datetime.utcnow,
                              onupdate=datetime.utcnow)
+
+    # Phone verification
+    phone_verified      = Column(Boolean, nullable=False, default=False)
+    phone_otp           = Column(String(6))
+    phone_otp_expires   = Column(DateTime)
+
+    # Password reset
+    reset_token         = Column(String(64))
+    reset_token_expires = Column(DateTime)
+
+    # Identity & licence verification
+    id_verification          = Column(Enum(VerificationStatus), nullable=False,
+                                      default=VerificationStatus.unverified)
+    license_verification     = Column(Enum(VerificationStatus), nullable=False,
+                                      default=VerificationStatus.unverified)
+    id_doc_filename          = Column(String(255))
+    license_doc_filename     = Column(String(255))
+    id_rejection_reason      = Column(Text)
+    license_rejection_reason = Column(Text)
 
     trips           = relationship("Trip",    back_populates="driver",
                                    cascade="all, delete-orphan")
@@ -82,6 +117,8 @@ class User(Base):
                                    foreign_keys="Review.reviewer_id")
     reviews_received = relationship("Review", back_populates="reviewee",
                                     foreign_keys="Review.reviewee_id")
+    messages_sent   = relationship("Message", back_populates="sender",
+                                   foreign_keys="Message.sender_id")
 
     __table_args__ = (Index("ix_users_email", "email"),)
 
@@ -119,9 +156,12 @@ class Trip(Base):
     car_year           = Column(Integer)
     car_type           = Column(Enum(CarType), nullable=False, default=CarType.sedan)
     description        = Column(Text)
+    pickup_address     = Column(String(255))   # exact pickup spot within origin city
+    dropoff_address    = Column(String(255))   # exact dropoff spot within destination city
     allows_luggage     = Column(Boolean, nullable=False, default=True)
     allows_pets        = Column(Boolean, nullable=False, default=False)
     smoking            = Column(Boolean, nullable=False, default=False)
+    instant_book       = Column(Boolean, nullable=False, default=True)
     status             = Column(Enum(TripStatus), nullable=False, default=TripStatus.active)
     created_at         = Column(DateTime, nullable=False, default=datetime.utcnow)
 
@@ -186,6 +226,9 @@ class Booking(Base):
                              uselist=False, cascade="all, delete-orphan")
     payment   = relationship("Payment", back_populates="booking",
                              uselist=False, cascade="all, delete-orphan")
+    messages  = relationship("Message", back_populates="booking",
+                             cascade="all, delete-orphan",
+                             order_by="Message.created_at")
 
     __table_args__ = (
         CheckConstraint("total_price >= 0",                        name="ck_bookings_price"),
@@ -280,3 +323,34 @@ class Payment(Base):
 
     def __repr__(self) -> str:
         return f"<Payment id={self.id} booking_id={self.booking_id} status={self.status}>"
+
+
+# ── Messages ──────────────────────────────────────────────────────────────────
+
+class Message(Base):
+    """
+    One message in a conversation thread attached to a booking.
+    The two participants are always: booking.passenger  ↔  booking.trip.driver
+    """
+    __tablename__ = "messages"
+
+    id         = Column(Integer, primary_key=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="CASCADE"),
+                        nullable=False)
+    sender_id  = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"),
+                        nullable=False)
+    body       = Column(Text, nullable=False)
+    is_read    = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    booking = relationship("Booking", back_populates="messages")
+    sender  = relationship("User",    back_populates="messages_sent",
+                           foreign_keys=[sender_id])
+
+    __table_args__ = (
+        Index("ix_messages_booking_id", "booking_id"),
+        Index("ix_messages_sender_id",  "sender_id"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Message id={self.id} booking_id={self.booking_id} sender_id={self.sender_id}>"

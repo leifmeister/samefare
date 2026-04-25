@@ -2,6 +2,7 @@ from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from jose import JWTError, jwt
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app import models
@@ -39,8 +40,31 @@ def get_current_user(
 
 
 def get_template_context(request: Request, db: Session = Depends(get_db)):
+    from datetime import datetime
     user = get_current_user_optional(request, db)
+    unread_count = 0
+    if user:
+        try:
+            unread_count = (
+                db.query(func.count(models.Message.id))
+                .join(models.Booking, models.Message.booking_id == models.Booking.id)
+                .join(models.Trip,    models.Booking.trip_id    == models.Trip.id)
+                .filter(
+                    models.Message.sender_id != user.id,
+                    models.Message.is_read   == False,  # noqa: E712
+                    or_(
+                        models.Booking.passenger_id == user.id,
+                        models.Trip.driver_id        == user.id,
+                    ),
+                )
+                .scalar() or 0
+            )
+        except Exception:
+            unread_count = 0   # table may not exist yet on first run
     return {
-        "request": request,
-        "current_user": user,
+        "request":              request,
+        "current_user":         user,
+        "unread_message_count": unread_count,
+        "now":                  datetime.utcnow(),
+        "beta_mode":            settings.beta_mode,
     }

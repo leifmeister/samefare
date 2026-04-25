@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% from "partials/avatar.html" import avatar %}
+{% block title %}Verifications — Admin{% endblock %}
+
+{% block content %}
+<div class="container" style="margin-top:2rem; margin-bottom:4rem;">
+  <div class="page-section-header">
+    <h1 class="page-title">Pending verifications</h1>
+    <span class="status-badge status-badge--pending">{{ pending_users|length }} pending</span>
+  </div>
+
+  {% if not pending_users %}
+    <div class="empty-state" style="margin-top:3rem;">
+      <h3 class="empty-state__title">All clear!</h3>
+      <p class="empty-state__body">No pending verifications right now.</p>
+    </div>
+  {% else %}
+    <div class="admin-list">
+      {% for user in pending_users %}
+      <div class="admin-card">
+        <div class="admin-card__user">
+          {{ avatar(user, cls="avatar--sm") }}
+          <div>
+            <p class="admin-card__name">{{ user.full_name }}</p>
+            <p class="admin-card__email">{{ user.email }}</p>
+            <p class="admin-card__meta">Member since {{ user.created_at.strftime("%-d %b %Y") }}</p>
+          </div>
+        </div>
+
+        <!-- ID -->
+        {% if user.id_verification == 'pending' %}
+        <div class="admin-card__section">
+          <div class="admin-card__section-header">
+            <strong>Government ID</strong>
+            <span class="verify-status verify-status--pending">⏳ Pending</span>
+          </div>
+          {% if user.id_doc_filename %}
+            <a href="/admin/verifications/doc/{{ user.id_doc_filename }}"
+               target="_blank" class="btn btn-ghost btn-sm" style="margin-bottom:.75rem;">
+              View document ↗
+            </a>
+          {% endif %}
+          <div class="admin-card__actions">
+            <form method="post" action="/admin/verifications/{{ user.id }}/approve-id" style="display:inline">
+              <button class="btn btn-primary btn-sm">✓ Approve ID</button>
+            </form>
+            <form method="post" action="/admin/verifications/{{ user.id }}/reject-id"
+                  style="display:inline" x-data="{ open: false }">
+              <button type="button" class="btn btn-outline btn-sm btn-danger-outline"
+                      @click="open = !open">✗ Reject</button>
+              <div x-show="open" style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center;">
+                <input name="reason" type="text" class="input" style="flex:1; padding:.4rem .6rem; font-size:.875rem;"
+                       placeholder="Reason (optional)" />
+                <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">Send</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Licence -->
+        {% if user.license_verification == 'pending' %}
+        <div class="admin-card__section">
+          <div class="admin-card__section-header">
+            <strong>Driver's licence</strong>
+            <span class="verify-status verify-status--pending">⏳ Pending</span>
+          </div>
+          {% if user.license_doc_filename %}
+            <a href="/admin/verifications/doc/{{ user.license_doc_filename }}"
+               target="_blank" class="btn btn-ghost btn-sm" style="margin-bottom:.75rem;">
+              View document ↗
+            </a>
+          {% endif %}
+          <div class="admin-card__actions">
+            <form method="post" action="/admin/verifications/{{ user.id }}/approve-license" style="display:inline">
+              <button class="btn btn-primary btn-sm">✓ Approve licence</button>
+            </form>
+            <form method="post" action="/admin/verifications/{{ user.id }}/reject-license"
+                  style="display:inline" x-data="{ open: false }">
+              <button type="button" class="btn btn-outline btn-sm btn-danger-outline"
+                      @click="open = !open">✗ Reject</button>
+              <div x-show="open" style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center;">
+                <input name="reason" type="text" class="input" style="flex:1; padding:.4rem .6rem; font-size:.875rem;"
+                       placeholder="Reason (optional)" />
+                <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">Send</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

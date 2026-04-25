@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/avatar.html" import avatar %}
 {% block title %}{{ trip.origin }} → {{ trip.destination }} — SameFare{% endblock %}
 
 {% block content %}
@@ -22,20 +23,28 @@
           </div>
         {% endif %}
 
-        <div class="trip-hero__route">
-          <div class="trip-hero__stop">
-            <div class="trip-hero__stop-dot trip-hero__stop-dot--from"></div>
-            <div>
-              <p class="trip-hero__city">{{ trip.origin }}</p>
-              <p class="trip-hero__time">{{ trip.departure_datetime.strftime("%H:%M") }}</p>
+        <div class="route-timeline">
+          <div class="route-timeline__stop">
+            <div class="route-timeline__left">
+              <span class="route-timeline__time">{{ trip.departure_datetime.strftime("%H:%M") }}</span>
+            </div>
+            <div class="route-timeline__dot route-timeline__dot--from"></div>
+            <div class="route-timeline__right">
+              <p class="route-timeline__city">{{ trip.origin }}</p>
+              {% if trip.pickup_address %}
+                <p class="route-timeline__address">{{ trip.pickup_address }}</p>
+              {% endif %}
             </div>
           </div>
-          <div class="trip-hero__line"></div>
-          <div class="trip-hero__stop">
-            <div class="trip-hero__stop-dot trip-hero__stop-dot--to"></div>
-            <div>
-              <p class="trip-hero__city">{{ trip.destination }}</p>
-              <p class="trip-hero__time">{{ trip.departure_datetime.strftime("%a, %-d %B %Y") }}</p>
+          <div class="route-timeline__line"></div>
+          <div class="route-timeline__stop">
+            <div class="route-timeline__left"></div>
+            <div class="route-timeline__dot route-timeline__dot--to"></div>
+            <div class="route-timeline__right">
+              <p class="route-timeline__city">{{ trip.destination }}</p>
+              {% if trip.dropoff_address %}
+                <p class="route-timeline__address">{{ trip.dropoff_address }}</p>
+              {% endif %}
             </div>
           </div>
         </div>
@@ -52,6 +61,12 @@
           <div class="chip chip--price">
             {{ "{:,}".format(trip.price_per_seat) }} ISK per seat
           </div>
+          {% if not trip.instant_book %}
+            <div class="chip chip--approval">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>
+              Approval required
+            </div>
+          {% endif %}
         </div>
       </div>
 
@@ -111,9 +126,18 @@
           <div class="passenger-list">
             {% for booking in confirmed_bookings %}
             <div class="passenger-item">
-              <div class="avatar avatar--sm">{{ booking.passenger.full_name[0].upper() }}</div>
+              {{ avatar(booking.passenger, cls="avatar--sm") }}
               <span>{{ booking.passenger.full_name.split()[0] }}</span>
               <span class="passenger-seats">{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }}</span>
+              {% if current_user and current_user.id == trip.driver_id and booking.passenger.phone %}
+                <a href="tel:{{ booking.passenger.phone }}" class="contact-phone contact-phone--sm" style="margin-left:auto;">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                       width="12" height="12" aria-hidden="true">
+                    <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+                  </svg>
+                  {{ booking.passenger.phone }}
+                </a>
+              {% endif %}
             </div>
             {% endfor %}
           </div>
@@ -128,7 +152,7 @@
 
       <!-- Driver card -->
       <div class="driver-card">
-        <div class="driver-card__avatar">{{ trip.driver.full_name[0].upper() }}</div>
+        {{ avatar(trip.driver, cls="driver-card__avatar") }}
         <div class="driver-card__info">
           <p class="driver-card__name">{{ trip.driver.full_name }}</p>
           {% if trip.driver.average_rating %}
@@ -151,9 +175,16 @@
       {% if trip.status == 'active' and trip.seats_available > 0 %}
         {% if current_user %}
           {% if current_user.id != trip.driver_id %}
-            <a href="/bookings/trip/{{ trip.id }}" class="btn btn-primary btn-block btn-lg">
-              Book a seat — {{ "{:,}".format(trip.price_per_seat) }} ISK
-            </a>
+            {% if trip.instant_book %}
+              <a href="/bookings/trip/{{ trip.id }}" class="btn btn-primary btn-block btn-lg">
+                Book a seat — {{ "{:,}".format(trip.price_per_seat) }} ISK
+              </a>
+            {% else %}
+              <a href="/bookings/trip/{{ trip.id }}" class="btn btn-primary btn-block btn-lg">
+                Request to book — {{ "{:,}".format(trip.price_per_seat) }} ISK
+              </a>
+              <p class="cta-hint">Driver reviews each request before confirming.</p>
+            {% endif %}
           {% else %}
             <div class="driver-cta">
               <p class="driver-cta__text">This is your trip</p>
@@ -178,12 +209,12 @@
           <span>{{ "{:,}".format(trip.price_per_seat) }} ISK</span>
         </div>
         <div class="price-row price-row--muted">
-          <span>Service fee (8%)</span>
-          <span>{{ "{:,}".format((trip.price_per_seat * 0.08)|round|int) }} ISK</span>
+          <span>Service fee (18%)</span>
+          <span>{{ "{:,}".format((trip.price_per_seat * 0.18)|round|int) }} ISK</span>
         </div>
         <div class="price-row price-row--total">
           <span>Total per seat</span>
-          <span>{{ "{:,}".format((trip.price_per_seat * 1.08)|round|int) }} ISK</span>
+          <span>{{ "{:,}".format((trip.price_per_seat * 1.18)|round|int) }} ISK</span>
         </div>
       </div>
 

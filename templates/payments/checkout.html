@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/avatar.html" import avatar %}
 {% block title %}Complete payment — {{ booking.trip.origin }} → {{ booking.trip.destination }}{% endblock %}
 
 {% block content %}
@@ -22,6 +23,49 @@
     {% endif %}
 
     <div class="booking-layout">
+
+      {% if beta_mode %}
+      <!-- ── BETA: one-click bypass ── -->
+      <div class="form-card beta-checkout">
+        <div class="beta-checkout__badge">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden="true">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+          </svg>
+          Beta mode — no charge
+        </div>
+        <p class="beta-checkout__info">
+          This is a test build. Click below to confirm your booking instantly — no card details needed and no money will be charged.
+        </p>
+
+        <!-- Price summary (read-only) -->
+        <div class="booking-summary">
+          <h3 class="booking-summary__title">What would be charged in production</h3>
+          <div class="price-row">
+            <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }} × {{ "{:,}".format(booking.trip.price_per_seat) }} ISK</span>
+            <span>{{ "{:,}".format(contribution) }} ISK</span>
+          </div>
+          <div class="price-row price-row--muted">
+            <span>Service fee ({{ fee_pct }}%)</span>
+            <span>{{ "{:,}".format(service_fee) }} ISK</span>
+          </div>
+          <div class="price-row price-row--total">
+            <span>Total</span>
+            <span class="price-row--strikethrough">{{ "{:,}".format(total) }} ISK</span>
+            <span class="price-row--free">FREE</span>
+          </div>
+        </div>
+
+        <form method="post" action="/payments/checkout/{{ booking.id }}/beta">
+          <div class="form-actions" style="margin-top:1.5rem;">
+            <a href="/bookings" class="btn btn-ghost">Cancel</a>
+            <button type="submit" class="btn btn-primary btn-lg">
+              Confirm booking — no charge
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {% else %}
       <form method="post" action="/payments/checkout/{{ booking.id }}" class="form-card"
             x-data="cardForm()" @submit="handleSubmit">
 
@@ -110,11 +154,12 @@
           Your payment is secure. Card details are not stored.
         </p>
       </form>
+      {% endif %}
 
       <!-- Trip summary sidebar -->
       <div class="booking-driver">
         <div class="driver-card">
-          <div class="driver-card__avatar">{{ booking.trip.driver.full_name[0].upper() }}</div>
+          {{ avatar(booking.trip.driver, cls="driver-card__avatar") }}
           <div class="driver-card__info">
             <p class="driver-card__name">{{ booking.trip.driver.full_name }}</p>
             {% if booking.trip.driver.average_rating %}

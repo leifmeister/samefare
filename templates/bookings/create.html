@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/avatar.html" import avatar %}
 {% block title %}Book a seat — {{ trip.origin }} → {{ trip.destination }}{% endblock %}
 
 {% block content %}
@@ -67,7 +68,7 @@
       <!-- Driver info sidebar -->
       <div class="booking-driver">
         <div class="driver-card">
-          <div class="driver-card__avatar">{{ trip.driver.full_name[0].upper() }}</div>
+          {{ avatar(trip.driver, cls="driver-card__avatar") }}
           <div class="driver-card__info">
             <p class="driver-card__name">{{ trip.driver.full_name }}</p>
             {% if trip.driver.average_rating %}
