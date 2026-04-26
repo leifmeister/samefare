@@ -632,21 +632,20 @@ button, input, select, textarea { font: inherit; }
   background: var(--c-primary);
   color: #fff;
 }
-/* Hero variant — sits on dark card background */
-.date-chips--hero .date-chip {
-  border-color: rgba(255,255,255,.25);
-  background: rgba(255,255,255,.1);
-  color: rgba(255,255,255,.8);
+/* Chip row inside the hero search box card */
+.search-box__chips {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  flex-wrap: wrap;
+  padding-top: .1rem;
 }
-.date-chips--hero .date-chip:hover {
-  border-color: rgba(255,255,255,.7);
-  color: #fff;
-  background: rgba(255,255,255,.2);
-}
-.date-chips--hero .date-chip--active {
-  border-color: #fff;
-  background: #fff;
-  color: var(--c-primary);
+.search-box__chips-label {
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  margin-right: .1rem;
+  white-space: nowrap;
 }
 
 /* ── List page layout ────────────────────────────────────────── */

@@ -64,14 +64,6 @@
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"/></svg>
             </button>
           </div>
-          <div class="date-chips date-chips--hero">
-            <button type="button" class="date-chip" :class="{'date-chip--active': date === today}"
-                    @click="date = (date === today) ? '' : today">Today</button>
-            <button type="button" class="date-chip" :class="{'date-chip--active': date === tomorrow}"
-                    @click="date = (date === tomorrow) ? '' : tomorrow">Tomorrow</button>
-            <button type="button" class="date-chip" :class="{'date-chip--active': date === weekend}"
-                    @click="date = (date === weekend) ? '' : weekend">Weekend</button>
-          </div>
         </div>
 
         <div class="search-field search-field--seats">
@@ -85,6 +77,17 @@
             <option value="3">3 passengers</option>
           </select>
         </div>
+      </div>
+
+      <!-- Date quick-picks — separate row, doesn't affect grid alignment -->
+      <div class="search-box__chips">
+        <span class="search-box__chips-label">Quick pick:</span>
+        <button type="button" class="date-chip" :class="{'date-chip--active': date === today}"
+                @click="date = (date === today) ? '' : today">Today</button>
+        <button type="button" class="date-chip" :class="{'date-chip--active': date === tomorrow}"
+                @click="date = (date === tomorrow) ? '' : tomorrow">Tomorrow</button>
+        <button type="button" class="date-chip" :class="{'date-chip--active': date === weekend}"
+                @click="date = (date === weekend) ? '' : weekend">Weekend</button>
       </div>
 
       <button type="submit" class="btn btn-primary btn-search">
