@@ -2232,7 +2232,7 @@ button, input, select, textarea { font: inherit; }
 
 /* ── Public profile ────────────────────────────────────────────────────────── */
 .trip-card__driver-link {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: .4rem;
   text-decoration: none;
