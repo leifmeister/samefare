@@ -48,7 +48,7 @@
   <div class="booking-row__actions">
     <a href="/trips/{{ booking.trip_id }}" class="btn btn-ghost btn-sm">View trip</a>
     <a href="/messages/{{ booking.id }}" class="btn btn-outline btn-sm">Message driver</a>
-    {% if now < booking.trip.departure_datetime %}
+    {% if now < booking.trip.departure_datetime + timedelta(minutes=15) %}
       <a href="/bookings/{{ booking.id }}/cancel" class="btn btn-outline btn-sm btn-danger-outline">Cancel</a>
     {% else %}
       <form method="post" action="/bookings/{{ booking.id }}/driver-no-show" style="display:inline"

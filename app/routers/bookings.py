@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -276,7 +276,7 @@ def mark_passenger_no_show(
     if (not booking
             or booking.trip.driver_id != current_user.id
             or booking.status != models.BookingStatus.confirmed
-            or datetime.utcnow() < booking.trip.departure_datetime):
+            or datetime.utcnow() < booking.trip.departure_datetime + timedelta(minutes=15)):
         return RedirectResponse("/my-trips?tab=rides", status_code=303)
 
     booking.status = models.BookingStatus.no_show
@@ -301,7 +301,7 @@ def report_driver_no_show(
     if (not booking
             or booking.passenger_id != current_user.id
             or booking.status != models.BookingStatus.confirmed
-            or datetime.utcnow() < booking.trip.departure_datetime):
+            or datetime.utcnow() < booking.trip.departure_datetime + timedelta(minutes=15)):
         return RedirectResponse("/my-trips?tab=bookings", status_code=303)
 
     # Flag the trip so the driver can be penalised by auto-ratings

@@ -197,7 +197,7 @@
                     {{ booking.passenger.phone }}
                   </a>
                 {% endif %}
-                {% if booking.status == 'confirmed' and now >= trip.departure_datetime %}
+                {% if booking.status == 'confirmed' and now >= trip.departure_datetime + timedelta(minutes=15) %}
                   <form method="post" action="/bookings/{{ booking.id }}/no-show"
                         style="display:inline; margin-left:auto;"
                         onsubmit="return confirm('Mark {{ booking.passenger.full_name.split()[0] }} as a no-show? They will not receive a refund.')">
