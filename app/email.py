@@ -37,6 +37,8 @@ def _send(to: str, subject: str, html: str) -> None:
         headers={
             "Authorization": f"Bearer {s.resend_api_key}",
             "Content-Type":  "application/json",
+            "User-Agent":    "SameFare/1.0",
+            "Accept":        "application/json",
         },
         method="POST",
     )
