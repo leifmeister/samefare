@@ -285,7 +285,6 @@ def admin_test_email(
     admin: models.User = Depends(_require_admin),
 ):
     """Send a test email to the admin's own address to verify Resend is working."""
-    import resend as resend_client
     from app.config import get_settings
     from app import email as mailer
     s = get_settings()
@@ -298,19 +297,36 @@ def admin_test_email(
     )
 
     try:
-        resend_client.api_key = s.resend_api_key
-        resend_client.Emails.send({
+        import json, urllib.request, urllib.error
+        payload = json.dumps({
             "from":    s.email_from,
             "to":      [admin.email],
             "subject": subject,
             "html":    body,
-        })
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            "https://api.resend.com/emails",
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {s.resend_api_key}",
+                "Content-Type":  "application/json",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            resp.read()
         return RedirectResponse(
             "/admin/users?flash=Test+email+sent+to+" + admin.email.replace("@", "%40"),
             status_code=303,
         )
+    except urllib.error.HTTPError as exc:
+        err = exc.read().decode("utf-8", errors="replace")[:120]
+        return RedirectResponse(
+            "/admin/users?flash=Resend+error:+" + err.replace(" ", "+"),
+            status_code=303,
+        )
     except Exception as exc:
         return RedirectResponse(
-            "/admin/users?flash=Resend+error:+" + str(exc)[:120].replace(" ", "+"),
+            "/admin/users?flash=Error:+" + str(exc)[:120].replace(" ", "+"),
             status_code=303,
         )

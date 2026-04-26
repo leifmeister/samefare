@@ -5,8 +5,10 @@ All public functions are fire-and-forget: they catch every exception so a
 mail failure never breaks the booking/payment flow.
 """
 
+import json
 import logging
-import resend
+import urllib.request
+import urllib.error
 
 from app.config import get_settings
 
@@ -16,21 +18,34 @@ log = logging.getLogger(__name__)
 # ── Low-level sender ──────────────────────────────────────────────────────────
 
 def _send(to: str, subject: str, html: str) -> None:
-    """Send a single HTML email via Resend. Silently logs on failure."""
+    """Send a single HTML email via Resend REST API. Silently logs on failure."""
     s = get_settings()
     if not s.resend_api_key:
         log.debug("Resend not configured — skipping email to %s: %s", to, subject)
         return
 
-    resend.api_key = s.resend_api_key
+    payload = json.dumps({
+        "from":    s.email_from,
+        "to":      [to],
+        "subject": subject,
+        "html":    html,
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {s.resend_api_key}",
+            "Content-Type":  "application/json",
+        },
+        method="POST",
+    )
     try:
-        resend.Emails.send({
-            "from":    s.email_from,
-            "to":      [to],
-            "subject": subject,
-            "html":    html,
-        })
-        log.info("Email sent → %s  [%s]", to, subject)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            log.info("Email sent → %s  [%s] status=%s", to, subject, resp.status)
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        log.warning("Email failed → %s  [%s]: %s %s", to, subject, exc.code, body)
     except Exception as exc:
         log.warning("Email failed → %s  [%s]: %s", to, subject, exc)
 
