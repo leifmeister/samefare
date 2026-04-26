@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "partials/avatar.html" import avatar %}
+{% from "partials/verified.html" import verified_badge %}
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
 {% block title %}{{ partner.full_name.split()[0] }} — SameFare{% endblock %}
 
@@ -18,7 +19,7 @@
     {{ avatar(partner, cls="avatar--sm") }}
 
     <div class="chat-header__info">
-      <p class="chat-header__name">{{ partner.full_name }}</p>
+      <p class="chat-header__name">{{ partner.full_name }} {{ verified_badge(partner) }}</p>
       <div class="chat-header__sub">
         <a href="/trips/{{ booking.trip_id }}" class="chat-header__trip-link">
           {{ booking.trip.origin }} → {{ booking.trip.destination }}

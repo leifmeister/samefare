@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "partials/avatar.html" import avatar %}
+{% from "partials/verified.html" import verified_badge %}
 {% block title %}{{ profile_user.full_name }} — SameFare{% endblock %}
 
 {% block content %}
@@ -21,7 +22,10 @@
           {{ avatar(profile_user, cls="avatar--xl") }}
         </div>
         <div class="profile-card__info">
-          <h1 class="profile-card__name">{{ profile_user.full_name }}</h1>
+          <h1 class="profile-card__name">
+            {{ profile_user.full_name }}
+            {{ verified_badge(profile_user, size=18) }}
+          </h1>
 
           {% if profile_user.average_rating %}
             <div class="profile-card__rating">
@@ -48,20 +52,52 @@
         </div>
       </div>
 
-      <!-- Verification badges -->
-      <div class="verify-summary">
-        <div class="verify-summary__item verify-summary__item--{{ profile_user.id_verification }}">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h2"/></svg>
-          ID:
-          {% if profile_user.id_verification == 'approved' %}✓ Verified
-          {% else %}Not verified{% endif %}
-        </div>
-        <div class="verify-summary__item verify-summary__item--{{ profile_user.license_verification }}">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>
-          Licence:
-          {% if profile_user.license_verification == 'approved' %}✓ Verified
-          {% else %}Not verified{% endif %}
-        </div>
+      <!-- Trust signals -->
+      <div class="trust-signals">
+        <p class="trust-signals__title">Verifications</p>
+        <ul class="trust-signals__list">
+
+          <li class="trust-signals__item {% if profile_user.id_verification == 'approved' %}trust-signals__item--yes{% else %}trust-signals__item--no{% endif %}">
+            {% if profile_user.id_verification == 'approved' %}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+              Identity verified
+            {% else %}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              Identity not verified
+            {% endif %}
+          </li>
+
+          <li class="trust-signals__item {% if profile_user.license_verification == 'approved' %}trust-signals__item--yes{% else %}trust-signals__item--no{% endif %}">
+            {% if profile_user.license_verification == 'approved' %}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+              Driver's licence verified
+            {% else %}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              Driver's licence not verified
+            {% endif %}
+          </li>
+
+          <li class="trust-signals__item {% if profile_user.email_verified %}trust-signals__item--yes{% else %}trust-signals__item--no{% endif %}">
+            {% if profile_user.email_verified %}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+              Email confirmed
+            {% else %}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              Email not confirmed
+            {% endif %}
+          </li>
+
+          <li class="trust-signals__item {% if profile_user.phone %}trust-signals__item--yes{% else %}trust-signals__item--no{% endif %}">
+            {% if profile_user.phone %}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+              Phone number provided
+            {% else %}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              No phone number
+            {% endif %}
+          </li>
+
+        </ul>
       </div>
 
       <!-- Reviews -->

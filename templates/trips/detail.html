@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "partials/avatar.html" import avatar %}
+{% from "partials/verified.html" import verified_badge %}
 {% block title %}{{ trip.origin }} → {{ trip.destination }} — SameFare{% endblock %}
 {% block meta_description %}Rideshare from {{ trip.origin }} to {{ trip.destination }} on {{ trip.departure_datetime.strftime("%-d %b %Y") }}. {{ trip.seats_available }} seat{{ 's' if trip.seats_available != 1 else '' }} available at {{ "{:,}".format(trip.price_per_seat) }} ISK. Book your seat on SameFare.{% endblock %}
 {% block og_type %}event{% endblock %}
@@ -220,6 +221,7 @@
         </a>
         <div class="driver-card__info">
           <a href="/users/{{ trip.driver_id }}" class="driver-card__name" style="text-decoration:none; color:inherit;">{{ trip.driver.full_name }}</a>
+          {{ verified_badge(trip.driver, size=16) }}
           {% if trip.driver.average_rating %}
             <div class="driver-card__rating">
               {% for i in range(5) %}
