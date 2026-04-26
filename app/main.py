@@ -13,7 +13,7 @@ from app.config import get_settings
 from app.database import Base, engine, SessionLocal
 from app.dependencies import get_current_user_optional
 from app import models  # noqa: F401 — register models before create_all
-from app.routers import auth, bookings, language, messages, payments, reviews, trips, users, verification
+from app.routers import auth, bookings, language, messages, newsletter, payments, reviews, trips, users, verification
 from app.tasks import auto_complete_loop, _run_auto_complete, _run_auto_ratings
 
 settings = get_settings()
@@ -102,6 +102,15 @@ _MIGRATIONS = [
     "ALTER TABLE payments ADD COLUMN IF NOT EXISTS card_brand   VARCHAR(20)",
     "ALTER TABLE payments ADD COLUMN IF NOT EXISTS updated_at   TIMESTAMP NOT NULL DEFAULT now()",
 
+    # ── newsletter_subscribers table ─────────────────────────────────────────
+    """CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+        id         SERIAL  PRIMARY KEY,
+        email      VARCHAR(255) NOT NULL UNIQUE,
+        source     VARCHAR(50),
+        created_at TIMESTAMP NOT NULL DEFAULT now()
+    )""",
+    "CREATE INDEX IF NOT EXISTS ix_newsletter_email ON newsletter_subscribers(email)",
+
     # ── messages table ────────────────────────────────────────────────────────
     """CREATE TABLE IF NOT EXISTS messages (
         id         SERIAL  PRIMARY KEY,
@@ -152,6 +161,7 @@ app.include_router(language.router)
 app.include_router(verification.router)
 app.include_router(messages.router)
 app.include_router(reviews.router)
+app.include_router(newsletter.router)
 
 templates = Jinja2Templates(directory="templates")
 

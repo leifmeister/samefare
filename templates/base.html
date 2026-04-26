@@ -189,6 +189,26 @@
   <!-- ═══════════════════════════════════════
        FOOTER
   ═══════════════════════════════════════ -->
+  <!-- ═══════════════════════════════════════
+       NEWSLETTER STRIP
+  ═══════════════════════════════════════ -->
+  <div class="newsletter-strip">
+    <div class="container newsletter-strip__inner">
+      {% if request.query_params.get('subscribed') %}
+        <p class="newsletter-strip__thanks">✓ You're on the list — we'll be in touch!</p>
+      {% else %}
+        <p class="newsletter-strip__label">Stay in the loop — rides, offers &amp; Iceland travel tips</p>
+        <form class="newsletter-strip__form" method="post" action="/newsletter/subscribe">
+          <input type="hidden" name="source" value="footer">
+          <input type="email" name="email" class="input newsletter-strip__input"
+                 placeholder="your@email.com" required
+                 {% if current_user %}value="{{ current_user.email }}"{% endif %}>
+          <button type="submit" class="btn btn-primary newsletter-strip__btn">Subscribe</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
   <footer class="footer">
     <div class="container">
       <div class="footer__grid">

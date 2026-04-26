@@ -275,6 +275,30 @@
 </section>
 
 <!-- ═══════════════════════════════════════
+     NEWSLETTER
+═══════════════════════════════════════ -->
+<section class="section section--newsletter">
+  <div class="container newsletter-section__inner">
+    <div class="newsletter-section__text">
+      <h2 class="newsletter-section__title">Iceland's roads are calling</h2>
+      <p class="newsletter-section__sub">Get early access to new rides, seasonal offers, and travel inspiration — for both SameFare and our upcoming peer-to-peer car rental platform.</p>
+    </div>
+    {% if request.query_params.get('subscribed') %}
+      <p class="newsletter-section__thanks">✓ You're on the list!</p>
+    {% else %}
+      <form class="newsletter-section__form" method="post" action="/newsletter/subscribe">
+        <input type="hidden" name="source" value="homepage">
+        <input type="email" name="email" class="input newsletter-section__input"
+               placeholder="Enter your email address" required
+               {% if current_user %}value="{{ current_user.email }}"{% endif %}>
+        <button type="submit" class="btn btn-primary newsletter-section__btn">Get updates</button>
+      </form>
+      <p class="newsletter-section__note">No spam. Unsubscribe any time.</p>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
      CTA
 ═══════════════════════════════════════ -->
 {% if not current_user %}

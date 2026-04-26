@@ -1271,6 +1271,104 @@ button, input, select, textarea { font: inherit; }
 .error-page__body    { color: var(--c-text-muted); max-width: 420px; margin-bottom: var(--space-8); font-size: 1.0625rem; }
 .error-page__actions { display: flex; gap: var(--space-3); }
 
+/* ── Newsletter strip (above footer) ────────────────────────── */
+.newsletter-strip {
+  background: var(--c-primary);
+  padding: 1.1rem 0;
+}
+.newsletter-strip__inner {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+.newsletter-strip__label {
+  color: #fff;
+  font-size: .95rem;
+  font-weight: 500;
+  margin: 0;
+  flex: 1 1 220px;
+}
+.newsletter-strip__thanks {
+  color: #fff;
+  font-size: .95rem;
+  font-weight: 500;
+  margin: 0;
+}
+.newsletter-strip__form {
+  display: flex;
+  gap: .5rem;
+  flex: 2 1 300px;
+}
+.newsletter-strip__input {
+  flex: 1;
+  background: rgba(255,255,255,.15);
+  border-color: rgba(255,255,255,.35);
+  color: #fff;
+  min-width: 0;
+}
+.newsletter-strip__input::placeholder { color: rgba(255,255,255,.6); }
+.newsletter-strip__btn {
+  background: #fff;
+  color: var(--c-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.newsletter-strip__btn:hover { background: rgba(255,255,255,.9); }
+
+/* ── Newsletter homepage section ─────────────────────────────── */
+.section--newsletter {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  padding: 4rem 0;
+}
+.newsletter-section__inner {
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+  flex-wrap: wrap;
+}
+.newsletter-section__text { flex: 1 1 300px; }
+.newsletter-section__title {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: .6rem;
+}
+.newsletter-section__sub {
+  color: rgba(255,255,255,.65);
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0;
+}
+.newsletter-section__form {
+  flex: 1 1 340px;
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+.newsletter-section__input {
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.2);
+  color: #fff;
+  font-size: 1rem;
+  padding: .7rem 1rem;
+}
+.newsletter-section__input::placeholder { color: rgba(255,255,255,.45); }
+.newsletter-section__btn { width: 100%; padding: .75rem; font-size: 1rem; }
+.newsletter-section__note {
+  color: rgba(255,255,255,.4);
+  font-size: .8rem;
+  margin: 0;
+  text-align: center;
+}
+.newsletter-section__thanks {
+  color: #4ade80;
+  font-size: 1.1rem;
+  font-weight: 600;
+  flex: 1 1 300px;
+  text-align: center;
+}
+
 /* ── Footer ──────────────────────────────────────────────────── */
 .footer {
   background: var(--c-dark);

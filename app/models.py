@@ -338,6 +338,22 @@ class Payment(Base):
         return f"<Payment id={self.id} booking_id={self.booking_id} status={self.status}>"
 
 
+# ── Newsletter ────────────────────────────────────────────────────────────────
+
+class NewsletterSubscriber(Base):
+    __tablename__ = "newsletter_subscribers"
+
+    id         = Column(Integer, primary_key=True)
+    email      = Column(String(255), unique=True, nullable=False)
+    source     = Column(String(50))   # 'footer', 'homepage', 'registration'
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (Index("ix_newsletter_email", "email"),)
+
+    def __repr__(self) -> str:
+        return f"<NewsletterSubscriber email={self.email!r}>"
+
+
 # ── Messages ──────────────────────────────────────────────────────────────────
 
 class Message(Base):
