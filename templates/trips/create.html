@@ -131,7 +131,7 @@
             <p class="instant-book-toggle__sub">Passengers book immediately without waiting for your approval. Turn off to review and accept each request individually.</p>
           </div>
           <label class="toggle-switch" aria-label="Instant booking">
-            <input type="checkbox" name="instant_book" value="true" {{ 'checked' if vals.instant_book }} id="instant_book_checkbox" />
+            <input type="checkbox" name="instant_book_raw" value="true" {{ 'checked' if vals.instant_book }} id="instant_book_checkbox" />
             <span class="toggle-switch__track"></span>
           </label>
         </div>
@@ -141,17 +141,17 @@
         <legend class="form-section__title">Preferences</legend>
         <div class="check-list">
           <label class="check-option">
-            <input type="checkbox" name="allows_luggage" value="true" {{ 'checked' if vals.allows_luggage }} />
+            <input type="checkbox" name="allows_luggage_raw" value="true" {{ 'checked' if vals.allows_luggage }} />
             <span class="check-option__box"></span>
             <span>🧳 Luggage allowed</span>
           </label>
           <label class="check-option">
-            <input type="checkbox" name="allows_pets" value="true" {{ 'checked' if vals.allows_pets }} />
+            <input type="checkbox" name="allows_pets_raw" value="true" {{ 'checked' if vals.allows_pets }} />
             <span class="check-option__box"></span>
             <span>🐾 Pets welcome</span>
           </label>
           <label class="check-option">
-            <input type="checkbox" name="smoking" value="true" {{ 'checked' if vals.smoking }} />
+            <input type="checkbox" name="smoking_raw" value="true" {{ 'checked' if vals.smoking }} />
             <span class="check-option__box"></span>
             <span>🚬 Smoking permitted</span>
           </label>
