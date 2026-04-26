@@ -78,9 +78,10 @@ def export_newsletter_csv(
     )
     buf = io.StringIO()
     writer = csv.writer(buf)
-    writer.writerow(["email", "source", "signed_up"])
+    writer.writerow(["email", "source", "free_ride_used", "signed_up"])
     for s in subscribers:
-        writer.writerow([s.email, s.source or "", s.created_at.strftime("%Y-%m-%d %H:%M")])
+        writer.writerow([s.email, s.source or "", "yes" if s.discount_used else "no",
+                         s.created_at.strftime("%Y-%m-%d %H:%M")])
     buf.seek(0)
     filename = f"samefare_subscribers_{datetime.utcnow().strftime('%Y%m%d')}.csv"
     return StreamingResponse(

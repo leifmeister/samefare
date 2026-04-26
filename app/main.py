@@ -104,12 +104,14 @@ _MIGRATIONS = [
 
     # ── newsletter_subscribers table ─────────────────────────────────────────
     """CREATE TABLE IF NOT EXISTS newsletter_subscribers (
-        id         SERIAL  PRIMARY KEY,
-        email      VARCHAR(255) NOT NULL UNIQUE,
-        source     VARCHAR(50),
-        created_at TIMESTAMP NOT NULL DEFAULT now()
+        id             SERIAL  PRIMARY KEY,
+        email          VARCHAR(255) NOT NULL UNIQUE,
+        source         VARCHAR(50),
+        discount_used  BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at     TIMESTAMP NOT NULL DEFAULT now()
     )""",
     "CREATE INDEX IF NOT EXISTS ix_newsletter_email ON newsletter_subscribers(email)",
+    "ALTER TABLE newsletter_subscribers ADD COLUMN IF NOT EXISTS discount_used BOOLEAN NOT NULL DEFAULT FALSE",
 
     # ── messages table ────────────────────────────────────────────────────────
     """CREATE TABLE IF NOT EXISTS messages (

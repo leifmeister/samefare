@@ -343,10 +343,11 @@ class Payment(Base):
 class NewsletterSubscriber(Base):
     __tablename__ = "newsletter_subscribers"
 
-    id         = Column(Integer, primary_key=True)
-    email      = Column(String(255), unique=True, nullable=False)
-    source     = Column(String(50))   # 'footer', 'homepage', 'registration'
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    id             = Column(Integer, primary_key=True)
+    email          = Column(String(255), unique=True, nullable=False)
+    source         = Column(String(50))   # 'footer', 'homepage', 'registration'
+    discount_used  = Column(Boolean, nullable=False, default=False)
+    created_at     = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     __table_args__ = (Index("ix_newsletter_email", "email"),)
 

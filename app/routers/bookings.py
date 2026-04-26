@@ -16,6 +16,21 @@ templates = Jinja2Templates(directory="templates")
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
 
+def _newsletter_discount(db: Session, user: models.User):
+    """
+    Return the NewsletterSubscriber row if this user has an unused first-ride
+    discount, otherwise None.
+    """
+    return (
+        db.query(models.NewsletterSubscriber)
+        .filter(
+            models.NewsletterSubscriber.email         == user.email,
+            models.NewsletterSubscriber.discount_used == False,  # noqa: E712
+        )
+        .first()
+    )
+
+
 @router.get("", response_class=HTMLResponse)
 def my_bookings(request: Request):
     # Consolidated into /my-trips
@@ -45,8 +60,9 @@ def book_trip_page(
     if trip.status != models.TripStatus.active or trip.seats_available < 1:
         return RedirectResponse(f"/trips/{trip_id}", status_code=303)
 
+    has_discount = _newsletter_discount(db, current_user) is not None
     return templates.TemplateResponse("bookings/create.html", {
-        **ctx, "trip": trip, "error": None,
+        **ctx, "trip": trip, "error": None, "has_discount": has_discount,
     })
 
 
@@ -64,7 +80,8 @@ def create_booking(
     if not trip:
         return templates.TemplateResponse("errors/404.html", {**ctx}, status_code=404)
 
-    err_ctx = {**ctx, "trip": trip}
+    has_discount = _newsletter_discount(db, current_user) is not None
+    err_ctx = {**ctx, "trip": trip, "has_discount": has_discount}
 
     if trip.driver_id == current_user.id:
         return templates.TemplateResponse("bookings/create.html",
@@ -84,8 +101,13 @@ def create_booking(
         return templates.TemplateResponse("bookings/create.html",
             {**err_ctx, "error": "You already have a booking on this trip."}, status_code=400)
 
-    contribution        = trip.price_per_seat * seats_booked
-    service_fee, total, _ = calc_fees(contribution)
+    contribution = trip.price_per_seat * seats_booked
+    subscriber   = _newsletter_discount(db, current_user)
+    if subscriber:
+        service_fee = 0
+        total       = contribution
+    else:
+        service_fee, total, _ = calc_fees(contribution)
 
     if trip.instant_book:
         # Instant: hold seats now, go straight to payment
@@ -105,6 +127,8 @@ def create_booking(
         status=initial_status,
     )
     db.add(booking)
+    if subscriber:
+        subscriber.discount_used = True
     db.commit()
     db.refresh(booking)
 

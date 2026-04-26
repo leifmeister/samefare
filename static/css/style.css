@@ -1040,6 +1040,25 @@ button, input, select, textarea { font: inherit; }
   align-items: start;
 }
 .booking-driver { display: flex; flex-direction: column; gap: var(--space-4); }
+.discount-banner {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #166534;
+  border-radius: var(--r-md);
+  padding: .7rem 1rem;
+  font-size: .9rem;
+  font-weight: 500;
+  margin-top: var(--space-5);
+}
+.discount-strike {
+  color: #16a34a;
+  font-weight: 600;
+  font-size: .85rem;
+}
+
 .booking-summary {
   background: var(--c-bg); border-radius: var(--r-md);
   padding: var(--space-5); border: 1px solid var(--c-border-light); margin-top: var(--space-5);

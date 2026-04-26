@@ -51,6 +51,7 @@
           <th>#</th>
           <th>Email</th>
           <th>Source</th>
+          <th>Free ride</th>
           <th>Signed up</th>
         </tr>
       </thead>
@@ -60,6 +61,13 @@
           <td style="color:var(--c-text-muted); font-size:.85rem;">{{ loop.index }}</td>
           <td>{{ s.email }}</td>
           <td><span class="badge badge--neutral" style="font-size:.78rem;">{{ s.source or '—' }}</span></td>
+          <td>
+            {% if s.discount_used %}
+              <span class="badge badge--neutral" style="font-size:.78rem;">used</span>
+            {% else %}
+              <span class="badge badge--success" style="font-size:.78rem;">available</span>
+            {% endif %}
+          </td>
           <td style="color:var(--c-text-muted); font-size:.85rem;">
             {{ s.created_at.strftime("%-d %b %Y, %H:%M") }}
           </td>
