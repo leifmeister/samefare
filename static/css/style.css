@@ -2377,6 +2377,16 @@ button, input, select, textarea { font: inherit; }
   margin: 0;
   padding-left: 2.2rem;
 }
+.review-card__auto {
+  display: flex;
+  align-items: center;
+  gap: .35em;
+  font-size: .8rem;
+  color: var(--c-text-muted);
+  font-style: italic;
+  margin: 0;
+  padding-left: 2.2rem;
+}
 .upcoming-trip-row {
   display: block;
   padding: .75rem 0;

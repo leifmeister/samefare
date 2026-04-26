@@ -14,7 +14,7 @@ from app.database import Base, engine, SessionLocal
 from app.dependencies import get_current_user_optional
 from app import models  # noqa: F401 — register models before create_all
 from app.routers import auth, bookings, language, messages, payments, reviews, trips, users, verification
-from app.tasks import auto_complete_loop, _run_auto_complete
+from app.tasks import auto_complete_loop, _run_auto_complete, _run_auto_ratings
 
 settings = get_settings()
 
@@ -70,6 +70,9 @@ _MIGRATIONS = [
     # Mark all users registered before email verification was introduced as already verified
     "UPDATE users SET email_verified = TRUE WHERE email_verified = FALSE AND email_verify_token IS NULL",
 
+    # ── reviews ───────────────────────────────────────────────────────────────
+    "ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_auto BOOLEAN NOT NULL DEFAULT FALSE",
+
     # ── trips ─────────────────────────────────────────────────────────────────
     "ALTER TABLE trips ADD COLUMN IF NOT EXISTS car_make      VARCHAR(100)",
     "ALTER TABLE trips ADD COLUMN IF NOT EXISTS car_model     VARCHAR(100)",
@@ -117,6 +120,7 @@ async def lifespan(app: FastAPI):
             conn.execute(text(stmt))
     # Run once immediately on startup, then every 10 minutes
     _run_auto_complete()
+    _run_auto_ratings()
     task = asyncio.create_task(auto_complete_loop())
     yield
     task.cancel()

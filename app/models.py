@@ -274,6 +274,7 @@ class Review(Base):
     review_type = Column(Enum(ReviewType), nullable=False)
     rating      = Column(SmallInteger, nullable=False)
     comment     = Column(Text)
+    is_auto     = Column(Boolean, nullable=False, default=False)
     created_at  = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     booking  = relationship("Booking", back_populates="review")
