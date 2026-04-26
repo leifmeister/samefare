@@ -37,10 +37,20 @@
 {% block content %}
 <div class="container" style="margin-top:2rem; margin-bottom:4rem;">
 
-  <a href="/trips" class="back-link">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
-    Back to rides
-  </a>
+  <div class="detail-topbar">
+    <a href="/trips" class="back-link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+      Back to rides
+    </a>
+    <button type="button" class="share-btn"
+            x-data="shareTrip('{{ trip.origin }} → {{ trip.destination }}', '{{ trip.departure_datetime.strftime('%-d %b %Y') }}')"
+            @click="share()"
+            :class="{ 'share-btn--copied': copied }">
+      <svg x-show="!copied" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path d="M13 4.5a2.5 2.5 0 11.702 1.737L6.97 9.604a2.518 2.518 0 010 .792l6.733 3.367a2.5 2.5 0 11-.671 1.341l-6.733-3.367a2.5 2.5 0 110-3.475l6.733-3.366A2.52 2.52 0 0113 4.5z"/></svg>
+      <svg x-show="copied" x-cloak xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
+      <span x-text="copied ? 'Link copied!' : 'Share trip'"></span>
+    </button>
+  </div>
 
   {% if request.query_params.get('no_show') %}
   <div class="alert alert--success" style="margin-bottom:1rem;">
@@ -318,4 +328,27 @@
     </aside>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function shareTrip(route, date) {
+  return {
+    copied: false,
+    share() {
+      const url   = window.location.href;
+      const title = `Rideshare: ${route}`;
+      const text  = `${route} · ${date} — book a seat on SameFare`;
+      if (navigator.share) {
+        navigator.share({ title, text, url }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(url).then(() => {
+          this.copied = true;
+          setTimeout(() => { this.copied = false; }, 2500);
+        });
+      }
+    },
+  };
+}
+</script>
 {% endblock %}
