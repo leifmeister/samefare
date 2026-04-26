@@ -11,32 +11,72 @@
           hx-get="/trips"
           hx-target="#trips-results"
           hx-push-url="true"
-          hx-trigger="submit, change delay:400ms from:[name=travel_date]">
+          hx-trigger="submit, change delay:300ms from:[name=travel_date]"
+          x-data="dateShortcuts('{{ travel_date }}')">
       <div class="search-bar__fields">
+
         <div class="search-bar__field">
-          <label for="s-origin" class="sr-only">From</label>
-          <input id="s-origin" name="origin" type="text" class="input" placeholder="From…"
+          <label for="s-origin" class="search-bar__label">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="12" height="12" aria-hidden="true"><circle cx="10" cy="10" r="3"/><path d="M10 2a8 8 0 100 16A8 8 0 0010 2z" fill-opacity=".15"/></svg>
+            From
+          </label>
+          <input id="s-origin" name="origin" type="text" class="input" placeholder="Any city"
                  value="{{ origin }}" list="cities-list" autocomplete="off" />
         </div>
+
         <div class="search-bar__field">
-          <label for="s-dest" class="sr-only">To</label>
-          <input id="s-dest" name="destination" type="text" class="input" placeholder="To…"
+          <label for="s-dest" class="search-bar__label">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="12" height="12" aria-hidden="true"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+            To
+          </label>
+          <input id="s-dest" name="destination" type="text" class="input" placeholder="Any city"
                  value="{{ destination }}" list="cities-list" autocomplete="off" />
         </div>
-        <div class="search-bar__field search-bar__field--sm">
-          <label for="s-date" class="sr-only">Date</label>
-          <input id="s-date" name="travel_date" type="date" class="input"
-                 value="{{ travel_date }}" />
+
+        <div class="search-bar__field search-bar__field--date">
+          <label for="s-date" class="search-bar__label">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="12" height="12" aria-hidden="true"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+            Date
+          </label>
+          <div class="search-bar__date-wrap">
+            <input id="s-date" name="travel_date" type="date" class="input"
+                   x-model="date"
+                   @change="$el.closest('form').dispatchEvent(new Event('submit', {bubbles:true}))" />
+            <button type="button" class="search-bar__date-clear"
+                    x-show="date" x-cloak
+                    @click="date=''; $el.closest('form').dispatchEvent(new Event('submit', {bubbles:true}))"
+                    title="Clear date" aria-label="Clear date">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"/></svg>
+            </button>
+          </div>
+          <!-- Quick-pick chips -->
+          <div class="date-chips">
+            <button type="button" class="date-chip" :class="{'date-chip--active': date === today}"
+                    @click="setDate(today)">Today</button>
+            <button type="button" class="date-chip" :class="{'date-chip--active': date === tomorrow}"
+                    @click="setDate(tomorrow)">Tomorrow</button>
+            <button type="button" class="date-chip" :class="{'date-chip--active': date === weekend}"
+                    @click="setDate(weekend)">Weekend</button>
+          </div>
         </div>
+
         <div class="search-bar__field search-bar__field--xs">
-          <label for="s-seats" class="sr-only">Seats</label>
+          <label for="s-seats" class="search-bar__label">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="12" height="12" aria-hidden="true"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+            Seats
+          </label>
           <select id="s-seats" name="seats" class="input">
             <option value="1" {% if seats == 1 %}selected{% endif %}>1 seat</option>
             <option value="2" {% if seats == 2 %}selected{% endif %}>2 seats</option>
             <option value="3" {% if seats == 3 %}selected{% endif %}>3 seats</option>
           </select>
         </div>
-        <button type="submit" class="btn btn-primary">Search</button>
+
+        <div class="search-bar__submit">
+          <span class="search-bar__label" aria-hidden="true">&nbsp;</span>
+          <button type="submit" class="btn btn-primary">Search</button>
+        </div>
+
       </div>
     </form>
 
@@ -113,4 +153,34 @@
 
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function dateShortcuts(initial) {
+  function fmt(d) {
+    return d.getFullYear() + '-' +
+           String(d.getMonth() + 1).padStart(2, '0') + '-' +
+           String(d.getDate()).padStart(2, '0');
+  }
+  const now = new Date();
+  const tod = fmt(now);
+  const tom = fmt(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+  const dow = now.getDay();
+  const daysToSat = dow === 6 ? 0 : (6 - dow);
+  const wknd = fmt(new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToSat));
+  return {
+    date: initial || '',
+    today: tod,
+    tomorrow: tom,
+    weekend: wknd,
+    setDate(val) {
+      this.date = (this.date === val) ? '' : val;
+      this.$nextTick(() => {
+        this.$el.closest('form').dispatchEvent(new Event('submit', { bubbles: true }));
+      });
+    },
+  };
+}
+</script>
 {% endblock %}

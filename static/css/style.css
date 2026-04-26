@@ -557,13 +557,80 @@ button, input, select, textarea { font: inherit; }
 .search-bar { display: flex; gap: var(--space-3); }
 .search-bar__fields {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-3);
   flex: 1;
   flex-wrap: wrap;
+  align-items: flex-end;
 }
-.search-bar__field { flex: 1; min-width: 130px; }
-.search-bar__field--sm { max-width: 160px; }
-.search-bar__field--xs { max-width: 110px; }
+.search-bar__field        { flex: 1; min-width: 130px; display: flex; flex-direction: column; gap: .3rem; }
+.search-bar__field--date  { flex: 1.4; min-width: 160px; }
+.search-bar__field--xs    { flex: 0 1 110px; min-width: 90px; }
+.search-bar__submit       { flex: 0 0 auto; display: flex; flex-direction: column; gap: .3rem; }
+
+.search-bar__label {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: .75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--c-text-muted);
+}
+
+/* Date field wrapper — positions the × clear button */
+.search-bar__date-wrap {
+  position: relative;
+}
+.search-bar__date-wrap .input {
+  padding-right: 2rem;
+  width: 100%;
+}
+.search-bar__date-clear {
+  position: absolute;
+  right: .5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: .15rem;
+  cursor: pointer;
+  color: var(--c-text-muted);
+  display: flex;
+  align-items: center;
+  border-radius: 99px;
+}
+.search-bar__date-clear:hover { color: var(--c-error); background: var(--c-error-light); }
+
+/* Quick-pick date chips */
+.date-chips {
+  display: flex;
+  gap: .35rem;
+  margin-top: .35rem;
+  flex-wrap: wrap;
+}
+.date-chip {
+  font-size: .75rem;
+  font-weight: 600;
+  padding: .2rem .6rem;
+  border-radius: 99px;
+  border: 1.5px solid var(--c-border);
+  background: var(--c-bg);
+  color: var(--c-text-muted);
+  cursor: pointer;
+  transition: border-color .12s, color .12s, background .12s;
+  white-space: nowrap;
+}
+.date-chip:hover {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+  background: #eff6ff;
+}
+.date-chip--active {
+  border-color: var(--c-primary);
+  background: var(--c-primary);
+  color: #fff;
+}
 
 /* ── List page layout ────────────────────────────────────────── */
 .list-layout {
@@ -1941,8 +2008,11 @@ button, input, select, textarea { font: inherit; }
   .hero__title { font-size: 2rem; }
   .section-title { font-size: 1.5rem; }
   .search-bar { flex-direction: column; }
-  .search-bar__field--sm,
-  .search-bar__field--xs { max-width: 100%; }
+  .search-bar__field,
+  .search-bar__field--date,
+  .search-bar__field--xs,
+  .search-bar__submit { flex: 1 1 100%; max-width: 100%; }
+  .date-chips { display: none; } /* hidden on mobile — date wheel is fine */
 }
 
 /* ── Legal pages (Terms & Conditions, Privacy Policy) ─────────────────────── */
