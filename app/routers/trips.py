@@ -103,32 +103,64 @@ def trips_list(
 
 @router.get("/new", response_class=HTMLResponse)
 def new_trip_page(
-    request: Request,
-    ctx: dict = Depends(get_template_context),
+    request:   Request,
+    ctx:       dict         = Depends(get_template_context),
     current_user: models.User = Depends(get_current_user),
+    db:        Session      = Depends(get_db),
+    return_of: Optional[int] = Query(None),
 ):
     if current_user.license_verification != models.VerificationStatus.approved:
         return RedirectResponse("/verify?next=driver", status_code=303)
+
+    # Default vals and car details from user profile
+    vals = {
+        "origin": "", "destination": "",
+        "departure_date": "", "departure_time": "09:00",
+        "seats_total": 3, "price_per_seat": "",
+        "pickup_address": "", "dropoff_address": "",
+        "allows_luggage": True, "allows_pets": False,
+        "smoking": False, "instant_book": True,
+        "description": "",
+    }
+    defaults = {
+        "car_make":  current_user.default_car_make  or "",
+        "car_model": current_user.default_car_model or "",
+        "car_year":  current_user.default_car_year  or "",
+        "car_type":  str(current_user.default_car_type) if current_user.default_car_type else "sedan",
+    }
+    return_banner = None
+
+    # Pre-fill for return trip
+    if return_of:
+        source = db.query(models.Trip).filter(
+            models.Trip.id == return_of,
+            models.Trip.driver_id == current_user.id,
+        ).first()
+        if source:
+            vals["origin"]        = source.destination
+            vals["destination"]   = source.origin
+            vals["seats_total"]   = source.seats_total
+            vals["price_per_seat"] = source.price_per_seat
+            vals["allows_luggage"] = source.allows_luggage
+            vals["allows_pets"]    = source.allows_pets
+            vals["smoking"]        = source.smoking
+            vals["instant_book"]   = source.instant_book
+            defaults = {
+                "car_make":  source.car_make  or "",
+                "car_model": source.car_model or "",
+                "car_year":  source.car_year  or "",
+                "car_type":  str(source.car_type) if source.car_type else "sedan",
+            }
+            return_banner = f"{source.origin} → {source.destination}"
+
     return templates.TemplateResponse("trips/create.html", {
         **ctx,
-        "car_types": ALL_CAR_TYPES,
-        "cities":    ICELANDIC_CITIES,
-        "error":     None,
-        "defaults":  {
-            "car_make":  current_user.default_car_make  or "",
-            "car_model": current_user.default_car_model or "",
-            "car_year":  current_user.default_car_year  or "",
-            "car_type":  str(current_user.default_car_type) if current_user.default_car_type else "sedan",
-        },
-        "vals": {
-            "origin": "", "destination": "",
-            "departure_date": "", "departure_time": "09:00",
-            "seats_total": 3, "price_per_seat": "",
-            "pickup_address": "", "dropoff_address": "",
-            "allows_luggage": True, "allows_pets": False,
-            "smoking": False, "instant_book": True,
-            "description": "",
-        },
+        "car_types":     ALL_CAR_TYPES,
+        "cities":        ICELANDIC_CITIES,
+        "error":         None,
+        "defaults":      defaults,
+        "vals":          vals,
+        "return_banner": return_banner,
     })
 
 
@@ -246,7 +278,7 @@ def create_trip(
 
     db.commit()
     db.refresh(trip)
-    return RedirectResponse(f"/trips/{trip.id}", status_code=303)
+    return RedirectResponse(f"/trips/{trip.id}?posted=1", status_code=303)
 
 
 @router.get("/{trip_id}/edit", response_class=HTMLResponse)

@@ -242,6 +242,7 @@ button, input, select, textarea { font: inherit; }
 .alert--error   { background: var(--c-error-light);   color: #991B1B; border-color: #FCA5A5; }
 .alert--success { background: var(--c-success-light); color: #065F46; border-color: #6EE7B7; }
 .alert--warning { background: var(--c-warning-light); color: #92400E; border-color: #FCD34D; }
+.alert--info    { background: #EFF6FF; color: #1E40AF; border-color: #93C5FD; }
 .alert--info    { background: var(--c-primary-light); color: var(--c-primary-dark); border-color: #A7D9D1; }
 .alert__link    { font-weight: 600; text-decoration: underline; color: inherit; margin-left: .25rem; }
 
@@ -855,6 +856,20 @@ button, input, select, textarea { font: inherit; }
 }
 .back-link:hover { color: var(--c-primary); }
 
+.return-trip-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
+  background: #F0FDF4; border: 1px solid #86EFAC; border-radius: var(--r-lg);
+  padding: var(--space-4) var(--space-5); margin-bottom: var(--space-5);
+}
+.return-trip-banner__left {
+  display: flex; align-items: center; gap: var(--space-3); color: #166534;
+}
+.return-trip-banner__title  { font-weight: 700; font-size: .9375rem; margin: 0; color: #166534; }
+.return-trip-banner__sub    { font-size: .8125rem; color: #15803D; margin: 2px 0 0; }
+@media (max-width: 480px) {
+  .return-trip-banner { flex-direction: column; align-items: flex-start; }
+}
+
 .trip-hero {
   background: var(--c-surface);
   border-radius: var(--r-lg);
@@ -1025,6 +1040,12 @@ button, input, select, textarea { font: inherit; }
 }
 .page-title { font-size: 1.75rem; font-weight: 800; }
 
+.section-heading {
+  font-size: .75rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--c-text-muted);
+  margin: 0 0 var(--space-3);
+}
+
 .bookings-list { display: flex; flex-direction: column; gap: var(--space-4); }
 .booking-row {
   background: var(--c-surface); border-radius: var(--r-lg); padding: var(--space-5) var(--space-6);
@@ -1073,6 +1094,21 @@ button, input, select, textarea { font: inherit; }
 .auth-card__sub   { color: var(--c-text-muted); font-size: .9375rem; }
 .auth-form { display: flex; flex-direction: column; gap: var(--space-5); }
 .auth-card__footer { text-align: center; margin-top: var(--space-6); font-size: .9375rem; color: var(--c-text-muted); }
+
+/* ── Phone dial-code picker ──────────────────────────────────────────────── */
+.phone-input {
+  display: flex;
+  gap: var(--space-2);
+}
+.phone-input__code {
+  flex: 0 0 auto;
+  width: 7.5rem;
+  padding-right: var(--space-2);
+}
+.phone-input__number {
+  flex: 1 1 0;
+  min-width: 0;
+}
 
 .offer-perks {
   display: flex;

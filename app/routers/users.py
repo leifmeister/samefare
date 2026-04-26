@@ -71,36 +71,52 @@ def my_trips_page(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # ── Passenger: all bookings ───────────────────────────────────────────────
-    my_bookings = (
+    now = datetime.utcnow()
+
+    # ── Passenger: all bookings split into upcoming / past ────────────────────
+    all_bookings = (
         db.query(models.Booking)
         .filter(models.Booking.passenger_id == current_user.id)
         .order_by(models.Booking.created_at.desc())
         .all()
     )
+    active_statuses = {models.BookingStatus.pending, models.BookingStatus.awaiting_payment,
+                       models.BookingStatus.confirmed}
+    upcoming_bookings = [b for b in all_bookings
+                         if b.status in active_statuses
+                         and b.trip.departure_datetime >= now]
+    past_bookings     = [b for b in all_bookings
+                         if b not in upcoming_bookings]
 
-    # ── Driver: all trips + pending requests ──────────────────────────────────
-    my_rides = (
+    # ── Driver: all trips split into upcoming / past + pending requests ───────
+    all_rides = (
         db.query(models.Trip)
         .filter(models.Trip.driver_id == current_user.id)
         .order_by(models.Trip.departure_datetime.desc())
         .all()
     )
+    upcoming_rides = [t for t in all_rides
+                      if t.status == models.TripStatus.active
+                      and t.departure_datetime >= now]
+    past_rides     = [t for t in all_rides if t not in upcoming_rides]
+
     pending_bookings = [
-        b for trip in my_rides
+        b for trip in all_rides
         for b in trip.bookings
         if b.status == models.BookingStatus.pending
     ]
 
-    # Which tab to open: default to rides if driver has trips, else bookings
-    tab = request.query_params.get("tab", "bookings" if my_bookings else "rides")
+    # Which tab to open: default to bookings if passenger has any, else rides
+    tab = request.query_params.get("tab", "bookings" if all_bookings else "rides")
 
     return templates.TemplateResponse("my_trips.html", {
         **ctx,
-        "my_bookings":     my_bookings,
-        "my_rides":        my_rides,
-        "pending_bookings": pending_bookings,
-        "tab":             tab,
+        "upcoming_bookings": upcoming_bookings,
+        "past_bookings":     past_bookings,
+        "upcoming_rides":    upcoming_rides,
+        "past_rides":        past_rides,
+        "pending_bookings":  pending_bookings,
+        "tab":               tab,
     })
 
 

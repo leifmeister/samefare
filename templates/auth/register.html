@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/phone_select.html" import phone_select %}
 {% block title %}Join SameFare — Create account{% endblock %}
 
 {% block content %}
@@ -27,10 +28,18 @@
                autocomplete="email" placeholder="you@example.is" />
       </div>
 
-      <div class="form-group">
-        <label for="phone" class="label">Phone number <span class="optional">(optional)</span></label>
-        <input id="phone" name="phone" type="tel" class="input"
-               autocomplete="tel" placeholder="+354 xxx xxxx" />
+      <div class="form-group"
+           x-data="{ code: '+354', local: '', get full(){ return this.local.trim() ? this.code + ' ' + this.local.trim() : '' } }">
+        <label class="label">Phone number <span class="optional">(optional)</span></label>
+        <!-- Hidden field submitted to backend -->
+        <input type="hidden" name="phone" :value="full" />
+        <div class="phone-input">
+          {{ phone_select(x_model="code") }}
+          <input id="phone" type="tel" class="phone-input__number input"
+                 x-model="local"
+                 autocomplete="tel-national"
+                 placeholder="xxx xxxx" />
+        </div>
       </div>
 
       <div class="form-group">

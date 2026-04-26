@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "partials/avatar.html" import avatar %}
+{% from "partials/phone_select.html" import phone_select %}
 {% block title %}My profile — SameFare{% endblock %}
 
 {% block content %}
@@ -86,10 +87,17 @@
               <input id="full_name" name="full_name" type="text" class="input"
                      value="{{ current_user.full_name }}" required />
             </div>
-            <div class="form-group">
-              <label for="phone" class="label">Phone</label>
-              <input id="phone" name="phone" type="tel" class="input"
-                     value="{{ current_user.phone or '' }}" />
+            <div class="form-group"
+                 x-data="phoneField('{{ current_user.phone or '' }}')">
+              <label class="label">Phone</label>
+              <input type="hidden" name="phone" :value="full" />
+              <div class="phone-input">
+                {{ phone_select(x_model="code") }}
+                <input type="tel" class="phone-input__number input"
+                       x-model="local"
+                       autocomplete="tel-national"
+                       placeholder="xxx xxxx" />
+              </div>
             </div>
           </div>
           <div class="form-group">

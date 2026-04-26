@@ -2,6 +2,101 @@
 {% from "partials/avatar.html" import avatar %}
 {% block title %}My trips — SameFare{% endblock %}
 
+{# ── Booking row macro (reused for upcoming + past) ─────────────────────── #}
+{% macro booking_row(booking) %}
+<div class="booking-row booking-row--{{ booking.status }}">
+  <div class="booking-row__route">
+    <span class="booking-row__city">{{ booking.trip.origin }}</span>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" class="booking-row__arrow" aria-hidden="true"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+    <span class="booking-row__city">{{ booking.trip.destination }}</span>
+    <span class="status-badge status-badge--{{ booking.status }}">{{ booking.status }}</span>
+  </div>
+  <div class="booking-row__meta">
+    <span>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+      {{ booking.trip.departure_datetime.strftime("%a %-d %b %Y, %H:%M") }}
+    </span>
+    <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }}</span>
+    <span>Driver: <strong>{{ booking.trip.driver.full_name.split()[0] }}</strong></span>
+    {% if booking.status == 'confirmed' and booking.trip.driver.phone %}
+      <span>
+        <a href="tel:{{ booking.trip.driver.phone }}" class="contact-phone">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/></svg>
+          {{ booking.trip.driver.phone }}
+        </a>
+      </span>
+    {% endif %}
+    <span class="booking-row__price">{{ "{:,}".format(booking.total_price) }} ISK</span>
+  </div>
+
+  {% if booking.status == 'awaiting_payment' %}
+  <div class="booking-row__actions">
+    <a href="/payments/checkout/{{ booking.id }}" class="btn btn-primary btn-sm">Complete payment</a>
+    <a href="/bookings/{{ booking.id }}/cancel" class="btn btn-outline btn-sm btn-danger-outline">Cancel</a>
+  </div>
+  {% elif booking.status == 'pending' %}
+  <div class="booking-row__actions">
+    <span class="booking-status-note">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd"/></svg>
+      Awaiting driver approval
+    </span>
+    <a href="/messages/{{ booking.id }}" class="btn btn-outline btn-sm">Message driver</a>
+    <a href="/bookings/{{ booking.id }}/cancel" class="btn btn-outline btn-sm btn-danger-outline">Withdraw</a>
+  </div>
+  {% elif booking.status == 'confirmed' %}
+  <div class="booking-row__actions">
+    <a href="/trips/{{ booking.trip_id }}" class="btn btn-ghost btn-sm">View trip</a>
+    <a href="/messages/{{ booking.id }}" class="btn btn-outline btn-sm">Message driver</a>
+    <a href="/bookings/{{ booking.id }}/cancel" class="btn btn-outline btn-sm btn-danger-outline">Cancel</a>
+  </div>
+  {% elif booking.status == 'completed' %}
+  <div class="booking-row__actions">
+    <a href="/trips/{{ booking.trip_id }}" class="btn btn-ghost btn-sm">View trip</a>
+    {% set already_reviewed = booking.review and booking.review.reviewer_id == current_user.id %}
+    {% set review_deadline = booking.trip.departure_datetime + timedelta(days=14) %}
+    {% if not already_reviewed and now < review_deadline %}
+      <a href="/reviews/new/{{ booking.id }}" class="btn btn-primary btn-sm">★ Leave a review</a>
+    {% elif already_reviewed %}
+      <span class="reviewed-badge">✓ Reviewed</span>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="booking-row__actions">
+    <a href="/trips/{{ booking.trip_id }}" class="btn btn-ghost btn-sm">View trip</a>
+    {% if booking.payment and booking.payment.refund_amount > 0 %}
+      <span class="refund-badge">Refund: {{ "{:,}".format(booking.payment.refund_amount) }} ISK</span>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# ── Ride row macro (reused for upcoming + past) ─────────────────────────── #}
+{% macro ride_row(trip) %}
+<div class="trip-table__row trip-table__row--{{ trip.status }}">
+  <div class="trip-table__route">
+    <strong>{{ trip.origin }}</strong> → <strong>{{ trip.destination }}</strong>
+    <span class="status-badge status-badge--{{ trip.status }}">{{ trip.status }}</span>
+  </div>
+  <div class="trip-table__meta">
+    <span>{{ trip.departure_datetime.strftime("%a %-d %b %Y, %H:%M") }}</span>
+    <span>{{ trip.seats_available }}/{{ trip.seats_total }} seats left</span>
+    <span>{{ "{:,}".format(trip.price_per_seat) }} ISK/seat</span>
+  </div>
+  <div class="trip-table__actions">
+    <a href="/trips/{{ trip.id }}" class="btn btn-ghost btn-sm">View</a>
+    {% if trip.status == 'active' %}
+      <a href="/trips/{{ trip.id }}/edit" class="btn btn-outline btn-sm">Edit</a>
+      <form method="post" action="/trips/{{ trip.id }}/cancel"
+            onsubmit="return confirm('Cancel this trip and notify all passengers?')"
+            style="display:inline">
+        <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">Cancel</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}
+
 {% block content %}
 <div class="container" style="margin-top:2rem; margin-bottom:4rem;"
      x-data="{ tab: '{{ tab }}' }">
@@ -16,9 +111,8 @@
     <button class="tab-bar__tab" :class="{ 'tab-bar__tab--active': tab === 'bookings' }"
             @click="tab = 'bookings'" type="button">
       My bookings
-      {% set active_bookings = my_bookings | selectattr('status', 'in', ['pending','confirmed','awaiting_payment']) | list %}
-      {% if active_bookings %}
-        <span class="tab-badge">{{ active_bookings|length }}</span>
+      {% if upcoming_bookings %}
+        <span class="tab-badge">{{ upcoming_bookings|length }}</span>
       {% endif %}
     </button>
     <button class="tab-bar__tab" :class="{ 'tab-bar__tab--active': tab === 'rides' }"
@@ -49,7 +143,7 @@
       </div>
     {% endif %}
 
-    {% if not my_bookings %}
+    {% if not upcoming_bookings and not past_bookings %}
       <div class="empty-state">
         <div class="empty-state__icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path stroke-linecap="round" stroke-linejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
@@ -59,75 +153,25 @@
         <a href="/trips" class="btn btn-primary">Browse rides</a>
       </div>
     {% else %}
-      <div class="bookings-list">
-        {% for booking in my_bookings %}
-        <div class="booking-row booking-row--{{ booking.status }}">
-          <div class="booking-row__route">
-            <span class="booking-row__city">{{ booking.trip.origin }}</span>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" class="booking-row__arrow" aria-hidden="true"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-            <span class="booking-row__city">{{ booking.trip.destination }}</span>
-            <span class="status-badge status-badge--{{ booking.status }}">{{ booking.status }}</span>
-          </div>
-          <div class="booking-row__meta">
-            <span>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
-              {{ booking.trip.departure_datetime.strftime("%a %-d %b %Y, %H:%M") }}
-            </span>
-            <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }}</span>
-            <span>Driver: <strong>{{ booking.trip.driver.full_name.split()[0] }}</strong></span>
-            {% if booking.status == 'confirmed' and booking.trip.driver.phone %}
-              <span>
-                <a href="tel:{{ booking.trip.driver.phone }}" class="contact-phone">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/></svg>
-                  {{ booking.trip.driver.phone }}
-                </a>
-              </span>
-            {% endif %}
-            <span class="booking-row__price">{{ "{:,}".format(booking.total_price) }} ISK</span>
-          </div>
 
-          {% if booking.status == 'awaiting_payment' %}
-          <div class="booking-row__actions">
-            <a href="/payments/checkout/{{ booking.id }}" class="btn btn-primary btn-sm">Complete payment</a>
-            <a href="/bookings/{{ booking.id }}/cancel" class="btn btn-outline btn-sm btn-danger-outline">Cancel</a>
-          </div>
-          {% elif booking.status == 'pending' %}
-          <div class="booking-row__actions">
-            <span class="booking-status-note">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd"/></svg>
-              Awaiting driver approval
-            </span>
-            <a href="/messages/{{ booking.id }}" class="btn btn-outline btn-sm">Message driver</a>
-            <a href="/bookings/{{ booking.id }}/cancel" class="btn btn-outline btn-sm btn-danger-outline">Withdraw</a>
-          </div>
-          {% elif booking.status == 'confirmed' %}
-          <div class="booking-row__actions">
-            <a href="/trips/{{ booking.trip_id }}" class="btn btn-ghost btn-sm">View trip</a>
-            <a href="/messages/{{ booking.id }}" class="btn btn-outline btn-sm">Message driver</a>
-            <a href="/bookings/{{ booking.id }}/cancel" class="btn btn-outline btn-sm btn-danger-outline">Cancel</a>
-          </div>
-          {% elif booking.status == 'completed' %}
-          <div class="booking-row__actions">
-            <a href="/trips/{{ booking.trip_id }}" class="btn btn-ghost btn-sm">View trip</a>
-            {% set already_reviewed = booking.review and booking.review.reviewer_id == current_user.id %}
-            {% set review_deadline = booking.trip.departure_datetime + timedelta(days=14) %}
-            {% if not already_reviewed and now < review_deadline %}
-              <a href="/reviews/new/{{ booking.id }}" class="btn btn-primary btn-sm">★ Leave a review</a>
-            {% elif already_reviewed %}
-              <span class="reviewed-badge">✓ Reviewed</span>
-            {% endif %}
-          </div>
-          {% else %}
-          <div class="booking-row__actions">
-            <a href="/trips/{{ booking.trip_id }}" class="btn btn-ghost btn-sm">View trip</a>
-            {% if booking.payment and booking.payment.refund_amount > 0 %}
-              <span class="refund-badge">Refund: {{ "{:,}".format(booking.payment.refund_amount) }} ISK</span>
-            {% endif %}
-          </div>
-          {% endif %}
-        </div>
+      {% if upcoming_bookings %}
+      <h2 class="section-heading">Upcoming</h2>
+      <div class="bookings-list" style="margin-bottom:2.5rem;">
+        {% for booking in upcoming_bookings %}
+          {{ booking_row(booking) }}
         {% endfor %}
       </div>
+      {% endif %}
+
+      {% if past_bookings %}
+      <h2 class="section-heading">Past</h2>
+      <div class="bookings-list">
+        {% for booking in past_bookings %}
+          {{ booking_row(booking) }}
+        {% endfor %}
+      </div>
+      {% endif %}
+
     {% endif %}
   </div>
 
@@ -175,7 +219,7 @@
     {% endif %}
 
     <!-- Trips list -->
-    {% if not my_rides %}
+    {% if not upcoming_rides and not past_rides %}
       <div class="empty-state">
         <div class="empty-state__icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
@@ -185,32 +229,25 @@
         <a href="/trips/new" class="btn btn-primary">Post a ride</a>
       </div>
     {% else %}
-      <div class="trip-table">
-        {% for trip in my_rides %}
-        <div class="trip-table__row trip-table__row--{{ trip.status }}">
-          <div class="trip-table__route">
-            <strong>{{ trip.origin }}</strong> → <strong>{{ trip.destination }}</strong>
-            <span class="status-badge status-badge--{{ trip.status }}">{{ trip.status }}</span>
-          </div>
-          <div class="trip-table__meta">
-            <span>{{ trip.departure_datetime.strftime("%a %-d %b %Y, %H:%M") }}</span>
-            <span>{{ trip.seats_available }}/{{ trip.seats_total }} seats left</span>
-            <span>{{ "{:,}".format(trip.price_per_seat) }} ISK/seat</span>
-          </div>
-          <div class="trip-table__actions">
-            <a href="/trips/{{ trip.id }}" class="btn btn-ghost btn-sm">View</a>
-            {% if trip.status == 'active' %}
-              <a href="/trips/{{ trip.id }}/edit" class="btn btn-outline btn-sm">Edit</a>
-              <form method="post" action="/trips/{{ trip.id }}/cancel"
-                    onsubmit="return confirm('Cancel this trip and notify all passengers?')"
-                    style="display:inline">
-                <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">Cancel</button>
-              </form>
-            {% endif %}
-          </div>
-        </div>
+
+      {% if upcoming_rides %}
+      <h2 class="section-heading">Upcoming</h2>
+      <div class="trip-table" style="margin-bottom:2.5rem;">
+        {% for trip in upcoming_rides %}
+          {{ ride_row(trip) }}
         {% endfor %}
       </div>
+      {% endif %}
+
+      {% if past_rides %}
+      <h2 class="section-heading">Past</h2>
+      <div class="trip-table">
+        {% for trip in past_rides %}
+          {{ ride_row(trip) }}
+        {% endfor %}
+      </div>
+      {% endif %}
+
     {% endif %}
   </div>
 

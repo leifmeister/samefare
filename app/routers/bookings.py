@@ -255,7 +255,7 @@ def confirm_booking(
                 db.refresh(booking)
                 mailer.booking_approved_to_passenger(booking)
             # If not enough seats, silently do nothing (driver sees it's still pending)
-    return RedirectResponse("/profile", status_code=303)
+    return RedirectResponse("/my-trips?tab=rides", status_code=303)
 
 
 @router.post("/{booking_id}/reject")
@@ -275,4 +275,4 @@ def reject_booking(
             # Pending on manual-approval trips never held seats — nothing to release
             booking.status = models.BookingStatus.rejected
             db.commit()
-    return RedirectResponse("/profile", status_code=303)
+    return RedirectResponse("/my-trips?tab=rides", status_code=303)

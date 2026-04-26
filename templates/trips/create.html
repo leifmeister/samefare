@@ -9,6 +9,12 @@
       <p class="form-page__sub">Share your journey and help cover fuel costs</p>
     </div>
 
+    {% if return_banner %}
+      <div class="alert alert--info" role="note" style="margin-bottom:1rem;">
+        ⇄ Return trip pre-filled — <strong>{{ return_banner }}</strong> swapped. Just pick your date and you're done.
+      </div>
+    {% endif %}
+
     {% if error %}
       <div class="alert alert--error" role="alert">{{ error }}</div>
     {% endif %}

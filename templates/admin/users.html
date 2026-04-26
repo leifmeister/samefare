@@ -18,6 +18,22 @@
     </div>
   </div>
 
+  <!-- SMTP test -->
+  {% if request.query_params.get('flash') %}
+    <div class="alert alert--{{ 'success' if 'sent' in request.query_params.get('flash','') else 'error' }}"
+         style="margin-bottom:1rem;">
+      {{ request.query_params.get('flash') }}
+    </div>
+  {% endif %}
+  <div style="margin-bottom:1.25rem;">
+    <form method="post" action="/admin/test-email" style="display:inline;">
+      <button type="submit" class="btn btn-outline btn-sm">📧 Send test email</button>
+    </form>
+    <span style="font-size:.8rem; color:var(--c-text-muted); margin-left:.5rem;">
+      Sends to your account email to verify SMTP is working.
+    </span>
+  </div>
+
   <!-- Search -->
   <form method="get" action="/admin/users" class="admin-search">
     <input name="q" type="search" class="input" value="{{ q }}"

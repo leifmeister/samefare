@@ -278,3 +278,47 @@ def reject_license(
         user.license_doc_filename      = None
         db.commit()
     return RedirectResponse("/admin/verifications", status_code=303)
+
+
+@router.post("/admin/test-email")
+def admin_test_email(
+    admin: models.User = Depends(_require_admin),
+):
+    """Send a test email to the admin's own address to verify SMTP is working."""
+    import smtplib
+    from app.config import get_settings
+    from app import email as mailer
+    s = get_settings()
+
+    # Build a simple test payload
+    subject = "SameFare — SMTP test email"
+    body = mailer._wrap(
+        mailer._h1("SMTP test successful ✓") +
+        mailer._p(f"This test email was sent to <strong>{admin.email}</strong> from "
+                  f"<strong>{s.smtp_user}</strong> via <strong>{s.smtp_host}:{s.smtp_port}</strong>.") +
+        mailer._p("If you're reading this, transactional emails are working correctly on this deployment.")
+    )
+
+    # Try sending — collect any exception so we can surface it
+    try:
+        with smtplib.SMTP(s.smtp_host, s.smtp_port, timeout=10) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(s.smtp_user, s.smtp_password)
+            from email.mime.multipart import MIMEMultipart
+            from email.mime.text import MIMEText
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"]    = s.smtp_from
+            msg["To"]      = admin.email
+            msg.attach(MIMEText(body, "html", "utf-8"))
+            server.sendmail(s.smtp_user, admin.email, msg.as_string())
+        return RedirectResponse(
+            "/admin/users?flash=Test+email+sent+to+" + admin.email.replace("@", "%40"),
+            status_code=303,
+        )
+    except Exception as exc:
+        return RedirectResponse(
+            "/admin/users?flash=SMTP+error:+" + str(exc)[:120].replace(" ", "+"),
+            status_code=303,
+        )
