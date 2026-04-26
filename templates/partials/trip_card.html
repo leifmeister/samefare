@@ -33,26 +33,25 @@
         {{ trip.seats_available }} seat{{ 's' if trip.seats_available != 1 }}
       </div>
     </div>
-
-    <div class="trip-card__footer">
-      <div class="trip-card__driver">
-        <a href="/users/{{ trip.driver_id }}" class="trip-card__driver-link" onclick="event.stopPropagation()">
-          {{ avatar(trip.driver, cls="avatar--sm") }}
-          <span class="trip-card__driver-name">{{ trip.driver.full_name.split()[0] }}</span>
-        </a>
-        {% if trip.driver.average_rating %}
-          <span class="trip-card__rating">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="12" height="12" class="star-icon" aria-hidden="true"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-            {{ trip.driver.average_rating }}
-          </span>
-        {% endif %}
-      </div>
-      <div class="trip-card__badges">
-        {% if trip.allows_luggage %}<span class="badge badge--green" title="Luggage allowed">🧳</span>{% endif %}
-        {% if trip.allows_pets %}<span class="badge badge--green" title="Pets welcome">🐾</span>{% endif %}
-        {% if trip.smoking %}<span class="badge badge--muted" title="Smoking">🚬</span>{% endif %}
-        {% if not trip.instant_book %}<span class="badge badge--approval" title="Driver approves requests">Approval required</span>{% endif %}
-      </div>
-    </div>
   </a>
+
+  <!-- Footer is outside the card link to avoid nested <a> tags -->
+  <div class="trip-card__footer">
+    <a href="/users/{{ trip.driver_id }}" class="trip-card__driver">
+      {{ avatar(trip.driver, cls="avatar--sm") }}
+      <span class="trip-card__driver-name">{{ trip.driver.full_name.split()[0] }}</span>
+      {% if trip.driver.average_rating %}
+        <span class="trip-card__rating">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="12" height="12" class="star-icon" aria-hidden="true"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          {{ trip.driver.average_rating }}
+        </span>
+      {% endif %}
+    </a>
+    <div class="trip-card__badges">
+      {% if trip.allows_luggage %}<span class="badge badge--green" title="Luggage allowed">🧳</span>{% endif %}
+      {% if trip.allows_pets %}<span class="badge badge--green" title="Pets welcome">🐾</span>{% endif %}
+      {% if trip.smoking %}<span class="badge badge--muted" title="Smoking">🚬</span>{% endif %}
+      {% if not trip.instant_book %}<span class="badge badge--approval" title="Driver approves requests">Approval required</span>{% endif %}
+    </div>
+  </div>
 </article>

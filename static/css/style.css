@@ -668,7 +668,14 @@ button, input, select, textarea { font: inherit; }
   padding-top: var(--space-4);
   border-top: 1px solid var(--c-border-light);
 }
-.trip-card__driver { display: flex; align-items: center; gap: var(--space-2); }
+.trip-card__driver {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+  color: inherit;
+}
+.trip-card__driver:hover .trip-card__driver-name { text-decoration: underline; }
 .trip-card__driver-name { font-size: .9375rem; font-weight: 600; }
 .trip-card__rating {
   display: flex;
@@ -2231,16 +2238,6 @@ button, input, select, textarea { font: inherit; }
 .review-nudge__btn:hover { color: #1E1B6E; }
 
 /* ── Public profile ────────────────────────────────────────────────────────── */
-.trip-card__driver-link {
-  display: inline-flex;
-  align-items: center;
-  gap: .4rem;
-  text-decoration: none;
-  color: inherit;
-}
-.trip-card__driver-link:hover .trip-card__driver-name {
-  text-decoration: underline;
-}
 .review-card {
   padding: 1rem 0;
   border-bottom: 1px solid var(--border);
