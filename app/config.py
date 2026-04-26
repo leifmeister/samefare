@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,11 +16,11 @@ class Settings(BaseSettings):
     beta_mode: bool = False
 
     # Email via Resend (https://resend.com)
-    resend_api_key: str = ""         # re_...
-    email_from:     str = "SameFare <noreply@samefare.com>"
-    base_url:       str = "https://samefare.com"
+    resend_api_key: str = Field(default="", alias="RESEND_API_KEY")
+    email_from:     str = Field(default="SameFare <noreply@samefare.com>", alias="EMAIL_FROM")
+    base_url:       str = Field(default="https://samefare.com", alias="BASE_URL")
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", populate_by_name=True)
 
 
 @lru_cache
