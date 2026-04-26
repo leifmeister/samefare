@@ -88,11 +88,7 @@
     <a href="/trips/{{ trip.id }}" class="btn btn-ghost btn-sm">View</a>
     {% if trip.status == 'active' %}
       <a href="/trips/{{ trip.id }}/edit" class="btn btn-outline btn-sm">Edit</a>
-      <form method="post" action="/trips/{{ trip.id }}/cancel"
-            onsubmit="return confirm('Cancel this trip and notify all passengers?')"
-            style="display:inline">
-        <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">Cancel</button>
-      </form>
+      <a href="/trips/{{ trip.id }}/cancel" class="btn btn-outline btn-sm btn-danger-outline">Cancel</a>
     {% endif %}
   </div>
 </div>
@@ -218,6 +214,12 @@
       {% endfor %}
     </div>
     {% endif %}
+
+    {% if request.query_params.get('cancelled') %}
+    <div class="alert alert--success" style="margin-bottom:1.5rem;">
+      ✓ Trip cancelled. All passengers have been notified and will receive a full refund.
+    </div>
+  {% endif %}
 
     <!-- Trips list -->
     {% if not upcoming_rides and not past_rides %}

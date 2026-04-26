@@ -451,6 +451,30 @@ def trip_detail(
     })
 
 
+@router.get("/{trip_id}/cancel", response_class=HTMLResponse)
+def cancel_trip_page(
+    trip_id: int,
+    request: Request,
+    ctx: dict = Depends(get_template_context),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
+    if not trip or trip.driver_id != current_user.id or trip.status != models.TripStatus.active:
+        return RedirectResponse("/my-trips?tab=rides", status_code=303)
+
+    affected = [
+        b for b in trip.bookings
+        if b.status in (models.BookingStatus.pending, models.BookingStatus.confirmed,
+                        models.BookingStatus.awaiting_payment)
+    ]
+    return templates.TemplateResponse("trips/cancel_confirm.html", {
+        **ctx,
+        "trip":              trip,
+        "affected_bookings": affected,
+    })
+
+
 @router.post("/{trip_id}/cancel")
 def cancel_trip(
     trip_id: int,
@@ -458,19 +482,26 @@ def cancel_trip(
     db: Session = Depends(get_db),
 ):
     trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
-    if trip and trip.driver_id == current_user.id and trip.status == models.TripStatus.active:
-        trip.status = models.TripStatus.cancelled
-        affected = []
-        for b in trip.bookings:
-            if b.status in (models.BookingStatus.pending, models.BookingStatus.confirmed,
-                            models.BookingStatus.awaiting_payment):
-                b.status = models.BookingStatus.cancelled
-                affected.append(b)
-        db.commit()
-        # Email all affected passengers
-        for b in affected:
-            mailer.trip_cancelled_to_passenger(b)
-    return RedirectResponse("/profile", status_code=303)
+    if not trip or trip.driver_id != current_user.id or trip.status != models.TripStatus.active:
+        return RedirectResponse("/my-trips?tab=rides", status_code=303)
+
+    trip.status = models.TripStatus.cancelled
+    affected = []
+    for b in trip.bookings:
+        if b.status in (models.BookingStatus.pending, models.BookingStatus.confirmed,
+                        models.BookingStatus.awaiting_payment):
+            b.status = models.BookingStatus.cancelled
+            # Full refund for driver-initiated cancellations (including service fee)
+            if b.payment:
+                b.payment.refund_amount = b.payment.passenger_total
+                b.payment.status = models.PaymentStatus.refunded
+            affected.append(b)
+
+    db.commit()
+    for b in affected:
+        mailer.trip_cancelled_to_passenger(b)
+
+    return RedirectResponse("/my-trips?tab=rides&cancelled=1", status_code=303)
 
 
 @router.post("/{trip_id}/complete-beta")

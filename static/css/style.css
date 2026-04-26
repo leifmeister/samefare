@@ -148,6 +148,13 @@ button, input, select, textarea { font: inherit; }
 }
 .btn-danger-outline:hover { background: var(--c-error-light); }
 
+.btn-danger {
+  background: var(--c-error);
+  color: #fff;
+  border-color: var(--c-error);
+}
+.btn-danger:hover { background: #b91c1c; border-color: #b91c1c; }
+
 .btn-sm  { padding: .4rem .875rem; font-size: .875rem; border-radius: var(--r-sm); }
 .btn-lg  { padding: .8125rem 1.75rem; font-size: 1rem; border-radius: var(--r-md); }
 .btn-block { width: 100%; justify-content: center; }
@@ -1329,6 +1336,29 @@ button, input, select, textarea { font: inherit; }
   color: var(--c-text-muted);
   margin-top: var(--space-2);
   line-height: 1.5;
+}
+
+/* ── Trip cancel confirmation card ───────────────────────────────────────── */
+.cancel-trip-card {
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-lg);
+  padding: var(--space-4) var(--space-5);
+  margin-top: var(--space-5);
+}
+.cancel-trip-card__route {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--c-text);
+}
+.cancel-trip-card__city { color: var(--c-text); }
+.cancel-trip-card__date {
+  margin: var(--space-2) 0 0;
+  font-size: .9rem;
+  color: var(--c-text-muted);
 }
 
 .policy-box {

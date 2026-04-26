@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block title %}Cancel trip — SameFare{% endblock %}
+
+{% block content %}
+<div class="container container--narrow" style="margin-top:2rem; margin-bottom:4rem;">
+
+  <a href="/my-trips?tab=rides" class="back-link">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+    Back to my rides
+  </a>
+
+  <div class="form-page" style="margin-top:1.5rem;">
+    <div class="form-page__header">
+      <h1 class="form-page__title">Cancel this trip?</h1>
+      <p class="form-page__sub">This cannot be undone.</p>
+    </div>
+
+    <!-- Trip summary -->
+    <div class="cancel-trip-card">
+      <div class="cancel-trip-card__route">
+        <span class="cancel-trip-card__city">{{ trip.origin }}</span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+        <span class="cancel-trip-card__city">{{ trip.destination }}</span>
+      </div>
+      <p class="cancel-trip-card__date">
+        {{ trip.departure_datetime.strftime("%A %-d %B %Y, %H:%M") }}
+      </p>
+    </div>
+
+    <!-- Impact -->
+    {% if affected_bookings %}
+    <div class="alert alert--error" role="alert" style="margin-top:1.5rem;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden="true" style="flex-shrink:0"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+      <div>
+        <strong>{{ affected_bookings|length }} passenger{{ 's' if affected_bookings|length != 1 }} will be affected.</strong>
+        {% for b in affected_bookings %}
+          <div style="margin-top:.5rem; font-size:.875rem;">
+            {{ b.passenger.full_name }} — {{ b.seats_booked }} seat{{ 's' if b.seats_booked != 1 }}
+            {% if b.payment %}
+              <span style="color:#065F46; font-weight:600;">
+                · full refund of {{ "{:,}".format(b.payment.passenger_total) }} ISK
+              </span>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <div class="alert alert--info" role="alert" style="margin-top:1.5rem;">
+      No passengers have booked this trip yet — you can cancel freely.
+    </div>
+    {% endif %}
+
+    <!-- Policy note -->
+    <div class="policy-box" style="margin-top:1.5rem;">
+      <p class="policy-box__title">Cancellation policy</p>
+      <ul class="policy-box__list">
+        <li>All confirmed passengers receive a <strong>full refund</strong> including the service fee.</li>
+        <li>Passengers will be notified by email immediately.</li>
+        <li>Frequent cancellations may affect your standing on SameFare.</li>
+      </ul>
+    </div>
+
+    <!-- Actions -->
+    <div class="form-actions" style="margin-top:2rem;">
+      <a href="/my-trips?tab=rides" class="btn btn-ghost">Keep trip</a>
+      <form method="post" action="/trips/{{ trip.id }}/cancel" style="display:contents;">
+        <button type="submit" class="btn btn-danger">
+          Yes, cancel trip
+        </button>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
