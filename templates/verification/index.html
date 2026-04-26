@@ -3,10 +3,22 @@
 
 {% block content %}
 <div class="container container--narrow" style="margin-top:2rem; margin-bottom:4rem;">
+  {% if request.query_params.get('next') == 'book' and request.query_params.get('trip') %}
+  <a href="/trips/{{ request.query_params.get('trip') }}" class="back-link">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+    Back to trip
+  </a>
+  {% elif request.query_params.get('next') == 'driver' %}
+  <a href="/trips" class="back-link">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+    Back to rides
+  </a>
+  {% else %}
   <a href="/" class="back-link">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
     Back to home
   </a>
+  {% endif %}
   <div class="form-page">
     <div class="form-page__header">
       <h1 class="form-page__title">Account verification</h1>
