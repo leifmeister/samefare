@@ -665,7 +665,7 @@ button, input, select, textarea { font: inherit; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: var(--space-4);
+  padding: var(--space-4) var(--space-6) var(--space-5);
   border-top: 1px solid var(--c-border-light);
 }
 .trip-card__driver {
