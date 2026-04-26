@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Cancel booking — SameFare{% endblock %}
+
+{% block content %}
+<div class="container container--narrow" style="margin-top:2rem; margin-bottom:4rem;">
+
+  <a href="/bookings" class="back-link">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+    Back to my trips
+  </a>
+
+  <div class="form-page" style="margin-top:1.5rem;">
+    <div class="form-page__header">
+      <h1 class="form-page__title">Cancel booking</h1>
+      <p class="form-page__sub">
+        {{ booking.trip.origin }} → {{ booking.trip.destination }} &mdash;
+        {{ booking.trip.departure_datetime.strftime("%a %-d %b %Y, %H:%M") }}
+      </p>
+    </div>
+
+    <!-- Booking summary -->
+    <div class="detail-card" style="margin-bottom:1.5rem;">
+      <div class="price-row">
+        <span>Seats booked</span>
+        <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }}</span>
+      </div>
+      <div class="price-row">
+        <span>Amount paid</span>
+        <span>{{ "{:,}".format(booking.total_price) }} ISK</span>
+      </div>
+    </div>
+
+    <!-- Refund info -->
+    <div class="detail-card" style="margin-bottom:1.5rem;
+         border-left:4px solid {% if refund.amount == booking.total_price %}#22C55E{% elif refund.amount > 0 %}#F59E0B{% else %}#EF4444{% endif %};">
+      <h3 class="detail-card__title" style="margin-bottom:.5rem;">Refund</h3>
+      <p style="font-size:1.25rem; font-weight:700; margin-bottom:.25rem;">{{ refund.label }}</p>
+      <p class="text-muted" style="font-size:.875rem;">{{ refund.policy }}</p>
+      {% if refund.amount > 0 %}
+        <p class="text-muted" style="font-size:.875rem; margin-top:.5rem;">
+          Refund will be returned to your original payment method within 5–10 business days.
+        </p>
+      {% endif %}
+    </div>
+
+    <!-- Actions -->
+    <div class="form-actions">
+      <a href="/bookings" class="btn btn-ghost">Keep my booking</a>
+      <form method="post" action="/bookings/{{ booking.id }}/cancel" style="display:inline;">
+        <button type="submit" class="btn btn-danger btn-lg">
+          Confirm cancellation
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

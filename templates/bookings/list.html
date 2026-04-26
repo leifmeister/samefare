@@ -8,6 +8,11 @@
     <a href="/trips" class="btn btn-outline">Find more rides</a>
   </div>
 
+  {% if request.query_params.get('cancelled') %}
+    <div class="alert alert--success" style="margin-bottom:1.5rem;">
+      ✓ Your booking has been cancelled. Any applicable refund will appear within 5–10 business days.
+    </div>
+  {% endif %}
   {% if request.query_params.get('requested') %}
     <div class="alert alert--success" style="margin-bottom:1.5rem;">
       ✓ Your request has been sent. The driver will review it and you'll be notified here once accepted.
@@ -68,11 +73,7 @@
         {% if booking.status == 'awaiting_payment' %}
         <div class="booking-row__actions">
           <a href="/payments/checkout/{{ booking.id }}" class="btn btn-primary btn-sm">Complete payment</a>
-          <form method="post" action="/bookings/{{ booking.id }}/cancel"
-                onsubmit="return confirm('Cancel this booking?')"
-                style="display:inline;">
-            <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">Cancel</button>
-          </form>
+          <a href="/bookings/{{ booking.id }}/cancel" class="btn btn-outline btn-sm btn-danger-outline">Cancel</a>
         </div>
         {% elif booking.status == 'pending' %}
         <div class="booking-row__actions">
@@ -81,11 +82,7 @@
             Awaiting driver approval
           </span>
           <a href="/messages/{{ booking.id }}" class="btn btn-outline btn-sm">Message driver</a>
-          <form method="post" action="/bookings/{{ booking.id }}/cancel"
-                onsubmit="return confirm('Withdraw this request?')"
-                style="display:inline;">
-            <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">Withdraw</button>
-          </form>
+          <a href="/bookings/{{ booking.id }}/cancel" class="btn btn-outline btn-sm btn-danger-outline">Withdraw</a>
         </div>
         {% elif booking.status == 'confirmed' %}
         <div class="booking-row__actions">
@@ -97,11 +94,7 @@
             </svg>
             Message driver
           </a>
-          <form method="post" action="/bookings/{{ booking.id }}/cancel"
-                onsubmit="return confirm('Cancel this booking?')"
-                style="display:inline;">
-            <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">Cancel</button>
-          </form>
+          <a href="/bookings/{{ booking.id }}/cancel" class="btn btn-outline btn-sm btn-danger-outline">Cancel</a>
         </div>
         {% elif booking.status == 'completed' %}
         <div class="booking-row__actions">

@@ -122,6 +122,76 @@ def create_booking(
         return RedirectResponse("/bookings?requested=1", status_code=303)
 
 
+def _refund_preview(booking) -> dict:
+    """
+    Calculate the refund a passenger would receive if they cancelled now.
+    Returns a dict with 'amount', 'label', and 'policy'.
+    Does NOT modify anything — safe to call from a GET handler.
+    """
+    now = datetime.utcnow()
+    if not booking.payment:
+        return {"amount": 0, "label": "No charge yet", "policy": "free"}
+
+    departure    = booking.trip.departure_datetime
+    hours_left   = (departure - now).total_seconds() / 3600
+    mins_since   = (now - booking.created_at).total_seconds() / 60
+    contribution = booking.payment.driver_payout
+    total        = booking.payment.passenger_total
+
+    if mins_since <= 30 and hours_left >= 24:
+        return {
+            "amount": total,
+            "label":  f"Full refund — {total:,} ISK",
+            "policy": "Within 30-minute grace period",
+        }
+    elif hours_left >= 24:
+        return {
+            "amount": contribution,
+            "label":  f"Partial refund — {contribution:,} ISK",
+            "policy": "Service fee is non-refundable",
+        }
+    elif hours_left > 0:
+        half = round(contribution * 0.5)
+        return {
+            "amount": half,
+            "label":  f"Partial refund — {half:,} ISK",
+            "policy": "Less than 24 hours before departure — 50% of contribution",
+        }
+    else:
+        return {
+            "amount": 0,
+            "label":  "No refund",
+            "policy": "Trip has already departed",
+        }
+
+
+@router.get("/{booking_id}/cancel", response_class=HTMLResponse)
+def cancel_booking_page(
+    booking_id: int,
+    request: Request,
+    ctx: dict = Depends(get_template_context),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    booking = (
+        db.query(models.Booking)
+        .options(joinedload(models.Booking.trip), joinedload(models.Booking.payment))
+        .filter(models.Booking.id == booking_id)
+        .first()
+    )
+    cancellable = (models.BookingStatus.awaiting_payment,
+                   models.BookingStatus.pending,
+                   models.BookingStatus.confirmed)
+    if not booking or booking.passenger_id != current_user.id or booking.status not in cancellable:
+        return RedirectResponse("/bookings", status_code=303)
+
+    return templates.TemplateResponse("bookings/cancel_confirm.html", {
+        **ctx,
+        "booking": booking,
+        "refund":  _refund_preview(booking),
+    })
+
+
 @router.post("/{booking_id}/cancel")
 def cancel_booking(
     booking_id: int,
@@ -143,8 +213,6 @@ def cancel_booking(
     if booking.status not in cancellable:
         return RedirectResponse("/bookings", status_code=303)
 
-    # Only release seats if they were actually held
-    # pending bookings on manual-approval trips never held seats
     seats_were_held = booking.status != models.BookingStatus.pending
     if seats_were_held:
         booking.trip.seats_available = min(
@@ -153,36 +221,22 @@ def cancel_booking(
         )
     booking.status = models.BookingStatus.cancelled
 
-    # Apply refund policy if payment exists
     if booking.payment:
-        now          = datetime.utcnow()
-        departure    = booking.trip.departure_datetime
-        hours_left   = (departure - now).total_seconds() / 3600
-        mins_since   = (now - booking.created_at).total_seconds() / 60
-        contribution = booking.payment.driver_payout
-
-        # Grace period: cancelled within 30 min of booking AND departure still > 24 h away
-        if mins_since <= 30 and hours_left >= 24:
-            refund = booking.payment.passenger_total  # full refund incl. service fee
-            booking.payment.status = models.PaymentStatus.refunded
-        elif hours_left >= 24:
-            refund = contribution                     # contribution back; service fee kept
-            booking.payment.status = models.PaymentStatus.refunded
-        elif hours_left > 0:
-            refund = round(contribution * 0.5)        # 50% back; service fee kept
-            booking.payment.status = models.PaymentStatus.partial_refund
-        else:
-            refund = 0                                # no refund after departure
-            booking.payment.status = models.PaymentStatus.partial_refund
-
+        preview = _refund_preview(booking)
+        refund  = preview["amount"]
         booking.payment.refund_amount = refund
+        booking.payment.status = (
+            models.PaymentStatus.refunded       if refund == booking.payment.passenger_total else
+            models.PaymentStatus.partial_refund if refund > 0 else
+            models.PaymentStatus.partial_refund
+        )
 
     db.commit()
     db.refresh(booking)
-    # Notify driver (only if booking was actually active, not just a pending request)
     if seats_were_held:
         mailer.booking_cancelled_to_driver(booking)
-    return RedirectResponse("/bookings", status_code=303)
+    mailer.booking_cancelled_to_passenger(booking)
+    return RedirectResponse("/bookings?cancelled=1", status_code=303)
 
 
 @router.post("/{booking_id}/confirm")

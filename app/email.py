@@ -217,6 +217,30 @@ def booking_cancelled_to_driver(booking) -> None:
     _send(trip.driver.email, f"Booking cancelled — {trip.origin} → {trip.destination}", _wrap(body))
 
 
+def booking_cancelled_to_passenger(booking) -> None:
+    """Confirm to a passenger that their cancellation went through, with refund info."""
+    s    = get_settings()
+    trip = booking.trip
+    refund = booking.payment.refund_amount if booking.payment else 0
+    if refund > 0:
+        refund_line = _p(f"Refund of <strong>{refund:,} ISK</strong> will be returned to your "
+                         f"original payment method within 5–10 business days.")
+    else:
+        refund_line = _p("No refund applies for this cancellation.")
+
+    body = (
+        _h1("Booking cancelled") +
+        _p("Your booking has been cancelled:") +
+        f'<div style="background:#F7FAF9;border:1px solid #DDE8E5;border-radius:8px;'
+        f'padding:16px;margin:8px 0;">'
+        f'{_route_line(trip.origin, trip.destination, trip.departure_datetime)}</div>' +
+        _divider() +
+        refund_line +
+        _btn("Find another ride", f"{s.base_url}/trips?origin={trip.origin}&destination={trip.destination}")
+    )
+    _send(booking.passenger.email, f"Booking cancelled — {trip.origin} → {trip.destination}", _wrap(body))
+
+
 def trip_cancelled_to_passenger(booking) -> None:
     """Notify a passenger that the driver has cancelled the whole trip."""
     s    = get_settings()
