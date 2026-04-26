@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Check your email — SameFare{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-card__header">
+      <a href="/" class="auth-card__logo">SameFare</a>
+      <div style="font-size:2.5rem; margin-bottom:.5rem;">📬</div>
+      <h1 class="auth-card__title">Check your inbox</h1>
+      <p class="auth-card__sub">
+        {% if resent %}
+          We've sent a new verification link to <strong>{{ current_user.email }}</strong>.
+        {% else %}
+          We've sent a verification link to <strong>{{ current_user.email }}</strong>.
+        {% endif %}
+        Click the link to verify your account and unlock booking.
+      </p>
+    </div>
+
+    <div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:var(--r-lg);padding:1rem 1.25rem;font-size:.875rem;color:#166534;margin-bottom:1.5rem;">
+      Didn't get it? Check your spam folder, or resend below.
+    </div>
+
+    <form method="post" action="/resend-verification">
+      <button type="submit" class="btn btn-outline btn-block">Resend verification email</button>
+    </form>
+
+    <p class="auth-card__footer">
+      <a href="/" class="link">Back to home</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

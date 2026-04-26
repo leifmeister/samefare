@@ -3,6 +3,12 @@
 
 {% block content %}
 
+{% if request.query_params.get('verified') %}
+<div class="container" style="margin-top:1rem;">
+  <div class="alert alert--success">✓ Email verified — you're all set! You can now book rides.</div>
+</div>
+{% endif %}
+
 <!-- ═══════════════════════════════════════
      HERO
 ═══════════════════════════════════════ -->

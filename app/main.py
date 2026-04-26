@@ -65,6 +65,10 @@ _MIGRATIONS = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS default_car_model VARCHAR(100)",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS default_car_year  INTEGER",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS default_car_type  cartype NOT NULL DEFAULT 'sedan'",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified     BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token VARCHAR(64)",
+    # Mark all users registered before email verification was introduced as already verified
+    "UPDATE users SET email_verified = TRUE WHERE email_verified = FALSE AND email_verify_token IS NULL",
 
     # ── trips ─────────────────────────────────────────────────────────────────
     "ALTER TABLE trips ADD COLUMN IF NOT EXISTS car_make      VARCHAR(100)",

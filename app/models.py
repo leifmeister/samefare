@@ -101,6 +101,10 @@ class User(Base):
     phone_otp           = Column(String(6))
     phone_otp_expires   = Column(DateTime)
 
+    # Email verification
+    email_verified       = Column(Boolean, nullable=False, default=False)
+    email_verify_token   = Column(String(64))
+
     # Password reset
     reset_token         = Column(String(64))
     reset_token_expires = Column(DateTime)

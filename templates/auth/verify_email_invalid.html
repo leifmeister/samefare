@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Invalid link — SameFare{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-card__header">
+      <a href="/" class="auth-card__logo">SameFare</a>
+      <div style="font-size:2.5rem; margin-bottom:.5rem;">⚠️</div>
+      <h1 class="auth-card__title">Link invalid or expired</h1>
+      <p class="auth-card__sub">This verification link has already been used or has expired.</p>
+    </div>
+
+    {% if current_user and not current_user.email_verified %}
+    <form method="post" action="/resend-verification">
+      <button type="submit" class="btn btn-primary btn-block">Send a new link</button>
+    </form>
+    {% else %}
+    <a href="/" class="btn btn-primary btn-block">Back to home</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

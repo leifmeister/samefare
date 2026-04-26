@@ -100,21 +100,63 @@ def register(
             status_code=400,
         )
 
+    verify_token = secrets.token_urlsafe(32)
     user = models.User(
         email=email.lower(),
         full_name=full_name,
         phone=phone or None,
         hashed_password=hash_password(password),
+        email_verified=False,
+        email_verify_token=verify_token,
     )
     db.add(user)
     db.commit()
     db.refresh(user)
 
+    mailer.email_verification(user, verify_token)
+
     token = create_access_token(user.id)
-    response = RedirectResponse("/", status_code=303)
+    response = RedirectResponse("/check-your-email", status_code=303)
     response.set_cookie(key="access_token", value=token, httponly=True,
                         max_age=settings.access_token_expire_minutes * 60, samesite="lax")
     return response
+
+
+@router.get("/check-your-email", response_class=HTMLResponse)
+def check_your_email(request: Request, ctx: dict = Depends(get_template_context)):
+    return templates.TemplateResponse("auth/check_your_email.html", {**ctx})
+
+
+@router.get("/verify-email", response_class=HTMLResponse)
+def verify_email(
+    request: Request,
+    token:   str     = "",
+    ctx:     dict    = Depends(get_template_context),
+    db:      Session = Depends(get_db),
+):
+    user = db.query(models.User).filter(models.User.email_verify_token == token).first() if token else None
+    if not user:
+        return templates.TemplateResponse("auth/verify_email_invalid.html", {**ctx})
+    user.email_verified     = True
+    user.email_verify_token = None
+    db.commit()
+    return RedirectResponse("/?verified=1", status_code=303)
+
+
+@router.post("/resend-verification", response_class=HTMLResponse)
+def resend_verification(
+    request:      Request,
+    ctx:          dict         = Depends(get_template_context),
+    current_user: models.User  = Depends(get_current_user_optional),
+    db:           Session      = Depends(get_db),
+):
+    if not current_user or current_user.email_verified:
+        return RedirectResponse("/", status_code=303)
+    token = secrets.token_urlsafe(32)
+    current_user.email_verify_token = token
+    db.commit()
+    mailer.email_verification(current_user, token)
+    return templates.TemplateResponse("auth/check_your_email.html", {**ctx, "resent": True})
 
 
 @router.get("/forgot-password", response_class=HTMLResponse)

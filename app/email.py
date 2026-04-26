@@ -280,6 +280,21 @@ def new_message_to_recipient(message, recipient) -> None:
     _send(recipient.email, f"New message from {sender.full_name.split()[0]} — SameFare", _wrap(body))
 
 
+def email_verification(user, token: str) -> None:
+    s   = get_settings()
+    url = f"{s.base_url}/verify-email?token={token}"
+    body = (
+        _h1("Verify your email address") +
+        _p(f"Hi {user.full_name.split()[0]}, thanks for joining SameFare! "
+           f"Please verify your email address to start booking rides.") +
+        _btn("Verify email", url) +
+        _divider() +
+        _p("This link expires in <strong>24 hours</strong>. "
+           "If you didn't create a SameFare account, you can safely ignore this email.")
+    )
+    _send(user.email, "Verify your SameFare email address", _wrap(body))
+
+
 def password_reset(user, token: str) -> None:
     s    = get_settings()
     url  = f"{s.base_url}/reset-password?token={token}"
