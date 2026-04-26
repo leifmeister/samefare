@@ -1116,8 +1116,12 @@ button, input, select, textarea { font: inherit; }
 }
 .phone-input__code {
   flex: 0 0 auto;
-  width: 7.5rem;
-  padding-right: var(--space-2);
+  width: 9.5rem;
+  /* Restore native arrow — .input sets appearance:none which hides select arrow */
+  appearance: auto;
+  -webkit-appearance: auto;
+  padding-right: var(--space-3);
+  cursor: pointer;
 }
 .phone-input__number {
   flex: 1 1 0;
