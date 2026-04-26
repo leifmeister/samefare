@@ -66,7 +66,7 @@
           hx-on::after-request="if(event.detail.successful){this.reset(); document.getElementById('chat-empty')?.remove(); htmx.trigger(document.body, 'refresh');}">
       <textarea name="body" class="chat-form__input" rows="1"
                 placeholder="Type a message…" required
-                onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); this.form.requestSubmit();}"></textarea>
+                onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.closest('form').querySelector('[type=submit]').click();}"></textarea>
       <button type="submit" class="chat-form__send" aria-label="Send message">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
              width="20" height="20" aria-hidden="true">
