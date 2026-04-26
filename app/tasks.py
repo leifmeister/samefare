@@ -131,7 +131,25 @@ def _run_auto_ratings() -> None:
                         ))
                         created += 1
 
-                # ── Case 2: late cancellation by a paying passenger ───────
+                # ── Case 2: passenger no-show (marked by driver) ─────────
+                elif booking.status == models.BookingStatus.no_show:
+                    if not _review_exists(db, booking.id,
+                                          models.ReviewType.driver_to_passenger):
+                        if _prior_auto_penalties(db, booking.passenger_id) > 0:
+                            # Repeat offender — issue 1-star penalty
+                            db.add(models.Review(
+                                booking_id  = booking.id,
+                                trip_id     = trip.id,
+                                reviewer_id = trip.driver_id,
+                                reviewee_id = booking.passenger_id,
+                                review_type = models.ReviewType.driver_to_passenger,
+                                rating      = 1,
+                                is_auto     = True,
+                            ))
+                            created += 1
+                        # else first offence — grace period, do nothing
+
+                # ── Case 3: late cancellation by a paying passenger ───────
                 elif (booking.status == models.BookingStatus.cancelled
                       and booking.payment is not None):
 

@@ -50,6 +50,7 @@ class BookingStatus(_StrEnum):
     rejected         = "rejected"
     cancelled        = "cancelled"
     completed        = "completed"
+    no_show          = "no_show"   # passenger did not appear — reported by driver
 
 
 class PaymentStatus(_StrEnum):
@@ -172,6 +173,7 @@ class Trip(Base):
     allows_pets        = Column(Boolean, nullable=False, default=False)
     smoking            = Column(Boolean, nullable=False, default=False)
     instant_book       = Column(Boolean, nullable=False, default=True)
+    driver_no_show     = Column(Boolean, nullable=False, default=False)  # reported by a passenger
     status             = Column(Enum(TripStatus), nullable=False, default=TripStatus.active)
     created_at         = Column(DateTime, nullable=False, default=datetime.utcnow)
 

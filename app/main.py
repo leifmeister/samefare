@@ -70,6 +70,12 @@ _MIGRATIONS = [
     # Mark all users registered before email verification was introduced as already verified
     "UPDATE users SET email_verified = TRUE WHERE email_verified = FALSE AND email_verify_token IS NULL",
 
+    # ── bookings ──────────────────────────────────────────────────────────────
+    "ALTER TYPE bookingstatus ADD VALUE IF NOT EXISTS 'no_show'",
+
+    # ── trips ─────────────────────────────────────────────────────────────────
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS driver_no_show BOOLEAN NOT NULL DEFAULT FALSE",
+
     # ── reviews ───────────────────────────────────────────────────────────────
     "ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_auto BOOLEAN NOT NULL DEFAULT FALSE",
 

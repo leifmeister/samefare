@@ -48,7 +48,14 @@
   <div class="booking-row__actions">
     <a href="/trips/{{ booking.trip_id }}" class="btn btn-ghost btn-sm">View trip</a>
     <a href="/messages/{{ booking.id }}" class="btn btn-outline btn-sm">Message driver</a>
-    <a href="/bookings/{{ booking.id }}/cancel" class="btn btn-outline btn-sm btn-danger-outline">Cancel</a>
+    {% if now < booking.trip.departure_datetime %}
+      <a href="/bookings/{{ booking.id }}/cancel" class="btn btn-outline btn-sm btn-danger-outline">Cancel</a>
+    {% else %}
+      <form method="post" action="/bookings/{{ booking.id }}/driver-no-show" style="display:inline"
+            onsubmit="return confirm('Report driver as no-show? You\'ll receive a full refund, including the service fee.')">
+        <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">Driver didn't show</button>
+      </form>
+    {% endif %}
   </div>
   {% elif booking.status == 'completed' %}
   <div class="booking-row__actions">
@@ -127,6 +134,11 @@
     {% if request.query_params.get('cancelled') %}
       <div class="alert alert--success" style="margin-bottom:1.5rem;">
         ✓ Booking cancelled. Any applicable refund will appear within 5–10 business days.
+      </div>
+    {% endif %}
+    {% if request.query_params.get('driver_no_show') %}
+      <div class="alert alert--success" style="margin-bottom:1.5rem;">
+        ✓ Driver no-show reported. A full refund — including the service fee — will appear within 5–10 business days.
       </div>
     {% endif %}
     {% if request.query_params.get('requested') %}

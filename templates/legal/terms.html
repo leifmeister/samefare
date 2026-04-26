@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
 {% block title %}Terms & Conditions — SameFare{% endblock %}
 
 {% block content %}
@@ -21,13 +22,14 @@
       <li><a href="#s6">Booking a Seat</a></li>
       <li><a href="#s7">Cost Contributions &amp; Fees</a></li>
       <li><a href="#s8">Cancellation &amp; Refund Policy</a></li>
-      <li><a href="#s9">Conduct &amp; Obligations</a></li>
-      <li><a href="#s10">Reviews &amp; Ratings</a></li>
-      <li><a href="#s11">Suspension &amp; Termination</a></li>
-      <li><a href="#s12">Liability &amp; Disclaimers</a></li>
-      <li><a href="#s13">Intellectual Property</a></li>
-      <li><a href="#s14">Governing Law</a></li>
-      <li><a href="#s15">Contact Us</a></li>
+      <li><a href="#s9">No-Show Policy</a></li>
+      <li><a href="#s10">Conduct &amp; Obligations</a></li>
+      <li><a href="#s11">Reviews &amp; Ratings</a></li>
+      <li><a href="#s12">Suspension &amp; Termination</a></li>
+      <li><a href="#s13">Liability &amp; Disclaimers</a></li>
+      <li><a href="#s14">Intellectual Property</a></li>
+      <li><a href="#s15">Governing Law</a></li>
+      <li><a href="#s16">Contact Us</a></li>
     </ol>
   </nav>
 
@@ -70,6 +72,7 @@
       <h2>4. Identity &amp; Driver Verification</h2>
       <h3>4.1 Identity Verification (all users)</h3>
       <p>Before making your first booking as a passenger, you must submit a government-issued photo ID (national ID card or passport). Our team reviews submissions within 1–2 business days. Until approved, you may browse trips but cannot complete a booking.</p>
+      <p>Once approved, your profile displays a <strong>verified identity badge</strong>, increasing trust with drivers and other passengers.</p>
 
       <h3>4.2 Driver's Licence Verification (drivers)</h3>
       <p>Before posting your first ride, you must upload a valid Icelandic driver's licence. Submission of a licence confirms that:</p>
@@ -78,7 +81,7 @@
         <li>Your civil liability insurance policy covers ridesharing or carrying fare-contributing passengers. <strong>It is your responsibility to confirm this with your insurer.</strong></li>
         <li>The vehicle has a valid roadworthiness certificate (<em>skoðun</em>).</li>
       </ul>
-      <p>SameFare verifies document authenticity to a reasonable standard but cannot guarantee the validity of any document submitted.</p>
+      <p>Once approved, your profile displays a <strong>verified driver's licence badge</strong>. SameFare verifies document authenticity to a reasonable standard but cannot guarantee the validity of any document submitted.</p>
 
       <h3>4.3 Minors</h3>
       <p>Users under 18 may not register or use the Platform. Passengers under 13 may not travel unaccompanied on any trip booked through SameFare.</p>
@@ -93,7 +96,7 @@
         <li>The vehicle is a passenger car with a maximum of <strong>7 seats</strong> (including driver).</li>
         <li>All information in your ride listing (route, time, price, vehicle details) is accurate.</li>
         <li>You will not post the same trip in multiple listings simultaneously.</li>
-        <li>You will <strong>wait at least 15 minutes</strong> beyond the agreed pickup time before leaving.</li>
+        <li>You will <strong>wait at least 15 minutes</strong> beyond the agreed pickup time before departing, and will be present at the agreed pickup location.</li>
         <li>You will promptly notify passengers of any delays or cancellations.</li>
       </ul>
       <p>Trip listings are visible to all platform visitors. SameFare reserves the right to remove listings that violate these Terms.</p>
@@ -131,7 +134,7 @@
       </table>
 
       <h3>7.2 Service Fee</h3>
-      <p>SameFare charges a flat <strong>18% service fee</strong> on the cost contribution, payable by the passenger at the time of booking. This fee is non-refundable except where the driver cancels the trip.</p>
+      <p>SameFare charges a flat <strong>18% service fee</strong> on the cost contribution, payable by the passenger at the time of booking. This fee is <strong>non-refundable</strong> unless the driver cancels the trip or fails to appear (see sections 8 and 9).</p>
 
       <h3>7.3 Driver Payouts</h3>
       <p>Cost contributions are transferred to drivers after the trip departure date. Payouts may be withheld pending investigation of disputes or policy violations.</p>
@@ -143,15 +146,15 @@
 
       <div class="legal-policy-grid">
         <div class="legal-policy-card legal-policy-card--driver">
-          <div class="legal-policy-card__label">Driver cancels</div>
+          <div class="legal-policy-card__label">Driver cancels (any time)</div>
           <div class="legal-policy-card__result">
-            Full refund — cost contribution <em>and</em> service fee returned to all passengers.
+            <strong>Full refund</strong> — cost contribution <em>and</em> service fee returned to all passengers.
           </div>
         </div>
         <div class="legal-policy-card legal-policy-card--passenger">
           <div class="legal-policy-card__label">Grace period — cancelled within 30 min of booking, departure still &gt;24 h away</div>
           <div class="legal-policy-card__result">
-            Full refund — cost contribution <em>and</em> service fee returned.
+            <strong>Full refund</strong> — cost contribution <em>and</em> service fee returned.
           </div>
         </div>
         <div class="legal-policy-card legal-policy-card--passenger">
@@ -170,21 +173,50 @@
           </div>
         </div>
         <div class="legal-policy-card legal-policy-card--noshow">
-          <div class="legal-policy-card__label">Passenger no-show / cancels after departure</div>
+          <div class="legal-policy-card__label">Passenger no-show (after departure)</div>
           <div class="legal-policy-card__result">
-            No refund. Full cost contribution paid to driver.
+            <strong>No refund.</strong> Full cost contribution paid to driver.
+          </div>
+        </div>
+        <div class="legal-policy-card legal-policy-card--driver">
+          <div class="legal-policy-card__label">Driver no-show (reported by passenger)</div>
+          <div class="legal-policy-card__result">
+            <strong>Full refund</strong> — cost contribution <em>and</em> service fee returned to affected passengers.
           </div>
         </div>
       </div>
 
       <p style="margin-top:1.25rem;">The grace period only applies when the departure is still more than 24 hours away — if the trip is imminent, the standard departure-based rules apply regardless of when the booking was made.</p>
-      <p>Refunds are processed within <strong>5–10 business days</strong> via the original payment method. To cancel a booking, go to <a href="/bookings">My Trips</a> and select the relevant booking.</p>
+      <p>Refunds are processed within <strong>5–10 business days</strong> via the original payment method. To cancel a booking, go to <a href="/my-trips">My Trips</a> and select the relevant booking.</p>
     </section>
 
-    <!-- 9 -->
+    <!-- 9 — NEW: No-Show Policy -->
     <section id="s9" class="legal-section">
-      <h2>9. Conduct &amp; Obligations</h2>
-      <h3>9.1 All Members</h3>
+      <h2>9. No-Show Policy</h2>
+
+      <h3>9.1 Passenger No-Show</h3>
+      <p>If a passenger does not appear at the agreed pickup point within 15 minutes of the scheduled departure time, the driver may mark that passenger as a <strong>no-show</strong> via the trip page on the Platform. The following applies:</p>
+      <ul>
+        <li>The passenger's booking is cancelled and <strong>no refund is issued</strong>.</li>
+        <li>The driver receives the full cost contribution as compensation.</li>
+        <li>A first no-show is treated as a grace offence — no automatic rating penalty is applied.</li>
+        <li>Subsequent no-shows result in an <strong>automatic 1-star rating</strong> being added to the passenger's profile after 14 days (see section 11).</li>
+      </ul>
+
+      <h3>9.2 Driver No-Show</h3>
+      <p>If the driver does not appear at the agreed pickup point, any confirmed passenger may report a <strong>driver no-show</strong> via their booking on the Platform. The following applies:</p>
+      <ul>
+        <li>The reporting passenger receives a <strong>full refund</strong> — cost contribution and service fee — within 5–10 business days.</li>
+        <li>An <strong>automatic 1-star rating</strong> is immediately added to the driver's profile.</li>
+        <li>Repeated driver no-shows may result in account suspension (see section 12).</li>
+      </ul>
+      <p>Drivers are required to wait at least 15 minutes beyond the agreed pickup time before treating a passenger as a no-show. Passengers are similarly required to arrive within that window and should contact the driver if they will be delayed.</p>
+    </section>
+
+    <!-- 10 (was 9) -->
+    <section id="s10" class="legal-section">
+      <h2>10. Conduct &amp; Obligations</h2>
+      <h3>10.1 All Members</h3>
       <p>All members agree not to:</p>
       <ul>
         <li>Use the Platform for any commercial transportation business.</li>
@@ -195,56 +227,69 @@
         <li>Contact other members for purposes unrelated to the trip.</li>
       </ul>
 
-      <h3>9.2 Drivers</h3>
+      <h3>10.2 Drivers</h3>
       <p>Drivers additionally agree to:</p>
       <ul>
         <li>Hold a valid driving licence and motor insurance that covers cost-sharing passengers.</li>
         <li>Never drive while under the influence of alcohol, drugs, or medication that impairs driving.</li>
         <li>Transport only the passengers listed in the booking.</li>
         <li>Comply with all Icelandic road traffic laws.</li>
+        <li>Be present at the agreed pickup point and depart no earlier than 15 minutes after the scheduled time.</li>
         <li>Inform passengers immediately of any significant delay or cancellation.</li>
       </ul>
 
-      <h3>9.3 Passengers</h3>
+      <h3>10.3 Passengers</h3>
       <p>Passengers additionally agree to:</p>
       <ul>
+        <li>Arrive at the pickup point on time and notify the driver promptly if they will be late.</li>
         <li>Not distract the driver during the journey.</li>
         <li>Leave the vehicle in the same condition as found.</li>
         <li>Respect the driver's stated preferences (luggage, pets, smoking).</li>
-        <li>Notify the driver promptly if they will be late to the pickup point.</li>
       </ul>
     </section>
 
-    <!-- 10 -->
-    <section id="s10" class="legal-section">
-      <h2>10. Reviews &amp; Ratings</h2>
-      <p>After each completed trip, both drivers and passengers are encouraged to leave a review. Reviews are:</p>
+    <!-- 11 (was 10) -->
+    <section id="s11" class="legal-section">
+      <h2>11. Reviews &amp; Ratings</h2>
+      <p>After each completed trip, both drivers and passengers are invited to leave a review. Reviews are:</p>
       <ul>
-        <li>Published after <strong>both parties have submitted</strong> a review, or after <strong>14 days</strong>, whichever comes first.</li>
         <li>Limited to honest, first-hand accounts of the trip experience.</li>
         <li>Moderated for compliance with our Content Policy.</li>
       </ul>
+
+      <h3>11.1 Automatic Ratings</h3>
+      <p>To ensure the reliability of the review system, SameFare applies the following automatic ratings 14 days after a trip departs:</p>
+      <ul>
+        <li><strong>Smooth ride — no review left:</strong> if neither party leaves a review within 14 days of departure, a <strong>5-star rating</strong> is automatically added for both driver and passenger. This reflects the default assumption that an uneventful trip was a positive experience.</li>
+        <li><strong>Late cancellation (repeat offence):</strong> if a passenger has previously cancelled a paid booking less than 24 hours before departure, a subsequent late cancellation results in an <strong>automatic 1-star rating</strong> added to their profile. A first late cancellation is treated as a grace offence.</li>
+        <li><strong>Passenger no-show (repeat offence):</strong> a second or subsequent no-show results in an <strong>automatic 1-star rating</strong> added to the passenger's profile (see section 9.1).</li>
+        <li><strong>Driver no-show:</strong> an <strong>automatic 1-star rating</strong> is immediately added to the driver's profile when a no-show is reported (see section 9.2). No grace period applies.</li>
+      </ul>
+      <p>Automatic ratings are labelled as such on public profiles. They can be overridden if the affected party contacts us with evidence that the automated classification was incorrect.</p>
+
+      <h3>11.2 Rating Consequences</h3>
       <p>Accounts that receive three or more reviews with an average rating of <strong>3 stars or below</strong> are subject to review and may be suspended. SameFare reserves the right to remove reviews that breach these Terms.</p>
     </section>
 
-    <!-- 11 -->
-    <section id="s11" class="legal-section">
-      <h2>11. Suspension &amp; Termination</h2>
+    <!-- 12 (was 11) -->
+    <section id="s12" class="legal-section">
+      <h2>12. Suspension &amp; Termination</h2>
       <p>SameFare may suspend or permanently close your account if you:</p>
       <ul>
         <li>Breach any provision of these Terms.</li>
         <li>Provide false or misleading information during registration or verification.</li>
         <li>Generate profit through the Platform in breach of section 7.1.</li>
-        <li>Receive a critically low average review rating (section 10).</li>
+        <li>Receive a critically low average review rating (section 11.2).</li>
+        <li>Repeatedly fail to appear for confirmed trips (sections 9.1 and 9.2).</li>
         <li>Are suspected of fraudulent activity.</li>
       </ul>
       <p>Where practicable, we will notify you before suspension so you may provide an explanation. You may appeal a suspension by contacting <a href="mailto:support@samefare.com">support@samefare.com</a>.</p>
       <p>You may close your account at any time by contacting us. Closure does not entitle you to refunds for confirmed bookings, nor does it affect SameFare's right to retain records as required by law.</p>
     </section>
 
-    <!-- 12 -->
-    <section id="s12" class="legal-section">
-      <h2>12. Liability &amp; Disclaimers</h2>
+    <!-- 13 (was 12) -->
+    <section id="s13" class="legal-section">
+      <h2>13. Liability &amp; Disclaimers</h2>
       <p>SameFare provides a marketplace platform only. To the maximum extent permitted by Icelandic law:</p>
       <ul>
         <li>We do not guarantee the accuracy of any member-provided information, including verified documents.</li>
@@ -255,23 +300,23 @@
       <p>Nothing in these Terms limits liability for death or personal injury caused by our own negligence, or for fraud or fraudulent misrepresentation.</p>
     </section>
 
-    <!-- 13 -->
-    <section id="s13" class="legal-section">
-      <h2>13. Intellectual Property</h2>
+    <!-- 14 (was 13) -->
+    <section id="s14" class="legal-section">
+      <h2>14. Intellectual Property</h2>
       <p>All platform content, design, code and trademarks are owned by or licensed to SameFare ehf. You may not reproduce, distribute or create derivative works from any platform content without prior written consent.</p>
       <p>By posting content on the Platform (trip descriptions, photos, reviews), you grant SameFare a non-exclusive, royalty-free, worldwide licence to use, reproduce and display that content solely for the purpose of operating and promoting the Platform.</p>
     </section>
 
-    <!-- 14 -->
-    <section id="s14" class="legal-section">
-      <h2>14. Governing Law</h2>
+    <!-- 15 (was 14) -->
+    <section id="s15" class="legal-section">
+      <h2>15. Governing Law</h2>
       <p>These Terms are governed by the laws of <strong>Iceland</strong>. Any disputes shall be subject to the exclusive jurisdiction of the Icelandic courts, without prejudice to your rights as a consumer under mandatory local law.</p>
       <p>For the European Union: online dispute resolution is available via the <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener">EC ODR platform</a>.</p>
     </section>
 
-    <!-- 15 -->
-    <section id="s15" class="legal-section">
-      <h2>15. Contact Us</h2>
+    <!-- 16 (was 15) -->
+    <section id="s16" class="legal-section">
+      <h2>16. Contact Us</h2>
       <p>For questions about these Terms, or to report a breach:</p>
       <address class="legal-address">
         SameFare ehf.<br>

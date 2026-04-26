@@ -260,6 +260,82 @@ def confirm_booking(
     return RedirectResponse("/my-trips?tab=rides", status_code=303)
 
 
+@router.post("/{booking_id}/no-show")
+def mark_passenger_no_show(
+    booking_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Driver marks a confirmed passenger as a no-show (only after departure)."""
+    booking = (
+        db.query(models.Booking)
+        .options(joinedload(models.Booking.trip), joinedload(models.Booking.payment))
+        .filter(models.Booking.id == booking_id)
+        .first()
+    )
+    if (not booking
+            or booking.trip.driver_id != current_user.id
+            or booking.status != models.BookingStatus.confirmed
+            or datetime.utcnow() < booking.trip.departure_datetime):
+        return RedirectResponse("/my-trips?tab=rides", status_code=303)
+
+    booking.status = models.BookingStatus.no_show
+    # Passenger forfeits their contribution — no refund issued
+    db.commit()
+    return RedirectResponse(f"/trips/{booking.trip_id}?no_show=1", status_code=303)
+
+
+@router.post("/{booking_id}/driver-no-show")
+def report_driver_no_show(
+    booking_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Passenger reports the driver as a no-show (only after departure). Issues full refund."""
+    booking = (
+        db.query(models.Booking)
+        .options(joinedload(models.Booking.trip), joinedload(models.Booking.payment))
+        .filter(models.Booking.id == booking_id)
+        .first()
+    )
+    if (not booking
+            or booking.passenger_id != current_user.id
+            or booking.status != models.BookingStatus.confirmed
+            or datetime.utcnow() < booking.trip.departure_datetime):
+        return RedirectResponse("/my-trips?tab=bookings", status_code=303)
+
+    # Flag the trip so the driver can be penalised by auto-ratings
+    booking.trip.driver_no_show = True
+    # Cancel the booking and issue a full refund
+    booking.status = models.BookingStatus.cancelled
+    if booking.payment:
+        booking.payment.refund_amount = booking.payment.passenger_total
+        booking.payment.status = models.PaymentStatus.refunded
+
+    # Issue an immediate 1-star auto-review for the driver (no grace period for no-shows)
+    existing_review = (
+        db.query(models.Review)
+        .filter(
+            models.Review.booking_id  == booking.id,
+            models.Review.review_type == models.ReviewType.passenger_to_driver,
+        )
+        .first()
+    )
+    if not existing_review:
+        db.add(models.Review(
+            booking_id  = booking.id,
+            trip_id     = booking.trip_id,
+            reviewer_id = current_user.id,
+            reviewee_id = booking.trip.driver_id,
+            review_type = models.ReviewType.passenger_to_driver,
+            rating      = 1,
+            is_auto     = True,
+        ))
+
+    db.commit()
+    return RedirectResponse("/my-trips?tab=bookings&driver_no_show=1", status_code=303)
+
+
 @router.post("/{booking_id}/reject")
 def reject_booking(
     booking_id: int,

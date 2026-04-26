@@ -42,6 +42,12 @@
     Back to rides
   </a>
 
+  {% if request.query_params.get('no_show') %}
+  <div class="alert alert--success" style="margin-bottom:1rem;">
+    ✓ Passenger marked as no-show.
+  </div>
+  {% endif %}
+
   {% if request.query_params.get('posted') and current_user and current_user.id == trip.driver_id %}
   <div class="return-trip-banner">
     <div class="return-trip-banner__left">
@@ -67,6 +73,11 @@
         {% if trip.status != 'active' %}
           <div class="trip-status-banner trip-status-banner--{{ trip.status }}">
             This trip has been {{ trip.status }}
+          </div>
+        {% endif %}
+        {% if trip.driver_no_show %}
+          <div class="trip-status-banner trip-status-banner--cancelled" style="margin-top:.5rem;">
+            ⚠ Driver did not appear — affected passengers have been fully refunded.
           </div>
         {% endif %}
 
@@ -185,6 +196,13 @@
                     </svg>
                     {{ booking.passenger.phone }}
                   </a>
+                {% endif %}
+                {% if booking.status == 'confirmed' and now >= trip.departure_datetime %}
+                  <form method="post" action="/bookings/{{ booking.id }}/no-show"
+                        style="display:inline; margin-left:auto;"
+                        onsubmit="return confirm('Mark {{ booking.passenger.full_name.split()[0] }} as a no-show? They will not receive a refund.')">
+                    <button type="submit" class="btn btn-xs btn-danger-outline">No-show</button>
+                  </form>
                 {% endif %}
                 {% if booking.status == 'completed' %}
                   {% set reviewed = namespace(done=false) %}
