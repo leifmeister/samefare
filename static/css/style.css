@@ -1824,12 +1824,29 @@ button, input, select, textarea { font: inherit; }
 }
 
 /* ── Chat page layout ──── */
+/* Lock the viewport to exactly the screen height when chat is open,
+   so the compose bar is always in-frame regardless of which banners
+   are showing. The header + any banners take their natural height;
+   page-main fills the remainder; chat-page fills page-main. */
+.page-wrapper:has(.chat-page) {
+  height: 100dvh;
+  overflow: hidden;
+}
+.page-wrapper:has(.chat-page) .page-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 .chat-page {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 64px);   /* subtract navbar height */
+  flex: 1;
+  min-height: 0;
   max-width: 720px;
   margin: 0 auto;
+  width: 100%;
 }
 
 .chat-header {
@@ -1977,7 +1994,7 @@ button, input, select, textarea { font: inherit; }
 .chat-form__send:active { transform: scale(.92); }
 
 @media (max-width: 640px) {
-  .chat-page { height: calc(100dvh - 60px); }
+  /* height is now handled by the flex-fill approach above; no hardcoded value needed */
   .chat-body { padding: var(--space-3); }
   .bubble { max-width: 88%; }
 }
