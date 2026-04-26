@@ -4,6 +4,7 @@
 
 {% block content %}
 <div class="container container--narrow" style="margin-top:2rem; margin-bottom:4rem;">
+
   {% if request.query_params.get('next') == 'book' and request.query_params.get('trip') %}
   <a href="/trips/{{ request.query_params.get('trip') }}" class="back-link">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
@@ -20,10 +21,11 @@
     Back to home
   </a>
   {% endif %}
+
   <div class="form-page">
     <div class="form-page__header">
-      <h1 class="form-page__title">Account verification</h1>
-      <p class="form-page__sub">SameFare requires all users to verify their identity before booking or offering rides.</p>
+      <h1 class="form-page__title">Verify your account</h1>
+      <p class="form-page__sub">We verify every member to keep the community safe.</p>
     </div>
 
     {% if error %}
@@ -33,76 +35,167 @@
       <div class="alert alert--success" role="alert">{{ success }}</div>
     {% endif %}
 
-    {% if request.query_params.get('next') == 'driver' %}
-      <div class="alert alert--info" role="alert" style="margin-bottom:1.5rem;">
-        To offer a ride you need an approved <strong>driver's licence</strong>. Please upload it below.
+    {# ── Determine states ─────────────────────────────────────────────────── #}
+    {% set id_ok      = current_user.id_verification      == 'approved' %}
+    {% set id_pending = current_user.id_verification      == 'pending'  %}
+    {% set id_bad     = current_user.id_verification      in ('unverified','rejected') %}
+    {% set lic_ok     = current_user.license_verification == 'approved' %}
+    {% set lic_pending= current_user.license_verification == 'pending'  %}
+    {% set lic_bad    = current_user.license_verification in ('unverified','rejected') %}
+    {% set id_via_lic = current_user.id_doc_type == 'license' %}
+    {% set is_driver  = current_user.role in ('driver','both') %}
+
+    {# ── ① Both fully verified ────────────────────────────────────────────── #}
+    {% if id_ok and (lic_ok or not is_driver) %}
+    <div class="verify-all-done">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+           width="40" height="40" style="color:#22c55e;" aria-hidden="true">
+        <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd"/>
+      </svg>
+      <div>
+        <p class="verify-all-done__title">You're fully verified</p>
+        <p class="verify-all-done__sub">
+          {% if id_via_lic %}
+            Your driver's licence covers both identity and driving verification.
+          {% elif is_driver %}
+            Identity and driver's licence both approved.
+          {% else %}
+            Your identity has been verified.
+          {% endif %}
+        </p>
       </div>
-    {% elif request.query_params.get('next') == 'book' %}
-      <div class="alert alert--info" role="alert" style="margin-bottom:1.5rem;">
-        To book a ride you need a verified <strong>ID</strong>. Please upload it below.
-      </div>
-    {% endif %}
-
-    <!-- ── Identity verification ── -->
-    <div class="verify-card
-      {% if current_user.id_verification == 'approved' %}verify-card--approved
-      {% elif current_user.id_verification == 'pending' %}verify-card--pending
-      {% elif current_user.id_verification == 'rejected' %}verify-card--rejected
-      {% endif %}">
-
-      <div class="verify-card__header">
-        <div class="verify-card__icon">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h2m4 0h2"/></svg>
-        </div>
-        <div>
-          <h2 class="verify-card__title">Government-issued ID</h2>
-          <p class="verify-card__sub">Passport, national ID, or driver's licence</p>
-        </div>
-        <span class="verify-status verify-status--{{ current_user.id_verification }}">
-          {% if current_user.id_verification == 'approved' %}✓ Verified
-          {% elif current_user.id_verification == 'pending' %}⏳ Under review
-          {% elif current_user.id_verification == 'rejected' %}✗ Rejected
-          {% else %}Not submitted{% endif %}
-        </span>
-      </div>
-
-      {% if current_user.id_verification == 'rejected' and current_user.id_rejection_reason %}
-        <p class="verify-card__reason">Reason: {{ current_user.id_rejection_reason }}</p>
-      {% endif %}
-
-      {% if current_user.id_verification in ('unverified', 'rejected') %}
-        <form method="post" action="/verify/identity" enctype="multipart/form-data" class="verify-card__form">
-          <div class="form-group">
-            <label class="label">Upload document <span class="required">*</span></label>
-            <input type="file" name="document" class="input input--file" accept=".jpg,.jpeg,.png,.pdf,.heic" required />
-            <p class="field-hint">JPG, PNG, PDF or HEIC — max 10 MB. Both sides if applicable.</p>
-          </div>
-          <button type="submit" class="btn btn-primary">Submit ID</button>
-        </form>
-      {% elif current_user.id_verification == 'pending' %}
-        <p class="verify-card__pending-msg">Your document is being reviewed. This usually takes less than 24 hours.</p>
-      {% endif %}
     </div>
 
-    <!-- ── Driver's licence ── -->
-    <div class="verify-card
-      {% if current_user.license_verification == 'approved' %}verify-card--approved
-      {% elif current_user.license_verification == 'pending' %}verify-card--pending
-      {% elif current_user.license_verification == 'rejected' %}verify-card--rejected
-      {% endif %}"
-      style="margin-top:1.5rem;">
+    {# ── ② Identity pending ───────────────────────────────────────────────── #}
+    {% elif id_pending %}
+    <div class="verify-card verify-card--pending">
+      <div class="verify-card__header">
+        <div class="verify-card__icon">⏳</div>
+        <div>
+          <h2 class="verify-card__title">Document under review</h2>
+          <p class="verify-card__sub">
+            {% if id_via_lic %}Your driver's licence covers both identity and driving verification.
+            {% else %}Your identity document is being checked.{% endif %}
+            This usually takes less than 24 hours.
+          </p>
+        </div>
+      </div>
+    </div>
 
+    {# ── ③ Identity not yet submitted / rejected ──────────────────────────── #}
+    {% elif id_bad %}
+    <div class="verify-card {% if current_user.id_verification == 'rejected' %}verify-card--rejected{% endif %}"
+         x-data="{ docType: '{{ current_user.id_doc_type or 'license' }}' }">
+
+      {% if current_user.id_verification == 'rejected' %}
+      <div class="verify-card__header" style="margin-bottom:.75rem;">
+        <div class="verify-card__icon">✗</div>
+        <div>
+          <h2 class="verify-card__title">Document rejected — please resubmit</h2>
+          {% if current_user.id_rejection_reason %}
+            <p class="verify-card__reason">{{ current_user.id_rejection_reason }}</p>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+      <div class="verify-card__header" style="margin-bottom:1rem;">
+        <div class="verify-card__icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" width="22" height="22"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h2"/></svg>
+        </div>
+        <div>
+          <h2 class="verify-card__title">Verify your identity</h2>
+          <p class="verify-card__sub">Choose which document you'd like to upload</p>
+        </div>
+      </div>
+      {% endif %}
+
+      {# ── Document type picker ─────────────────────────────────────────── #}
+      <div class="doc-type-picker">
+
+        <label class="doc-type-card" :class="{ 'doc-type-card--selected': docType === 'license' }">
+          <input type="radio" name="_doctype" value="license" x-model="docType" class="sr-only">
+          <div class="doc-type-card__icon">🪪</div>
+          <div class="doc-type-card__body">
+            <p class="doc-type-card__title">Driver's licence</p>
+            <p class="doc-type-card__desc">Verifies your identity <em>and</em> driving eligibility in one step</p>
+          </div>
+          <div class="doc-type-card__badge doc-type-card__badge--recommended">Recommended</div>
+        </label>
+
+        <label class="doc-type-card" :class="{ 'doc-type-card--selected': docType === 'passport' }">
+          <input type="radio" name="_doctype" value="passport" x-model="docType" class="sr-only">
+          <div class="doc-type-card__icon">🛂</div>
+          <div class="doc-type-card__body">
+            <p class="doc-type-card__title">Passport</p>
+            <p class="doc-type-card__desc">Identity only — driver's licence still required to offer rides</p>
+          </div>
+        </label>
+
+        <label class="doc-type-card" :class="{ 'doc-type-card--selected': docType === 'national_id' }">
+          <input type="radio" name="_doctype" value="national_id" x-model="docType" class="sr-only">
+          <div class="doc-type-card__icon">🪪</div>
+          <div class="doc-type-card__body">
+            <p class="doc-type-card__title">National ID card</p>
+            <p class="doc-type-card__desc">Identity only — driver's licence still required to offer rides</p>
+          </div>
+        </label>
+
+      </div>
+
+      {# ── Upload form ──────────────────────────────────────────────────── #}
+      <form method="post" action="/verify/identity" enctype="multipart/form-data" class="verify-card__form">
+        <input type="hidden" name="doc_type" :value="docType">
+        <div class="form-group">
+          <label class="label">
+            Upload document <span class="required">*</span>
+          </label>
+          <input type="file" name="document" class="input input--file"
+                 accept=".jpg,.jpeg,.png,.pdf,.heic" required>
+          <p class="field-hint">
+            JPG, PNG, PDF or HEIC — max 10 MB.
+            <span x-show="docType === 'license'">Front and back.</span>
+            <span x-show="docType !== 'license'">Photo page only.</span>
+          </p>
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <span x-show="docType === 'license'">Submit driver's licence</span>
+          <span x-show="docType === 'passport'">Submit passport</span>
+          <span x-show="docType === 'national_id'">Submit national ID</span>
+        </button>
+      </form>
+    </div>
+
+    {# ── ④ Identity approved via non-licence; driver needs licence ────────── #}
+    {% elif id_ok and is_driver and not lic_ok %}
+    <div class="verify-card verify-card--approved" style="margin-bottom:1.5rem;">
+      <div class="verify-card__header">
+        <div class="verify-card__icon">✓</div>
+        <div>
+          <h2 class="verify-card__title">Identity verified</h2>
+          <p class="verify-card__sub">
+            You can now book rides. To offer rides, add your driver's licence below.
+          </p>
+        </div>
+        <span class="verify-status verify-status--approved">✓ Verified</span>
+      </div>
+    </div>
+
+    <div class="verify-card
+      {% if lic_pending %}verify-card--pending
+      {% elif current_user.license_verification == 'rejected' %}verify-card--rejected
+      {% endif %}">
       <div class="verify-card__header">
         <div class="verify-card__icon">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 2a7 7 0 017 7c0 5-7 13-7 13S5 14 5 9a7 7 0 017-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" width="22" height="22"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M3 12h18M7 17h2m4 0h2"/><path d="M7 7V5a2 2 0 014 0v2"/></svg>
         </div>
         <div>
           <h2 class="verify-card__title">Driver's licence</h2>
-          <p class="verify-card__sub">Required to offer rides</p>
+          <p class="verify-card__sub">Required to offer rides on SameFare</p>
         </div>
         <span class="verify-status verify-status--{{ current_user.license_verification }}">
-          {% if current_user.license_verification == 'approved' %}✓ Verified
-          {% elif current_user.license_verification == 'pending' %}⏳ Under review
+          {% if lic_pending %}⏳ Under review
           {% elif current_user.license_verification == 'rejected' %}✗ Rejected
           {% else %}Not submitted{% endif %}
         </span>
@@ -112,25 +205,27 @@
         <p class="verify-card__reason">Reason: {{ current_user.license_rejection_reason }}</p>
       {% endif %}
 
-      {% if current_user.license_verification in ('unverified', 'rejected') %}
+      {% if lic_pending %}
+        <p class="verify-card__pending-msg">Your licence is being reviewed — usually under 24 hours.</p>
+      {% elif lic_bad %}
         <form method="post" action="/verify/license" enctype="multipart/form-data" class="verify-card__form">
           <div class="form-group">
             <label class="label">Upload driver's licence <span class="required">*</span></label>
-            <input type="file" name="document" class="input input--file" accept=".jpg,.jpeg,.png,.pdf,.heic" required />
+            <input type="file" name="document" class="input input--file"
+                   accept=".jpg,.jpeg,.png,.pdf,.heic" required>
             <p class="field-hint">JPG, PNG, PDF or HEIC — max 10 MB. Front and back.</p>
           </div>
-          <button type="submit" class="btn btn-primary">Submit licence</button>
+          <button type="submit" class="btn btn-primary">Submit driver's licence</button>
         </form>
-      {% elif current_user.license_verification == 'pending' %}
-        <p class="verify-card__pending-msg">Your licence is being reviewed. This usually takes less than 24 hours.</p>
       {% endif %}
     </div>
+    {% endif %}
 
     <div class="policy-box" style="margin-top:2rem;">
       <p class="policy-box__title">Why do we verify?</p>
       <ul class="policy-box__list">
         <li>It keeps the community safe and builds trust between drivers and passengers.</li>
-        <li>Documents are reviewed manually and never shared with other users.</li>
+        <li>Documents are reviewed manually by our team and never shared with other users.</li>
         <li>Once approved, you won't need to resubmit unless your documents expire.</li>
       </ul>
     </div>

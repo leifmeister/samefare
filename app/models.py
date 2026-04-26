@@ -116,6 +116,7 @@ class User(Base):
     license_verification     = Column(Enum(VerificationStatus), nullable=False,
                                       default=VerificationStatus.unverified)
     id_doc_filename          = Column(String(255))
+    id_doc_type              = Column(String(20))   # 'license', 'passport', 'national_id'
     license_doc_filename     = Column(String(255))
     id_rejection_reason      = Column(Text)
     license_rejection_reason = Column(Text)

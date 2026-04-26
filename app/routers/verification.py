@@ -62,14 +62,24 @@ def verify_page(
 
 @router.post("/verify/identity", response_class=HTMLResponse)
 def upload_identity(
-    request: Request,
-    ctx: dict = Depends(get_template_context),
+    request:  Request,
+    ctx:      dict         = Depends(get_template_context),
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-    document: UploadFile = File(...),
+    db:       Session      = Depends(get_db),
+    doc_type: str          = Form("passport"),   # 'license' | 'passport' | 'national_id'
+    document: UploadFile   = File(...),
 ):
+    """
+    Single upload handler for all identity document types.
+    A driver's licence satisfies both identity and driving verification.
+    A passport or national ID satisfies identity only.
+    """
     if current_user.id_verification == models.VerificationStatus.approved:
-        return RedirectResponse("/verify", status_code=303)
+        # Already identity-verified; if they're now adding a standalone licence, redirect
+        if doc_type == "license" and current_user.license_verification != models.VerificationStatus.approved:
+            pass  # fall through to handle licence upload
+        else:
+            return RedirectResponse("/verify", status_code=303)
 
     try:
         filename = _save_upload(document)
@@ -78,19 +88,37 @@ def upload_identity(
             **ctx, "error": str(e), "success": None,
         }, status_code=400)
 
+    is_licence = doc_type == "license"
+    approved   = models.VerificationStatus.approved
+    pending    = models.VerificationStatus.pending
+
+    # ── Identity side ────────────────────────────────────────────────────────
     current_user.id_doc_filename     = filename
+    current_user.id_doc_type         = doc_type
     current_user.id_rejection_reason = None
-    if settings.beta_mode:
-        current_user.id_verification = models.VerificationStatus.approved
-        success_msg = "ID document submitted and automatically approved (beta mode)."
-    else:
-        current_user.id_verification = models.VerificationStatus.pending
-        success_msg = "ID document submitted — we'll review it shortly."
+    current_user.id_verification     = approved if settings.beta_mode else pending
+
+    # ── Driving side — only when a licence is submitted ───────────────────
+    if is_licence:
+        current_user.license_doc_filename     = filename   # same physical file
+        current_user.license_rejection_reason = None
+        current_user.license_verification     = approved if settings.beta_mode else pending
+
     db.commit()
+
+    if settings.beta_mode:
+        if is_licence:
+            success_msg = "Driver's licence approved — identity and driving both verified (beta mode)."
+        else:
+            success_msg = "Document approved — identity verified (beta mode)."
+    else:
+        if is_licence:
+            success_msg = "Driver's licence submitted — we'll verify your identity and driving eligibility shortly."
+        else:
+            success_msg = "Document submitted — we'll review your identity shortly."
+
     return templates.TemplateResponse("verification/index.html", {
-        **ctx,
-        "error":   None,
-        "success": success_msg,
+        **ctx, "error": None, "success": success_msg,
     })
 
 
@@ -102,6 +130,10 @@ def upload_license(
     db: Session = Depends(get_db),
     document: UploadFile = File(...),
 ):
+    """
+    Standalone licence upload — only shown to users whose identity is already
+    verified via passport/national ID but who still need driving verification.
+    """
     if current_user.license_verification == models.VerificationStatus.approved:
         return RedirectResponse("/verify", status_code=303)
 
@@ -112,19 +144,17 @@ def upload_license(
             **ctx, "error": str(e), "success": None,
         }, status_code=400)
 
-    current_user.license_doc_filename      = filename
-    current_user.license_rejection_reason  = None
+    current_user.license_doc_filename     = filename
+    current_user.license_rejection_reason = None
     if settings.beta_mode:
         current_user.license_verification = models.VerificationStatus.approved
-        success_msg = "Driver's licence submitted and automatically approved (beta mode)."
+        success_msg = "Driver's licence approved (beta mode)."
     else:
         current_user.license_verification = models.VerificationStatus.pending
         success_msg = "Driver's licence submitted — we'll review it shortly."
     db.commit()
     return templates.TemplateResponse("verification/index.html", {
-        **ctx,
-        "error":   None,
-        "success": success_msg,
+        **ctx, "error": None, "success": success_msg,
     })
 
 
@@ -228,8 +258,12 @@ def approve_id(
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user:
-        user.id_verification      = models.VerificationStatus.approved
-        user.id_rejection_reason  = None
+        user.id_verification     = models.VerificationStatus.approved
+        user.id_rejection_reason = None
+        # If a driver's licence was used for identity, it also covers driving
+        if user.id_doc_type == "license":
+            user.license_verification     = models.VerificationStatus.approved
+            user.license_rejection_reason = None
         db.commit()
     return RedirectResponse("/admin/verifications", status_code=303)
 
@@ -243,9 +277,14 @@ def reject_id(
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user:
-        user.id_verification      = models.VerificationStatus.rejected
-        user.id_rejection_reason  = reason or "Document could not be verified."
-        user.id_doc_filename      = None
+        user.id_verification     = models.VerificationStatus.rejected
+        user.id_rejection_reason = reason or "Document could not be verified."
+        user.id_doc_filename     = None
+        # If this was a dual-use licence, reset the driving status too
+        if user.id_doc_type == "license":
+            user.license_verification     = models.VerificationStatus.rejected
+            user.license_rejection_reason = reason or "Document could not be verified."
+            user.license_doc_filename     = None
         db.commit()
     return RedirectResponse("/admin/verifications", status_code=303)
 

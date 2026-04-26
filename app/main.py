@@ -58,6 +58,7 @@ _MIGRATIONS = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS id_verification      verificationstatus NOT NULL DEFAULT 'unverified'",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS license_verification verificationstatus NOT NULL DEFAULT 'unverified'",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS id_doc_filename      VARCHAR(255)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS id_doc_type          VARCHAR(20)",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS license_doc_filename VARCHAR(255)",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS id_rejection_reason      TEXT",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS license_rejection_reason TEXT",

@@ -1670,6 +1670,76 @@ button, input, select, textarea { font: inherit; }
 
 /* ── Verification ────────────────────────────────────────────── */
 
+/* ── Verify all-done ──────────────────────────────────────────── */
+.verify-all-done {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: var(--r-lg);
+  padding: 1.5rem;
+}
+.verify-all-done__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #166534;
+  margin: 0 0 .2rem;
+}
+.verify-all-done__sub {
+  color: #15803d;
+  font-size: .9rem;
+  margin: 0;
+}
+
+/* ── Document type picker ─────────────────────────────────────── */
+.doc-type-picker {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  margin-bottom: 1.25rem;
+}
+.doc-type-card {
+  display: flex;
+  align-items: center;
+  gap: .85rem;
+  border: 2px solid var(--c-border);
+  border-radius: var(--r-md);
+  padding: .85rem 1rem;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  position: relative;
+}
+.doc-type-card:hover { border-color: var(--c-primary); }
+.doc-type-card--selected {
+  border-color: var(--c-primary);
+  background: #eff6ff;
+}
+.doc-type-card__icon { font-size: 1.4rem; flex-shrink: 0; }
+.doc-type-card__body { flex: 1; min-width: 0; }
+.doc-type-card__title {
+  font-weight: 600;
+  font-size: .95rem;
+  margin: 0 0 .1rem;
+}
+.doc-type-card__desc {
+  font-size: .82rem;
+  color: var(--c-text-muted);
+  margin: 0;
+}
+.doc-type-card__badge {
+  font-size: .72rem;
+  font-weight: 700;
+  padding: .2rem .5rem;
+  border-radius: 99px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.doc-type-card__badge--recommended {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
 .verify-card {
   border: 1px solid var(--c-border);
   border-radius: var(--r-lg);
