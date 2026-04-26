@@ -1,0 +1,66 @@
+{#
+  Profile completion card.
+  Expects `completion` dict from profile_completion() helper.
+  Pass `compact=true` for the slim my-trips banner variant.
+#}
+{% macro completion_card(completion, compact=false) %}
+{% if not completion.is_complete %}
+
+{% if compact %}
+{# ── Slim banner for my-trips ─────────────────────────────── #}
+<div class="completion-banner">
+  <div class="completion-banner__left">
+    <div class="completion-banner__bar-wrap">
+      <div class="completion-banner__bar" style="width:{{ completion.percent }}%"></div>
+    </div>
+    <span class="completion-banner__label">
+      Profile {{ completion.percent }}% complete
+    </span>
+  </div>
+  <a href="/profile" class="completion-banner__link">
+    Finish your profile →
+  </a>
+</div>
+
+{% else %}
+{# ── Full card for profile page ────────────────────────────── #}
+<div class="completion-card">
+  <div class="completion-card__header">
+    <div>
+      <h3 class="completion-card__title">Complete your profile</h3>
+      <p class="completion-card__sub">{{ completion.completed }} of {{ completion.total }} steps done</p>
+    </div>
+    <div class="completion-card__percent">{{ completion.percent }}%</div>
+  </div>
+
+  <div class="completion-card__bar-wrap">
+    <div class="completion-card__bar" style="width:{{ completion.percent }}%"></div>
+  </div>
+
+  <ul class="completion-card__steps">
+    {% for step in completion.steps %}
+    <li class="completion-card__step {% if step.done %}completion-card__step--done{% endif %}">
+      {% if step.done %}
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+             width="16" height="16" class="completion-card__icon completion-card__icon--done" aria-hidden="true">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/>
+        </svg>
+      {% else %}
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+             width="16" height="16" class="completion-card__icon completion-card__icon--todo" aria-hidden="true">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd"/>
+        </svg>
+      {% endif %}
+      {% if not step.done %}
+        <a href="{{ step.url }}" class="completion-card__step-label">{{ step.label }}</a>
+      {% else %}
+        <span class="completion-card__step-label">{{ step.label }}</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% endif %}
+{% endmacro %}

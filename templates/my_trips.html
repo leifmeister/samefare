@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "partials/avatar.html" import avatar %}
+{% from "partials/profile_completion.html" import completion_card %}
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
 {% block title %}My trips — SameFare{% endblock %}
 
@@ -102,6 +103,9 @@
 {% endmacro %}
 
 {% block content %}
+<div class="container" style="margin-top:1.25rem;">
+  {{ completion_card(completion, compact=true) }}
+</div>
 <div class="container" style="margin-top:2rem; margin-bottom:4rem;"
      x-data="{ tab: '{{ tab }}' }">
 

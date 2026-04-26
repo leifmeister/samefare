@@ -15,6 +15,57 @@ templates = Jinja2Templates(directory="templates")
 router = APIRouter(tags=["users"])
 
 
+def profile_completion(user: models.User) -> dict:
+    """
+    Return a completion summary for the given user.
+    Each step is a dict: {key, label, done, url}.
+    """
+    is_driver = user.role in (models.UserRole.driver, models.UserRole.both)
+    steps = [
+        {
+            "key":   "photo",
+            "label": "Add a profile photo",
+            "done":  bool(user.avatar_url),
+            "url":   "/profile",
+        },
+        {
+            "key":   "phone",
+            "label": "Add your phone number",
+            "done":  bool(user.phone),
+            "url":   "/profile",
+        },
+        {
+            "key":   "bio",
+            "label": "Write a short bio",
+            "done":  bool(user.bio),
+            "url":   "/profile",
+        },
+        {
+            "key":   "identity",
+            "label": "Verify your identity",
+            "done":  user.id_verification == models.VerificationStatus.approved,
+            "url":   "/verify",
+        },
+    ]
+    if is_driver:
+        steps.append({
+            "key":   "licence",
+            "label": "Verify your driver's licence",
+            "done":  user.license_verification == models.VerificationStatus.approved,
+            "url":   "/verify",
+        })
+
+    completed = sum(1 for s in steps if s["done"])
+    total     = len(steps)
+    return {
+        "steps":     steps,
+        "completed": completed,
+        "total":     total,
+        "percent":   round(completed / total * 100),
+        "is_complete": completed == total,
+    }
+
+
 @router.get("/users/{user_id}", response_class=HTMLResponse)
 def public_profile(
     user_id: int,
@@ -117,6 +168,7 @@ def my_trips_page(
         "past_rides":        past_rides,
         "pending_bookings":  pending_bookings,
         "tab":               tab,
+        "completion":        profile_completion(current_user),
     })
 
 
@@ -127,7 +179,10 @@ def profile(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return templates.TemplateResponse("profile.html", {**ctx})
+    return templates.TemplateResponse("profile.html", {
+        **ctx,
+        "completion": profile_completion(current_user),
+    })
 
 
 @router.post("/profile/edit", response_class=HTMLResponse)

@@ -1181,6 +1181,116 @@ button, input, select, textarea { font: inherit; }
   gap: var(--space-8);
   align-items: start;
 }
+/* ── Profile completion ──────────────────────────────────────── */
+.completion-card {
+  background: #fff;
+  border: 1px solid var(--c-border-light);
+  border-radius: var(--r-lg);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+.completion-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: .75rem;
+}
+.completion-card__title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 .15rem;
+}
+.completion-card__sub {
+  font-size: .85rem;
+  color: var(--c-text-muted);
+  margin: 0;
+}
+.completion-card__percent {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--c-primary);
+  line-height: 1;
+}
+.completion-card__bar-wrap {
+  height: 6px;
+  background: var(--c-border-light);
+  border-radius: 99px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+.completion-card__bar {
+  height: 100%;
+  background: var(--c-primary);
+  border-radius: 99px;
+  transition: width .4s ease;
+}
+.completion-card__steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.completion-card__step {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .9rem;
+}
+.completion-card__step--done { color: var(--c-text-muted); }
+.completion-card__icon--done { color: #22c55e; flex-shrink: 0; }
+.completion-card__icon--todo { color: var(--c-border); flex-shrink: 0; }
+.completion-card__step-label { color: inherit; }
+.completion-card__step:not(.completion-card__step--done) .completion-card__step-label {
+  color: var(--c-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── Completion slim banner (my-trips) ───────────────────────── */
+.completion-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--r-md);
+  padding: .65rem 1rem;
+  flex-wrap: wrap;
+}
+.completion-banner__left {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex: 1 1 200px;
+}
+.completion-banner__bar-wrap {
+  width: 80px;
+  height: 5px;
+  background: #bfdbfe;
+  border-radius: 99px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.completion-banner__bar {
+  height: 100%;
+  background: var(--c-primary);
+  border-radius: 99px;
+}
+.completion-banner__label {
+  font-size: .85rem;
+  color: #1d4ed8;
+  font-weight: 500;
+}
+.completion-banner__link {
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--c-primary);
+  white-space: nowrap;
+}
+
 .profile-card {
   background: var(--c-surface); border-radius: var(--r-lg); padding: var(--space-8);
   box-shadow: var(--shadow-md); border: 1px solid var(--c-border-light);
