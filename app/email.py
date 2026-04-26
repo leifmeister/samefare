@@ -20,6 +20,9 @@ log = logging.getLogger(__name__)
 def _send(to: str, subject: str, html: str) -> None:
     """Send a single HTML email via Resend REST API. Silently logs on failure."""
     s = get_settings()
+    if s.beta_mode:
+        log.debug("Beta mode — suppressing email to %s: %s", to, subject)
+        return
     if not s.resend_api_key:
         log.debug("Resend not configured — skipping email to %s: %s", to, subject)
         return
