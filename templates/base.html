@@ -45,7 +45,7 @@
             <a href="/trips">Find a ride</a>
             <a href="{% if current_user %}/trips/new{% else %}/offer-ride{% endif %}" class="nav-highlight">Offer a ride</a>
             {% if current_user %}
-              <a href="/bookings">My trips</a>
+              <a href="/my-trips">My trips</a>
               <a href="/messages" class="nav-messages-link">
                 Messages
                 {% if unread_message_count %}
@@ -101,7 +101,7 @@
       <a href="/trips">Find a ride</a>
       {% if current_user %}
         <a href="/trips/new">Offer a ride</a>
-        <a href="/bookings">My trips</a>
+        <a href="/my-trips">My trips</a>
         <a href="/messages">
           Messages
           {% if unread_message_count %}

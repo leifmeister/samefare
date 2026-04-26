@@ -135,91 +135,13 @@
         </form>
       </details>
 
-      <!-- My trips as driver -->
-      <section class="profile-section">
-        <div class="profile-section__header">
-          <h2 class="profile-section__title">My rides as driver</h2>
-          <a href="/trips/new" class="btn btn-outline btn-sm">+ New ride</a>
-        </div>
-
-        {% if not my_trips %}
-          <p class="text-muted" style="padding:1rem 0;">You haven't posted any rides yet.</p>
-        {% else %}
-          <div class="trip-table">
-            {% for trip in my_trips %}
-            <div class="trip-table__row trip-table__row--{{ trip.status }}">
-              <div class="trip-table__route">
-                <strong>{{ trip.origin }}</strong> → <strong>{{ trip.destination }}</strong>
-                <span class="status-badge status-badge--{{ trip.status }}">{{ trip.status }}</span>
-              </div>
-              <div class="trip-table__meta">
-                <span>{{ trip.departure_datetime.strftime("%a %-d %b %Y, %H:%M") }}</span>
-                <span>{{ trip.seats_available }}/{{ trip.seats_total }} seats left</span>
-                <span>{{ "{:,}".format(trip.price_per_seat) }} ISK/seat</span>
-              </div>
-              <div class="trip-table__actions">
-                <a href="/trips/{{ trip.id }}" class="btn btn-ghost btn-sm">View</a>
-                {% if trip.status == 'active' %}
-                  <form method="post" action="/trips/{{ trip.id }}/cancel"
-                        onsubmit="return confirm('Cancel this trip?')" style="display:inline">
-                    <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">Cancel</button>
-                  </form>
-                {% endif %}
-              </div>
-            </div>
-            {% endfor %}
-          </div>
-        {% endif %}
-      </section>
+      <div style="padding:1rem 0;">
+        <a href="/my-trips" class="btn btn-outline">View my trips &amp; bookings →</a>
+      </div>
 
     </div>
 
-    <!-- Right: pending bookings to action -->
-    <aside class="profile-sidebar">
-      <div class="inbox-card">
-        <h2 class="inbox-card__title">
-          Ride requests
-          {% if pending_bookings %}
-            <span class="inbox-badge">{{ pending_bookings|length }}</span>
-          {% endif %}
-        </h2>
-
-        {% if not pending_bookings %}
-          <p class="text-muted" style="font-size:.875rem;">No pending requests right now.</p>
-        {% else %}
-          {% for booking in pending_bookings %}
-          <div class="request-card">
-            <div class="request-card__header">
-              {{ avatar(booking.passenger, cls="avatar--sm") }}
-              <div>
-                <p class="request-card__name">{{ booking.passenger.full_name }}</p>
-                <p class="request-card__route">
-                  {{ booking.trip.origin }} → {{ booking.trip.destination }}
-                  · {{ booking.trip.departure_datetime.strftime("%-d %b, %H:%M") }}
-                </p>
-              </div>
-            </div>
-            <p class="request-card__seats">
-              Requesting <strong>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }}</strong>
-              — {{ "{:,}".format(booking.total_price) }} ISK total
-            </p>
-            {% if booking.message %}
-              <p class="request-card__message">"{{ booking.message }}"</p>
-            {% endif %}
-            <div class="request-card__actions">
-              <form method="post" action="/bookings/{{ booking.id }}/confirm" style="display:inline">
-                <button type="submit" class="btn btn-primary btn-sm">Accept</button>
-              </form>
-              <form method="post" action="/bookings/{{ booking.id }}/reject" style="display:inline">
-                <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">Decline</button>
-              </form>
-              <a href="/messages/{{ booking.id }}" class="btn btn-ghost btn-sm">Message</a>
-            </div>
-          </div>
-          {% endfor %}
-        {% endif %}
-      </div>
-    </aside>
+    <aside class="profile-sidebar"></aside>
 
   </div>
 </div>

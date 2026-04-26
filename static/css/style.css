@@ -2280,3 +2280,40 @@ button, input, select, textarea { font: inherit; }
   font-size: .8rem;
   color: var(--muted);
 }
+
+/* ── Tab bar ───────────────────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+}
+.tab-bar__tab {
+  background: none;
+  border: none;
+  padding: .75rem 1.5rem;
+  font-size: .9375rem;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  transition: color .15s;
+}
+.tab-bar__tab:hover { color: var(--text); }
+.tab-bar__tab--active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+.tab-badge {
+  background: var(--primary);
+  color: #fff;
+  font-size: .7rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: .1rem .45rem;
+  line-height: 1.4;
+}
+.tab-badge--alert { background: #EF4444; }

@@ -64,6 +64,46 @@ def public_profile(
     })
 
 
+@router.get("/my-trips", response_class=HTMLResponse)
+def my_trips_page(
+    request: Request,
+    ctx: dict = Depends(get_template_context),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    # ── Passenger: all bookings ───────────────────────────────────────────────
+    my_bookings = (
+        db.query(models.Booking)
+        .filter(models.Booking.passenger_id == current_user.id)
+        .order_by(models.Booking.created_at.desc())
+        .all()
+    )
+
+    # ── Driver: all trips + pending requests ──────────────────────────────────
+    my_rides = (
+        db.query(models.Trip)
+        .filter(models.Trip.driver_id == current_user.id)
+        .order_by(models.Trip.departure_datetime.desc())
+        .all()
+    )
+    pending_bookings = [
+        b for trip in my_rides
+        for b in trip.bookings
+        if b.status == models.BookingStatus.pending
+    ]
+
+    # Which tab to open: default to rides if driver has trips, else bookings
+    tab = request.query_params.get("tab", "bookings" if my_bookings else "rides")
+
+    return templates.TemplateResponse("my_trips.html", {
+        **ctx,
+        "my_bookings":     my_bookings,
+        "my_rides":        my_rides,
+        "pending_bookings": pending_bookings,
+        "tab":             tab,
+    })
+
+
 @router.get("/profile", response_class=HTMLResponse)
 def profile(
     request: Request,
@@ -71,26 +111,7 @@ def profile(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # Trips the current user is driving
-    my_trips = (
-        db.query(models.Trip)
-        .filter(models.Trip.driver_id == current_user.id)
-        .order_by(models.Trip.departure_datetime.desc())
-        .all()
-    )
-
-    # Pending bookings on the driver's trips (requests to accept/reject)
-    pending_bookings = []
-    for trip in my_trips:
-        for b in trip.bookings:
-            if b.status == models.BookingStatus.pending:
-                pending_bookings.append(b)
-
-    return templates.TemplateResponse("profile.html", {
-        **ctx,
-        "my_trips": my_trips,
-        "pending_bookings": pending_bookings,
-    })
+    return templates.TemplateResponse("profile.html", {**ctx})
 
 
 @router.post("/profile/edit", response_class=HTMLResponse)

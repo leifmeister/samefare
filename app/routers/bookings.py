@@ -17,19 +17,11 @@ router = APIRouter(prefix="/bookings", tags=["bookings"])
 
 
 @router.get("", response_class=HTMLResponse)
-def my_bookings(
-    request: Request,
-    ctx: dict = Depends(get_template_context),
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    bookings = (
-        db.query(models.Booking)
-        .filter(models.Booking.passenger_id == current_user.id)
-        .order_by(models.Booking.created_at.desc())
-        .all()
-    )
-    return templates.TemplateResponse("bookings/list.html", {**ctx, "bookings": bookings})
+def my_bookings(request: Request):
+    # Consolidated into /my-trips
+    params = request.query_params
+    qs = f"?tab=bookings{'&' + str(params) if params else ''}"
+    return RedirectResponse(f"/my-trips{qs}", status_code=301)
 
 
 @router.get("/trip/{trip_id}", response_class=HTMLResponse)
