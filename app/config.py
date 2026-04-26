@@ -14,13 +14,10 @@ class Settings(BaseSettings):
     # Beta mode — bypasses payment and auto-approves verifications
     beta_mode: bool = False
 
-    # Email / SMTP  (Gmail App Password)
-    smtp_host:     str = "smtp.gmail.com"
-    smtp_port:     int = 587
-    smtp_user:     str = ""          # samefare@samefare.com
-    smtp_password: str = ""          # Gmail App Password
-    smtp_from:     str = "SameFare <samefare@samefare.com>"
-    base_url:      str = "https://samefare.com"
+    # Email via Resend (https://resend.com)
+    resend_api_key: str = ""         # re_...
+    email_from:     str = "SameFare <noreply@samefare.com>"
+    base_url:       str = "https://samefare.com"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

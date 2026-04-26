@@ -1,14 +1,12 @@
 """
-Transactional email via Gmail SMTP.
+Transactional email via Resend (https://resend.com).
 
 All public functions are fire-and-forget: they catch every exception so a
 mail failure never breaks the booking/payment flow.
 """
 
-import smtplib
 import logging
-from email.mime.multipart import MIMEMultipart
-from email.mime.text      import MIMEText
+import resend
 
 from app.config import get_settings
 
@@ -18,24 +16,20 @@ log = logging.getLogger(__name__)
 # ── Low-level sender ──────────────────────────────────────────────────────────
 
 def _send(to: str, subject: str, html: str) -> None:
-    """Send a single HTML email.  Silently logs on failure."""
+    """Send a single HTML email via Resend. Silently logs on failure."""
     s = get_settings()
-    if not s.smtp_user or not s.smtp_password:
-        log.debug("SMTP not configured — skipping email to %s: %s", to, subject)
+    if not s.resend_api_key:
+        log.debug("Resend not configured — skipping email to %s: %s", to, subject)
         return
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"]    = s.smtp_from
-    msg["To"]      = to
-    msg.attach(MIMEText(html, "html", "utf-8"))
-
+    resend.api_key = s.resend_api_key
     try:
-        with smtplib.SMTP(s.smtp_host, s.smtp_port, timeout=10) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(s.smtp_user, s.smtp_password)
-            server.sendmail(s.smtp_user, to, msg.as_string())
+        resend.Emails.send({
+            "from":    s.email_from,
+            "to":      [to],
+            "subject": subject,
+            "html":    html,
+        })
         log.info("Email sent → %s  [%s]", to, subject)
     except Exception as exc:
         log.warning("Email failed → %s  [%s]: %s", to, subject, exc)
@@ -79,7 +73,7 @@ def _wrap(body: str) -> str:
             <p style="margin:0;font-size:.75rem;color:#64748B;line-height:1.6;">
               You're receiving this because you have an account on
               <a href="{s.base_url}" style="color:#006C5B;">{s.base_url.replace('https://','')}</a>.
-              Questions? Reply to this email or contact
+              Questions? Contact
               <a href="mailto:support@samefare.com" style="color:#006C5B;">support@samefare.com</a>.
             </p>
           </td>
@@ -120,7 +114,6 @@ def _divider() -> str:
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def booking_request_to_driver(booking) -> None:
-    """Notify driver that a passenger has requested a seat (manual-approval trip)."""
     s    = get_settings()
     trip = booking.trip
     pax  = booking.passenger
@@ -135,14 +128,13 @@ def booking_request_to_driver(booking) -> None:
         (f'<p style="margin:12px 0 0;font-size:.875rem;font-style:italic;color:#475569;">'
          f'"{booking.message}"</p>' if booking.message else '') +
         _divider() +
-        _p("Review and accept or decline this request on your profile.") +
-        _btn("Review request", f"{s.base_url}/profile")
+        _p("Review and accept or decline this request on your trips page.") +
+        _btn("Review request", f"{s.base_url}/my-trips?tab=rides")
     )
     _send(trip.driver.email, f"New booking request — {trip.origin} → {trip.destination}", _wrap(body))
 
 
 def booking_confirmed_to_driver(booking) -> None:
-    """Notify driver that a seat has been confirmed (instant-book payment received)."""
     s    = get_settings()
     trip = booking.trip
     pax  = booking.passenger
@@ -161,7 +153,6 @@ def booking_confirmed_to_driver(booking) -> None:
 
 
 def booking_confirmed_to_passenger(booking) -> None:
-    """Confirm payment to the passenger."""
     s    = get_settings()
     trip = booking.trip
     body = (
@@ -176,13 +167,12 @@ def booking_confirmed_to_passenger(booking) -> None:
         _divider() +
         _p(f"Driver: <strong>{trip.driver.full_name}</strong>") +
         _p(f"Total paid: <strong>{booking.total_price:,} ISK</strong>") +
-        _btn("View my booking", f"{s.base_url}/bookings")
+        _btn("View my booking", f"{s.base_url}/my-trips?tab=bookings")
     )
     _send(booking.passenger.email, f"Booking confirmed — {trip.origin} → {trip.destination}", _wrap(body))
 
 
 def booking_approved_to_passenger(booking) -> None:
-    """Tell passenger their request was approved and they need to pay."""
     s    = get_settings()
     trip = booking.trip
     body = (
@@ -201,7 +191,6 @@ def booking_approved_to_passenger(booking) -> None:
 
 
 def booking_cancelled_to_driver(booking) -> None:
-    """Notify driver that a passenger has cancelled."""
     s    = get_settings()
     trip = booking.trip
     pax  = booking.passenger
@@ -218,7 +207,6 @@ def booking_cancelled_to_driver(booking) -> None:
 
 
 def booking_cancelled_to_passenger(booking) -> None:
-    """Confirm to a passenger that their cancellation went through, with refund info."""
     s    = get_settings()
     trip = booking.trip
     refund = booking.payment.refund_amount if booking.payment else 0
@@ -242,7 +230,6 @@ def booking_cancelled_to_passenger(booking) -> None:
 
 
 def trip_cancelled_to_passenger(booking) -> None:
-    """Notify a passenger that the driver has cancelled the whole trip."""
     s    = get_settings()
     trip = booking.trip
     body = (
@@ -260,7 +247,6 @@ def trip_cancelled_to_passenger(booking) -> None:
 
 
 def new_message_to_recipient(message, recipient) -> None:
-    """One-time nudge when you receive your first unread message in a thread."""
     s       = get_settings()
     booking = message.booking
     trip    = booking.trip
@@ -278,7 +264,6 @@ def new_message_to_recipient(message, recipient) -> None:
 
 
 def password_reset(user, token: str) -> None:
-    """Send a password reset link."""
     s    = get_settings()
     url  = f"{s.base_url}/reset-password?token={token}"
     body = (
