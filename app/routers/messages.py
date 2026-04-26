@@ -11,6 +11,50 @@ from app.dependencies import get_current_user, get_template_context
 templates = Jinja2Templates(directory="templates")
 router    = APIRouter(prefix="/messages", tags=["messages"])
 
+# ── Jinja2 filters ────────────────────────────────────────────────────────────
+
+# Country codes sorted longest-first so "+358" matches before "+35", etc.
+_PHONE_CODES = sorted([
+    '+1-809','+1-876','+1-787',
+    '+358','+354','+353','+352','+351','+383','+382','+381','+380','+378',
+    '+376','+375','+374','+373','+372','+371','+370','+886','+880','+856',
+    '+855','+852','+850','+974','+973','+972','+971','+970','+968','+967',
+    '+966','+965','+964','+962','+961','+976','+977','+975','+960',
+    '+298','+350','+355','+357','+359','+385','+387','+389','+420','+421',
+    '+423','+670','+673','+675','+679','+995','+994','+993','+992',
+    '+238','+239','+240','+241','+242','+243','+244','+245','+246','+247',
+    '+248','+249','+250','+251','+252','+253','+254','+255','+256','+257',
+    '+258','+260','+261','+262','+263','+264','+265','+266','+267','+268',
+    '+269','+211','+212','+213','+216','+218','+220','+221','+222','+223',
+    '+224','+225','+226','+227','+228','+229','+230','+231','+232','+233',
+    '+234','+235','+236','+237','+291',
+    '+43','+44','+45','+46','+47','+48','+49',
+    '+30','+31','+32','+33','+34','+36','+39','+40','+41',
+    '+51','+52','+53','+54','+55','+56','+57',
+    '+60','+61','+62','+63','+64','+65','+66',
+    '+81','+82','+84','+86','+90','+91','+92','+93','+94','+95',
+    '+20','+27','+7','+1',
+], key=lambda c: -len(c.replace('-', '')))
+
+
+def _format_phone(phone: str | None) -> str:
+    """Ensure a space between country code and local number for display.
+    Handles legacy numbers stored without a space, e.g. '+4796019308'."""
+    if not phone:
+        return ''
+    if ' ' in phone:
+        return phone          # already formatted
+    if not phone.startswith('+'):
+        return phone          # no country code prefix — leave as-is
+    for code in _PHONE_CODES:
+        plain = code.replace('-', '')   # '+1-809' → '+1809' (not used as stored)
+        if phone.startswith(plain):
+            return plain + ' ' + phone[len(plain):]  # non-breaking space
+    return phone
+
+
+templates.env.filters['format_phone'] = _format_phone
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
