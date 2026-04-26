@@ -296,6 +296,11 @@ def admin_test_email(
         mailer._p("If you're reading this, transactional emails are working correctly on this deployment.")
     )
 
+    # Temporary debug — remove after confirming key is read correctly
+    key_preview = s.resend_api_key[:12] + "..." if s.resend_api_key else "EMPTY"
+    if not s.resend_api_key:
+        return RedirectResponse(f"/admin/users?flash=RESEND_API_KEY+is+not+set", status_code=303)
+
     try:
         import json, urllib.request, urllib.error
         payload = json.dumps({
@@ -318,7 +323,7 @@ def admin_test_email(
         with urllib.request.urlopen(req, timeout=10) as resp:
             resp.read()
         return RedirectResponse(
-            "/admin/users?flash=Test+email+sent+to+" + admin.email.replace("@", "%40"),
+            "/admin/users?flash=Test+email+sent+to+" + admin.email.replace("@", "%40") + "+key=" + key_preview,
             status_code=303,
         )
     except urllib.error.HTTPError as exc:
