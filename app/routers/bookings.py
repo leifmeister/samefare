@@ -32,8 +32,8 @@ def book_trip_page(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if not current_user.email_verified:
-        return RedirectResponse(f"/check-your-email", status_code=303)
+    if not current_user.email_verified and not get_settings().beta_mode:
+        return RedirectResponse("/check-your-email", status_code=303)
     if current_user.id_verification != models.VerificationStatus.approved:
         return RedirectResponse(f"/verify?next=book&trip={trip_id}", status_code=303)
 

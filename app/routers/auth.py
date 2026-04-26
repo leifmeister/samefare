@@ -100,6 +100,24 @@ def register(
             status_code=400,
         )
 
+    # In beta mode skip email verification — mark as verified immediately
+    if settings.beta_mode:
+        user = models.User(
+            email=email.lower(),
+            full_name=full_name,
+            phone=phone or None,
+            hashed_password=hash_password(password),
+            email_verified=True,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        token = create_access_token(user.id)
+        response = RedirectResponse("/", status_code=303)
+        response.set_cookie(key="access_token", value=token, httponly=True,
+                            max_age=settings.access_token_expire_minutes * 60, samesite="lax")
+        return response
+
     verify_token = secrets.token_urlsafe(32)
     user = models.User(
         email=email.lower(),
