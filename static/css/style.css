@@ -582,7 +582,8 @@ button, input, select, textarea { font: inherit; }
 .search-bar__date-wrap {
   position: relative;
 }
-.search-bar__date-wrap .input {
+.search-bar__date-wrap .input,
+.search-bar__date-wrap .search-field__input {
   padding-right: 2rem;
   width: 100%;
 }
@@ -630,6 +631,22 @@ button, input, select, textarea { font: inherit; }
   border-color: var(--c-primary);
   background: var(--c-primary);
   color: #fff;
+}
+/* Hero variant — sits on dark card background */
+.date-chips--hero .date-chip {
+  border-color: rgba(255,255,255,.25);
+  background: rgba(255,255,255,.1);
+  color: rgba(255,255,255,.8);
+}
+.date-chips--hero .date-chip:hover {
+  border-color: rgba(255,255,255,.7);
+  color: #fff;
+  background: rgba(255,255,255,.2);
+}
+.date-chips--hero .date-chip--active {
+  border-color: #fff;
+  background: #fff;
+  color: var(--c-primary);
 }
 
 /* ── List page layout ────────────────────────────────────────── */

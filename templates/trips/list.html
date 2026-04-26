@@ -155,32 +155,3 @@
 </div>
 {% endblock %}
 
-{% block scripts %}
-<script>
-function dateShortcuts(initial) {
-  function fmt(d) {
-    return d.getFullYear() + '-' +
-           String(d.getMonth() + 1).padStart(2, '0') + '-' +
-           String(d.getDate()).padStart(2, '0');
-  }
-  const now = new Date();
-  const tod = fmt(now);
-  const tom = fmt(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
-  const dow = now.getDay();
-  const daysToSat = dow === 6 ? 0 : (6 - dow);
-  const wknd = fmt(new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToSat));
-  return {
-    date: initial || '',
-    today: tod,
-    tomorrow: tom,
-    weekend: wknd,
-    setDate(val) {
-      this.date = (this.date === val) ? '' : val;
-      this.$nextTick(() => {
-        this.$el.closest('form').dispatchEvent(new Event('submit', { bubbles: true }));
-      });
-    },
-  };
-}
-</script>
-{% endblock %}
