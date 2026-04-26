@@ -1,10 +1,11 @@
 import os
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app import models
 from app.database import get_db
@@ -12,6 +13,55 @@ from app.dependencies import get_current_user, get_template_context
 
 templates = Jinja2Templates(directory="templates")
 router = APIRouter(tags=["users"])
+
+
+@router.get("/users/{user_id}", response_class=HTMLResponse)
+def public_profile(
+    user_id: int,
+    request: Request,
+    ctx: dict = Depends(get_template_context),
+    db: Session = Depends(get_db),
+):
+    user = (
+        db.query(models.User)
+        .options(
+            joinedload(models.User.reviews_received).joinedload(models.Review.reviewer),
+            joinedload(models.User.reviews_received).joinedload(models.Review.trip),
+        )
+        .filter(models.User.id == user_id, models.User.is_active == True)
+        .first()
+    )
+    if not user:
+        return templates.TemplateResponse("errors/404.html", {**ctx}, status_code=404)
+
+    # Upcoming active trips as driver
+    upcoming_trips = (
+        db.query(models.Trip)
+        .filter(
+            models.Trip.driver_id == user_id,
+            models.Trip.status == models.TripStatus.active,
+            models.Trip.departure_datetime >= datetime.utcnow(),
+            models.Trip.seats_available > 0,
+        )
+        .order_by(models.Trip.departure_datetime)
+        .limit(5)
+        .all()
+    )
+
+    # Reviews received as a driver, newest first
+    driver_reviews = sorted(
+        [r for r in user.reviews_received
+         if r.review_type == models.ReviewType.passenger_to_driver],
+        key=lambda r: r.created_at,
+        reverse=True,
+    )
+
+    return templates.TemplateResponse("users/public_profile.html", {
+        **ctx,
+        "profile_user":   user,
+        "upcoming_trips": upcoming_trips,
+        "driver_reviews": driver_reviews,
+    })
 
 
 @router.get("/profile", response_class=HTMLResponse)

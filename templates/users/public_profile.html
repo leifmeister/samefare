@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% from "partials/avatar.html" import avatar %}
+{% block title %}{{ profile_user.full_name }} — SameFare{% endblock %}
+
+{% block content %}
+<div class="container" style="margin-top:2rem; margin-bottom:4rem;">
+
+  <a href="/trips" class="back-link">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+    Back to rides
+  </a>
+
+  <div class="profile-layout" style="margin-top:1.5rem;">
+
+    <!-- Left: profile info -->
+    <div class="profile-main">
+
+      <!-- Profile card -->
+      <div class="profile-card">
+        <div class="profile-card__avatar-wrap">
+          {{ avatar(profile_user, cls="avatar--xl") }}
+        </div>
+        <div class="profile-card__info">
+          <h1 class="profile-card__name">{{ profile_user.full_name }}</h1>
+
+          {% if profile_user.average_rating %}
+            <div class="profile-card__rating">
+              {% for i in range(5) %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="16" height="16"
+                     fill="{{ '#F59E0B' if i < profile_user.average_rating|round|int else '#E5E7EB' }}" aria-hidden="true">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                </svg>
+              {% endfor %}
+              <strong>{{ profile_user.average_rating }}</strong>
+              <span class="text-muted">({{ driver_reviews|length }} review{{ 's' if driver_reviews|length != 1 }})</span>
+            </div>
+          {% endif %}
+
+          <p class="profile-card__meta">
+            Member since {{ profile_user.created_at.strftime("%B %Y") }}
+            &nbsp;·&nbsp;
+            <strong>{{ profile_user.total_trips_as_driver }}</strong> trip{{ 's' if profile_user.total_trips_as_driver != 1 }} completed
+          </p>
+
+          {% if profile_user.bio %}
+            <p class="profile-card__bio">{{ profile_user.bio }}</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Verification badges -->
+      <div class="verify-summary">
+        <div class="verify-summary__item verify-summary__item--{{ profile_user.id_verification }}">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h2"/></svg>
+          ID:
+          {% if profile_user.id_verification == 'approved' %}✓ Verified
+          {% else %}Not verified{% endif %}
+        </div>
+        <div class="verify-summary__item verify-summary__item--{{ profile_user.license_verification }}">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>
+          Licence:
+          {% if profile_user.license_verification == 'approved' %}✓ Verified
+          {% else %}Not verified{% endif %}
+        </div>
+      </div>
+
+      <!-- Reviews -->
+      <section class="profile-section">
+        <h2 class="profile-section__title">
+          Reviews
+          {% if driver_reviews %}
+            <span class="text-muted" style="font-weight:400; font-size:.95rem;">({{ driver_reviews|length }})</span>
+          {% endif %}
+        </h2>
+
+        {% if not driver_reviews %}
+          <p class="text-muted" style="padding:.5rem 0;">No reviews yet.</p>
+        {% else %}
+          <div class="reviews-list">
+            {% for review in driver_reviews %}
+            <div class="review-card">
+              <div class="review-card__header">
+                {{ avatar(review.reviewer, cls="avatar--sm") }}
+                <div>
+                  <p class="review-card__name">{{ review.reviewer.full_name.split()[0] }}</p>
+                  <p class="review-card__meta">
+                    {% if review.trip %}{{ review.trip.origin }} → {{ review.trip.destination }} &nbsp;·&nbsp;{% endif %}
+                    {{ review.created_at.strftime("%-d %b %Y") }}
+                  </p>
+                </div>
+                <div class="review-card__stars" style="margin-left:auto;">
+                  {% for i in range(5) %}
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="14" height="14"
+                         fill="{{ '#F59E0B' if i < review.rating else '#E5E7EB' }}" aria-hidden="true">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                    </svg>
+                  {% endfor %}
+                </div>
+              </div>
+              {% if review.comment %}
+                <p class="review-card__comment">{{ review.comment }}</p>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </section>
+
+    </div>
+
+    <!-- Right: upcoming trips -->
+    <aside class="profile-sidebar">
+      <div class="inbox-card">
+        <h2 class="inbox-card__title">Upcoming rides</h2>
+
+        {% if not upcoming_trips %}
+          <p class="text-muted" style="font-size:.875rem;">No upcoming rides posted.</p>
+        {% else %}
+          {% for trip in upcoming_trips %}
+          <a href="/trips/{{ trip.id }}" class="upcoming-trip-row">
+            <div class="upcoming-trip-row__route">
+              <strong>{{ trip.origin }}</strong>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="12" height="12" aria-hidden="true"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              <strong>{{ trip.destination }}</strong>
+            </div>
+            <div class="upcoming-trip-row__meta">
+              <span>{{ trip.departure_datetime.strftime("%-d %b, %H:%M") }}</span>
+              <span>{{ trip.seats_available }} seat{{ 's' if trip.seats_available != 1 }} · {{ "{:,}".format(trip.price_per_seat) }} ISK</span>
+            </div>
+          </a>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </aside>
+
+  </div>
+</div>
+{% endblock %}

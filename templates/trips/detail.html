@@ -169,9 +169,11 @@
 
       <!-- Driver card -->
       <div class="driver-card">
-        {{ avatar(trip.driver, cls="driver-card__avatar") }}
+        <a href="/users/{{ trip.driver_id }}" style="text-decoration:none; color:inherit;">
+          {{ avatar(trip.driver, cls="driver-card__avatar") }}
+        </a>
         <div class="driver-card__info">
-          <p class="driver-card__name">{{ trip.driver.full_name }}</p>
+          <a href="/users/{{ trip.driver_id }}" class="driver-card__name" style="text-decoration:none; color:inherit;">{{ trip.driver.full_name }}</a>
           {% if trip.driver.average_rating %}
             <div class="driver-card__rating">
               {% for i in range(5) %}
