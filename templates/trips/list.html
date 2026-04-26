@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Find a ride — SameFare{% endblock %}
+{% block meta_description %}{% if origin and destination %}Find rideshares from {{ origin }} to {{ destination }} in Iceland. Browse available seats and book instantly on SameFare.{% elif origin %}Find rideshares departing from {{ origin }} across Iceland. Browse available seats on SameFare.{% elif destination %}Find rideshares to {{ destination }} in Iceland. Browse available seats and book your seat today.{% else %}Find rideshares across Iceland. Browse trips between Reykjavík, Akureyri, Selfoss, Vík and more — book your seat on SameFare.{% endif %}{% endblock %}
 
 {% block content %}
 <div class="page-header page-header--compact">

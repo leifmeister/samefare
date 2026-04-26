@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /profile
+Disallow: /my-trips
+Disallow: /messages/
+Disallow: /bookings/
+Disallow: /payments/
+Disallow: /verify
+Disallow: /reviews/new/
+Disallow: /logout
+
+Sitemap: https://samefare.com/sitemap.xml

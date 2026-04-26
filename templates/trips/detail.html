@@ -1,6 +1,37 @@
 {% extends "base.html" %}
 {% from "partials/avatar.html" import avatar %}
 {% block title %}{{ trip.origin }} → {{ trip.destination }} — SameFare{% endblock %}
+{% block meta_description %}Rideshare from {{ trip.origin }} to {{ trip.destination }} on {{ trip.departure_datetime.strftime("%-d %b %Y") }}. {{ trip.seats_available }} seat{{ 's' if trip.seats_available != 1 else '' }} available at {{ "{:,}".format(trip.price_per_seat) }} ISK. Book your seat on SameFare.{% endblock %}
+{% block og_type %}event{% endblock %}
+
+{% block head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Event",
+  "name": "Rideshare: {{ trip.origin }} → {{ trip.destination }}",
+  "startDate": "{{ trip.departure_datetime.strftime('%Y-%m-%dT%H:%M') }}",
+  "eventStatus": "https://schema.org/EventScheduled",
+  "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+  "location": {
+    "@type": "Place",
+    "name": "{{ trip.origin }}, Iceland"
+  },
+  "organizer": {
+    "@type": "Person",
+    "name": "{{ trip.driver.full_name }}"
+  },
+  "offers": {
+    "@type": "Offer",
+    "price": "{{ trip.price_per_seat }}",
+    "priceCurrency": "ISK",
+    "availability": "{% if trip.seats_available > 0 %}https://schema.org/InStock{% else %}https://schema.org/SoldOut{% endif %}",
+    "url": "{{ request.url.scheme }}://{{ request.url.netloc }}/trips/{{ trip.id }}"
+  },
+  "url": "{{ request.url.scheme }}://{{ request.url.netloc }}/trips/{{ trip.id }}"
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="container" style="margin-top:2rem; margin-bottom:4rem;">

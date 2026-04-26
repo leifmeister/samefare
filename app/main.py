@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import text
@@ -144,6 +144,61 @@ app.include_router(messages.router)
 app.include_router(reviews.router)
 
 templates = Jinja2Templates(directory="templates")
+
+
+# ── SEO ───────────────────────────────────────────────────────────────────────
+
+@app.get("/robots.txt", include_in_schema=False)
+def robots():
+    return FileResponse("static/robots.txt", media_type="text/plain")
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+def sitemap():
+    base = get_settings().base_url.rstrip("/")
+    db: Session = SessionLocal()
+    try:
+        # All active upcoming trips
+        trips = (
+            db.query(models.Trip)
+            .filter(
+                models.Trip.status == models.TripStatus.active,
+                models.Trip.departure_datetime >= datetime.utcnow(),
+            )
+            .order_by(models.Trip.departure_datetime)
+            .all()
+        )
+    finally:
+        db.close()
+
+    static_urls = [
+        ("", "daily",  "1.0"),
+        ("/trips",  "hourly", "0.9"),
+        ("/terms",  "monthly","0.3"),
+        ("/privacy","monthly","0.3"),
+    ]
+
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>',
+             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+
+    for path, changefreq, priority in static_urls:
+        lines.append(f"""  <url>
+    <loc>{base}{path}</loc>
+    <changefreq>{changefreq}</changefreq>
+    <priority>{priority}</priority>
+  </url>""")
+
+    for trip in trips:
+        mod = trip.departure_datetime.strftime("%Y-%m-%d")
+        lines.append(f"""  <url>
+    <loc>{base}/trips/{trip.id}</loc>
+    <lastmod>{mod}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>""")
+
+    lines.append("</urlset>")
+    return Response("\n".join(lines), media_type="application/xml")
 
 
 @app.get("/terms", response_class=HTMLResponse)

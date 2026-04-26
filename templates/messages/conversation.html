@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "partials/avatar.html" import avatar %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
 {% block title %}{{ partner.full_name.split()[0] }} — SameFare{% endblock %}
 
 {% block content %}

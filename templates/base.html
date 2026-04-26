@@ -3,8 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block title %}SameFare{% endblock %} — SameFare</title>
-  <meta name="description" content="Share the journey across Iceland. Find or offer rideshares between Icelandic towns." />
+
+  <title>{% block title %}SameFare — Share the journey across Iceland{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Share the journey across Iceland. Find or offer rideshares between Icelandic towns.{% endblock %}" />
+
+  <!-- Canonical URL — strips query-string to avoid duplicate-content on filtered pages -->
+  <link rel="canonical" href="{{ request.url.scheme }}://{{ request.url.netloc }}{{ request.url.path }}" />
+
+  <!-- Open Graph -->
+  <meta property="og:type"        content="{% block og_type %}website{% endblock %}" />
+  <meta property="og:site_name"   content="SameFare" />
+  <meta property="og:title"       content="{{ self.title() }}" />
+  <meta property="og:description" content="{{ self.meta_description() }}" />
+  <meta property="og:url"         content="{{ request.url.scheme }}://{{ request.url.netloc }}{{ request.url.path }}" />
+  {% block og_image %}{% endblock %}
+
+  <!-- Twitter / X Card -->
+  <meta name="twitter:card"        content="summary" />
+  <meta name="twitter:title"       content="{{ self.title() }}" />
+  <meta name="twitter:description" content="{{ self.meta_description() }}" />
 
   <link rel="stylesheet" href="/static/css/style.css" />
   <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml" />
