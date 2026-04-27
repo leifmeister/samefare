@@ -6,7 +6,6 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import text
@@ -158,8 +157,6 @@ app = FastAPI(
 )
 
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.add_middleware(SlowAPIMiddleware)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -173,6 +170,9 @@ app.include_router(verification.router)
 app.include_router(messages.router)
 app.include_router(reviews.router)
 app.include_router(newsletter.router)
+
+# Middleware must be added after routers are registered
+app.add_middleware(SlowAPIMiddleware)
 
 templates = Jinja2Templates(directory="templates")
 
@@ -321,16 +321,17 @@ async def server_error(request: Request, exc):
 
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    # API / HTMX callers get a terse 429; browsers get a friendly HTML page.
+    # RateLimitExceeded.limit is a limits.Limit object; extract window seconds.
+    retry_after = getattr(exc.limit, "get_expiry", lambda: None)() or 60
     accept = request.headers.get("accept", "")
     if "text/html" in accept:
         return templates.TemplateResponse(
             "errors/429.html",
-            {"request": request, "current_user": None, "retry_after": exc.retry_after},
+            {"request": request, "current_user": None, "retry_after": retry_after},
             status_code=429,
         )
     return Response(
-        content=f"Too many requests. Retry after {exc.retry_after} seconds.",
+        content=f"Too many requests — retry after {retry_after} seconds.",
         status_code=429,
-        headers={"Retry-After": str(exc.retry_after)},
+        headers={"Retry-After": str(retry_after)},
     )
