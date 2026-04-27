@@ -186,6 +186,11 @@
     <div class="alert alert--{{ flash.type }}" role="alert">{{ flash.message }}</div>
   </div>
   {% endif %}
+  {% if request.query_params.get('subscribed') %}
+  <div class="container" style="margin-top:1rem">
+    <div class="alert alert--success" role="alert">✓ You're on the list — your first ride service fee is waived!</div>
+  </div>
+  {% endif %}
 
   <main class="page-main">
     {% block content %}{% endblock %}
@@ -200,18 +205,14 @@
   {% if not is_newsletter_subscriber %}
   <div class="newsletter-strip">
     <div class="container newsletter-strip__inner">
-      {% if request.query_params.get('subscribed') %}
-        <p class="newsletter-strip__thanks">✓ You're on the list — we'll be in touch!</p>
-      {% else %}
-        <p class="newsletter-strip__label">Subscribe and get your <strong>first ride fee-free</strong> — plus Iceland travel updates</p>
-        <form class="newsletter-strip__form" method="post" action="/newsletter/subscribe">
-          <input type="hidden" name="source" value="footer">
-          <input type="email" name="email" class="input newsletter-strip__input"
-                 placeholder="your@email.com" required
-                 {% if current_user %}value="{{ current_user.email }}"{% endif %}>
-          <button type="submit" class="btn btn-primary newsletter-strip__btn">Subscribe</button>
-        </form>
-      {% endif %}
+      <p class="newsletter-strip__label">Subscribe and get your <strong>first ride fee-free</strong> — plus Iceland travel updates</p>
+      <form class="newsletter-strip__form" method="post" action="/newsletter/subscribe">
+        <input type="hidden" name="source" value="footer">
+        <input type="email" name="email" class="input newsletter-strip__input"
+               placeholder="your@email.com" required
+               {% if current_user %}value="{{ current_user.email }}"{% endif %}>
+        <button type="submit" class="btn btn-primary newsletter-strip__btn">Subscribe</button>
+      </form>
     </div>
   </div>
   {% endif %}
