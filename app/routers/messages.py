@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -150,16 +152,21 @@ def conversation(
     if changed:
         db.commit()
 
-    messages = list(booking.messages)
-    partner  = _other_person(booking, current_user)
-    last_id  = messages[-1].id if messages else 0
+    messages  = list(booking.messages)
+    partner   = _other_person(booking, current_user)
+    last_id   = messages[-1].id if messages else 0
+    today     = date.today()
+    yesterday = today - timedelta(days=1)
 
     return templates.TemplateResponse("messages/conversation.html", {
         **ctx,
-        "booking":  booking,
-        "partner":  partner,
-        "messages": messages,
-        "last_id":  last_id,
+        "booking":   booking,
+        "partner":   partner,
+        "messages":  messages,
+        "last_id":   last_id,
+        "prev_date": None,
+        "today":     today,
+        "yesterday": yesterday,
     })
 
 
@@ -240,10 +247,23 @@ def poll(
     if changed:
         db.commit()
 
+    # Work out the date of the last already-displayed message so the template
+    # can decide whether to emit a date separator at the top of the new batch.
+    prev_msg = (
+        db.query(models.Message)
+        .filter(models.Message.id == after)
+        .first()
+    ) if after else None
+    today     = date.today()
+    yesterday = today - timedelta(days=1)
+
     return templates.TemplateResponse("messages/_bubbles.html", {
         "request":      request,
         "messages":     new_msgs,
         "current_user": current_user,
+        "prev_date":    prev_msg.created_at.date() if prev_msg else None,
+        "today":        today,
+        "yesterday":    yesterday,
     })
 
 

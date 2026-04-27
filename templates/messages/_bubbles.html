@@ -1,13 +1,31 @@
 {% from "partials/avatar.html" import avatar %}
+{% set ns = namespace(prev_date=prev_date) %}
 {% for msg in messages %}
-<div class="bubble {% if msg.sender_id == current_user.id %}bubble--mine{% else %}bubble--theirs{% endif %}"
-     data-msg-id="{{ msg.id }}">
-  {% if msg.sender_id != current_user.id %}
-    {{ avatar(msg.sender, cls="avatar--xs") }}
+  {% set msg_date = msg.created_at.date() %}
+  {% if msg_date != ns.prev_date %}
+    <div class="chat-date-sep" role="separator">
+      <span>
+        {% if msg_date == today %}
+          Today
+        {% elif msg_date == yesterday %}
+          Yesterday
+        {% elif (today - msg_date).days < 7 %}
+          {{ msg.created_at.strftime("%A") }}
+        {% else %}
+          {{ msg.created_at.strftime("%-d %b %Y") }}
+        {% endif %}
+      </span>
+    </div>
+    {% set ns.prev_date = msg_date %}
   {% endif %}
-  <div class="bubble__inner">
-    <p class="bubble__text">{{ msg.body }}</p>
-    <time class="bubble__time">{{ msg.created_at.strftime("%-H:%M") }}</time>
+  <div class="bubble {% if msg.sender_id == current_user.id %}bubble--mine{% else %}bubble--theirs{% endif %}"
+       data-msg-id="{{ msg.id }}">
+    {% if msg.sender_id != current_user.id %}
+      {{ avatar(msg.sender, cls="avatar--xs") }}
+    {% endif %}
+    <div class="bubble__inner">
+      <p class="bubble__text">{{ msg.body }}</p>
+      <time class="bubble__time">{{ msg.created_at.strftime("%-H:%M") }}</time>
+    </div>
   </div>
-</div>
 {% endfor %}

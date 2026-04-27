@@ -2435,6 +2435,26 @@ button, input, select, textarea { font: inherit; }
   padding: 0 var(--space-1);
 }
 
+/* ── Date separator ────────── */
+.chat-date-sep {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 var(--space-2);
+  color: var(--c-muted);
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+.chat-date-sep::before,
+.chat-date-sep::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--c-border);
+}
+
 /* ── Send form ─────────────── */
 .chat-footer {
   flex-shrink: 0;
