@@ -62,7 +62,7 @@ def login(
     _rl=rate_limit(5, 60),
 ):
     ctx = {"request": request, "current_user": None}
-    user = db.query(models.User).filter(models.User.email == email.lower()).first()
+    user = db.query(models.User).filter(models.User.email == email.strip().lower()).first()
     if not user:
         return templates.TemplateResponse(
             "auth/login.html",
@@ -99,9 +99,15 @@ def register(
     confirm_password: str = Form(...),
     newsletter: str = Form(""),
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user_optional),
     _rl=rate_limit(10, 3600),
 ):
+    # Already logged in (e.g. double-submit after successful registration)
+    if current_user:
+        return RedirectResponse("/", status_code=303)
+
     ctx = {"request": request, "current_user": None}
+    email = email.strip().lower()
 
     if password != confirm_password:
         return templates.TemplateResponse(
@@ -109,19 +115,28 @@ def register(
             {**ctx, "error": "Passwords do not match."},
             status_code=400,
         )
-    if db.query(models.User).filter(models.User.email == email.lower()).first():
+
+    existing = db.query(models.User).filter(models.User.email == email).first()
+    if existing:
+        # Check if it's an unverified account created moments ago by this same person
+        if not existing.email_verified:
+            return templates.TemplateResponse(
+                "auth/register.html",
+                {**ctx, "error": "We already sent a verification email to that address. Check your inbox (and spam folder)."},
+                status_code=400,
+            )
         return templates.TemplateResponse(
             "auth/register.html",
-            {**ctx, "error": "That email is already registered."},
+            {**ctx, "error": "That email is already registered. <a href='/login'>Log in</a> or <a href='/forgot-password'>reset your password</a>."},
             status_code=400,
         )
 
-    subscribed_email = email.strip().lower()
+    subscribed_email = email
 
     # In beta mode skip email verification — mark as verified immediately
     if settings.beta_mode:
         user = models.User(
-            email=email.lower(),
+            email=email,
             full_name=full_name,
             phone=phone or None,
             hashed_password=hash_password(password),
@@ -140,7 +155,7 @@ def register(
 
     verify_token = secrets.token_urlsafe(32)
     user = models.User(
-        email=email.lower(),
+        email=email,
         full_name=full_name,
         phone=phone or None,
         hashed_password=hash_password(password),
