@@ -205,12 +205,9 @@
   </main>
 
   <!-- ═══════════════════════════════════════
-       FOOTER
-  ═══════════════════════════════════════ -->
-  <!-- ═══════════════════════════════════════
        NEWSLETTER STRIP
   ═══════════════════════════════════════ -->
-  {% if not is_newsletter_subscriber %}
+  {% if not is_newsletter_subscriber and not request.query_params.get('subscribed') %}
   <div class="newsletter-strip">
     <div class="container newsletter-strip__inner">
       <p class="newsletter-strip__label">Subscribe and get your <strong>first ride fee-free</strong> — plus Iceland travel updates</p>
@@ -225,6 +222,9 @@
   </div>
   {% endif %}
 
+  <!-- ═══════════════════════════════════════
+       FOOTER
+  ═══════════════════════════════════════ -->
   <footer class="footer">
     <div class="container">
       <div class="footer__grid">

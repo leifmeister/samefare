@@ -61,7 +61,7 @@ def login(
     db: Session = Depends(get_db),
     _rl=rate_limit(5, 60),
 ):
-    ctx = {"request": request, "current_user": None}
+    ctx = {"request": request, "current_user": None, "is_newsletter_subscriber": False}
     user = db.query(models.User).filter(models.User.email == email.strip().lower()).first()
     if not user:
         return templates.TemplateResponse(
@@ -106,7 +106,7 @@ def register(
     if current_user:
         return RedirectResponse("/", status_code=303)
 
-    ctx = {"request": request, "current_user": None}
+    ctx = {"request": request, "current_user": None, "is_newsletter_subscriber": False}
     email = email.strip().lower()
 
     if password != confirm_password:
