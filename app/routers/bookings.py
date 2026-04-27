@@ -9,7 +9,7 @@ from app import models, email as mailer
 from app.config import get_settings
 from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
-from app.limiter import limiter
+from app.limiter import rate_limit
 from app.routers.payments import calc_fees
 
 settings = get_settings()
@@ -68,7 +68,6 @@ def book_trip_page(
 
 
 @router.post("/trip/{trip_id}", response_class=HTMLResponse)
-@limiter.limit("10/minute")
 def create_booking(
     trip_id: int,
     request: Request,
@@ -77,6 +76,7 @@ def create_booking(
     db: Session = Depends(get_db),
     seats_booked: int = Form(1),
     message: str = Form(""),
+    _rl=rate_limit(10, 60),
 ):
     trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
     if not trip:
@@ -287,11 +287,11 @@ def confirm_booking(
 
 
 @router.post("/{booking_id}/no-show")
-@limiter.limit("5/minute")
 def mark_passenger_no_show(
     booking_id: int,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    _rl=rate_limit(5, 60),
 ):
     """Driver marks a confirmed passenger as a no-show (only after departure)."""
     booking = (
@@ -313,11 +313,11 @@ def mark_passenger_no_show(
 
 
 @router.post("/{booking_id}/driver-no-show")
-@limiter.limit("5/minute")
 def report_driver_no_show(
     booking_id: int,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    _rl=rate_limit(5, 60),
 ):
     """Passenger reports the driver as a no-show (only after departure). Issues full refund."""
     booking = (

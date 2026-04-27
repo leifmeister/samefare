@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app import models
 from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
-from app.limiter import limiter
+from app.limiter import rate_limit
 from app.routers.verification import _require_admin
 
 templates = Jinja2Templates(directory="templates")
@@ -23,12 +23,12 @@ router = APIRouter(tags=["newsletter"])
 # ── Public: subscribe ─────────────────────────────────────────────────────────
 
 @router.post("/newsletter/subscribe")
-@limiter.limit("5/hour")
 def subscribe(
     request: Request,
     email:   str = Form(...),
     source:  str = Form("footer"),
     db:      Session = Depends(get_db),
+    _rl=rate_limit(5, 3600),
 ):
     email = email.strip().lower()
     if email:

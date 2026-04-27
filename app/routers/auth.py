@@ -12,7 +12,7 @@ from app import models, email as mailer
 from app.config import get_settings
 from app.database import get_db
 from app.dependencies import get_current_user_optional, get_template_context
-from app.limiter import limiter
+from app.limiter import rate_limit
 
 settings = get_settings()
 templates = Jinja2Templates(directory="templates")
@@ -54,12 +54,12 @@ def login_page(request: Request, ctx: dict = Depends(get_template_context)):
 
 
 @router.post("/login", response_class=HTMLResponse)
-@limiter.limit("5/minute")
 def login(
     request: Request,
     email: str = Form(...),
     password: str = Form(...),
     db: Session = Depends(get_db),
+    _rl=rate_limit(5, 60),
 ):
     ctx = {"request": request, "current_user": None}
     user = db.query(models.User).filter(models.User.email == email.lower()).first()
@@ -90,7 +90,6 @@ def register_page(request: Request, ctx: dict = Depends(get_template_context)):
 
 
 @router.post("/register", response_class=HTMLResponse)
-@limiter.limit("10/hour")
 def register(
     request: Request,
     full_name: str = Form(...),
@@ -100,6 +99,7 @@ def register(
     confirm_password: str = Form(...),
     newsletter: str = Form(""),
     db: Session = Depends(get_db),
+    _rl=rate_limit(10, 3600),
 ):
     ctx = {"request": request, "current_user": None}
 
@@ -184,12 +184,12 @@ def verify_email(
 
 
 @router.post("/resend-verification", response_class=HTMLResponse)
-@limiter.limit("5/hour")
 def resend_verification(
     request:      Request,
     ctx:          dict         = Depends(get_template_context),
     current_user: models.User  = Depends(get_current_user_optional),
     db:           Session      = Depends(get_db),
+    _rl=rate_limit(5, 3600),
 ):
     if not current_user or current_user.email_verified:
         return RedirectResponse("/", status_code=303)
@@ -207,12 +207,12 @@ def forgot_password_page(request: Request, ctx: dict = Depends(get_template_cont
 
 
 @router.post("/forgot-password", response_class=HTMLResponse)
-@limiter.limit("5/hour")
 def forgot_password(
     request: Request,
     ctx:   dict    = Depends(get_template_context),
     email: str     = Form(...),
     db:    Session = Depends(get_db),
+    _rl=rate_limit(5, 3600),
 ):
     user = db.query(models.User).filter(models.User.email == email.strip().lower()).first()
 
@@ -242,7 +242,6 @@ def reset_password_page(
 
 
 @router.post("/reset-password", response_class=HTMLResponse)
-@limiter.limit("5/minute")
 def reset_password(
     request:          Request,
     ctx:              dict    = Depends(get_template_context),
@@ -250,6 +249,7 @@ def reset_password(
     new_password:     str     = Form(...),
     confirm_password: str     = Form(...),
     db:               Session = Depends(get_db),
+    _rl=rate_limit(5, 60),
 ):
     user = _valid_token(token, db)
     if not user:

@@ -6,14 +6,12 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 from sqlalchemy.orm import joinedload, Session
 
 from app.config import get_settings
 from app.database import Base, engine, SessionLocal
 from app.dependencies import get_current_user_optional
-from app.limiter import limiter
 from app import models  # noqa: F401 — register models before create_all
 from app.routers import auth, bookings, language, messages, newsletter, payments, reviews, trips, users, verification
 from app.tasks import auto_complete_loop, _run_auto_complete, _run_auto_ratings
@@ -154,8 +152,6 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
 )
-
-app.state.limiter = limiter
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -316,19 +312,16 @@ async def server_error(request: Request, exc):
     )
 
 
-@app.exception_handler(RateLimitExceeded)
-async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    # RateLimitExceeded.limit is a limits.Limit object; extract window seconds.
-    retry_after = getattr(exc.limit, "get_expiry", lambda: None)() or 60
+@app.exception_handler(429)
+async def rate_limit_handler(request: Request, exc):
     accept = request.headers.get("accept", "")
     if "text/html" in accept:
         return templates.TemplateResponse(
             "errors/429.html",
-            {"request": request, "current_user": None, "retry_after": retry_after},
+            {"request": request, "current_user": None, "retry_after": None},
             status_code=429,
         )
     return Response(
-        content=f"Too many requests — retry after {retry_after} seconds.",
+        content=getattr(exc, "detail", "Too many requests."),
         status_code=429,
-        headers={"Retry-After": str(retry_after)},
     )
