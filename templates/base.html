@@ -197,6 +197,7 @@
   <!-- ═══════════════════════════════════════
        NEWSLETTER STRIP
   ═══════════════════════════════════════ -->
+  {% if not is_newsletter_subscriber %}
   <div class="newsletter-strip">
     <div class="container newsletter-strip__inner">
       {% if request.query_params.get('subscribed') %}
@@ -213,6 +214,7 @@
       {% endif %}
     </div>
   </div>
+  {% endif %}
 
   <footer class="footer">
     <div class="container">

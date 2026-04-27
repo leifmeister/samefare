@@ -115,13 +115,24 @@ def get_template_context(request: Request, db: Session = Depends(get_db)):
             unread_count = 0
         pending_reviews = _pending_reviews(user, db)
     email_unverified = user and not user.email_verified
+    is_newsletter_subscriber = False
+    if user:
+        try:
+            is_newsletter_subscriber = (
+                db.query(models.NewsletterSubscriber)
+                .filter(models.NewsletterSubscriber.email == user.email)
+                .first()
+            ) is not None
+        except Exception:
+            pass
     return {
-        "request":              request,
-        "current_user":         user,
-        "unread_message_count": unread_count,
-        "pending_reviews":      pending_reviews,
-        "now":                  datetime.utcnow(),
-        "beta_mode":            settings.beta_mode,
-        "timedelta":            timedelta,
-        "email_unverified":     email_unverified,
+        "request":                  request,
+        "current_user":             user,
+        "unread_message_count":     unread_count,
+        "pending_reviews":          pending_reviews,
+        "now":                      datetime.utcnow(),
+        "beta_mode":                settings.beta_mode,
+        "timedelta":                timedelta,
+        "email_unverified":         email_unverified,
+        "is_newsletter_subscriber": is_newsletter_subscriber,
     }
