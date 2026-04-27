@@ -19,6 +19,18 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 router = APIRouter(tags=["auth"])
 
 
+def _subscribe_newsletter(db: Session, email: str, source: str = "register") -> None:
+    """Subscribe email to newsletter if not already subscribed."""
+    exists = (
+        db.query(models.NewsletterSubscriber)
+        .filter(models.NewsletterSubscriber.email == email)
+        .first()
+    )
+    if not exists:
+        db.add(models.NewsletterSubscriber(email=email, source=source))
+        db.commit()
+
+
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
@@ -83,6 +95,7 @@ def register(
     phone: str = Form(""),
     password: str = Form(...),
     confirm_password: str = Form(...),
+    newsletter: str = Form(""),
     db: Session = Depends(get_db),
 ):
     ctx = {"request": request, "current_user": None}
@@ -100,6 +113,8 @@ def register(
             status_code=400,
         )
 
+    subscribed_email = email.strip().lower()
+
     # In beta mode skip email verification — mark as verified immediately
     if settings.beta_mode:
         user = models.User(
@@ -112,6 +127,8 @@ def register(
         db.add(user)
         db.commit()
         db.refresh(user)
+        if newsletter == "1":
+            _subscribe_newsletter(db, subscribed_email, source="register")
         token = create_access_token(user.id)
         response = RedirectResponse("/", status_code=303)
         response.set_cookie(key="access_token", value=token, httponly=True,
@@ -130,6 +147,8 @@ def register(
     db.add(user)
     db.commit()
     db.refresh(user)
+    if newsletter == "1":
+        _subscribe_newsletter(db, subscribed_email, source="register")
 
     mailer.email_verification(user, verify_token)
 

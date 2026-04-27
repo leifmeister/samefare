@@ -1287,6 +1287,34 @@ button, input, select, textarea { font: inherit; }
 .link { color: var(--c-primary); font-weight: 600; }
 .link:hover { text-decoration: underline; }
 
+/* Newsletter opt-in on register page */
+.checkbox-opt-in {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: color-mix(in srgb, var(--c-primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c-primary) 25%, transparent);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: .875rem;
+  line-height: 1.5;
+  color: var(--c-text);
+}
+.checkbox-opt-in input[type="checkbox"] {
+  margin-top: 3px;
+  flex-shrink: 0;
+  accent-color: var(--c-primary);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+.checkbox-opt-in__icon {
+  color: var(--c-primary);
+  vertical-align: -2px;
+  margin-left: 3px;
+}
+
 /* ── Profile ─────────────────────────────────────────────────── */
 .profile-layout {
   display: grid;
