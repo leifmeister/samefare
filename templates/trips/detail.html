@@ -4,6 +4,13 @@
 {% block title %}{{ trip.origin }} → {{ trip.destination }} — SameFare{% endblock %}
 {% block meta_description %}Rideshare from {{ trip.origin }} to {{ trip.destination }} on {{ trip.departure_datetime.strftime("%-d %b %Y") }}. {{ trip.seats_available }} seat{{ 's' if trip.seats_available != 1 else '' }} available at {{ "{:,}".format(trip.price_per_seat) }} ISK. Book your seat on SameFare.{% endblock %}
 {% block og_type %}event{% endblock %}
+{% block og_image %}
+<meta property="og:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/img/og-default.jpg" />
+<meta property="og:image:width"  content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card"  content="summary_large_image" />
+<meta name="twitter:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/img/og-default.jpg" />
+{% endblock %}
 
 {% block head %}
 <script type="application/ld+json">
