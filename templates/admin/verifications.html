@@ -58,9 +58,13 @@
             <form method="post" action="/admin/verifications/{{ user.id }}/reject-id"
                   style="display:inline" x-data="{ open: false }">
               <button type="button" class="btn btn-outline btn-sm btn-danger-outline"
-                      @click="open = !open">✗ Reject</button>
-              <div x-show="open" style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center;">
-                <input name="reason" type="text" class="input" style="flex:1; padding:.4rem .6rem; font-size:.875rem;"
+                      @click="open = !open"
+                      :aria-expanded="open.toString()"
+                      aria-controls="reject-id-{{ user.id }}">✗ Reject ID</button>
+              <div id="reject-id-{{ user.id }}" x-show="open" style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center;">
+                <label for="reject-id-reason-{{ user.id }}" class="sr-only">Rejection reason</label>
+                <input id="reject-id-reason-{{ user.id }}" name="reason" type="text" class="input"
+                       style="flex:1; padding:.4rem .6rem; font-size:.875rem;"
                        placeholder="Reason (optional)" />
                 <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">Send</button>
               </div>
@@ -89,9 +93,13 @@
             <form method="post" action="/admin/verifications/{{ user.id }}/reject-license"
                   style="display:inline" x-data="{ open: false }">
               <button type="button" class="btn btn-outline btn-sm btn-danger-outline"
-                      @click="open = !open">✗ Reject</button>
-              <div x-show="open" style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center;">
-                <input name="reason" type="text" class="input" style="flex:1; padding:.4rem .6rem; font-size:.875rem;"
+                      @click="open = !open"
+                      :aria-expanded="open.toString()"
+                      aria-controls="reject-lic-{{ user.id }}">✗ Reject licence</button>
+              <div id="reject-lic-{{ user.id }}" x-show="open" style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center;">
+                <label for="reject-lic-reason-{{ user.id }}" class="sr-only">Rejection reason</label>
+                <input id="reject-lic-reason-{{ user.id }}" name="reason" type="text" class="input"
+                       style="flex:1; padding:.4rem .6rem; font-size:.875rem;"
                        placeholder="Reason (optional)" />
                 <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">Send</button>
               </div>

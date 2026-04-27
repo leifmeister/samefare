@@ -92,26 +92,28 @@
   <div class="list-layout">
 
     <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" aria-label="Search filters">
       <div class="sidebar__section">
-        <h3 class="sidebar__title">Sort by</h3>
-        <div class="sidebar__options">
-          <label class="radio-option">
-            <input type="radio" name="sort" value="soonest" form="sort-form"
-                   {% if sort == 'soonest' %}checked{% endif %} />
-            <span>Soonest first</span>
-          </label>
-          <label class="radio-option">
-            <input type="radio" name="sort" value="price_asc" form="sort-form"
-                   {% if sort == 'price_asc' %}checked{% endif %} />
-            <span>Cheapest first</span>
-          </label>
-          <label class="radio-option">
-            <input type="radio" name="sort" value="price_desc" form="sort-form"
-                   {% if sort == 'price_desc' %}checked{% endif %} />
-            <span>Most expensive</span>
-          </label>
-        </div>
+        <fieldset style="border:none; padding:0; margin:0;">
+          <legend class="sidebar__title">Sort by</legend>
+          <div class="sidebar__options">
+            <label class="radio-option">
+              <input type="radio" name="sort" value="soonest" form="sort-form"
+                     {% if sort == 'soonest' %}checked{% endif %} />
+              <span>Soonest first</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="sort" value="price_asc" form="sort-form"
+                     {% if sort == 'price_asc' %}checked{% endif %} />
+              <span>Cheapest first</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="sort" value="price_desc" form="sort-form"
+                     {% if sort == 'price_desc' %}checked{% endif %} />
+              <span>Most expensive</span>
+            </label>
+          </div>
+        </fieldset>
       </div>
 
       <form id="sort-form" method="get" action="/trips"

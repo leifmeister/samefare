@@ -43,6 +43,8 @@
 
 <body class="page-wrapper">
 
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
   <!-- ═══════════════════════════════════════
        NAVBAR
   ═══════════════════════════════════════ -->
@@ -97,8 +99,11 @@
             {% endif %}
 
             <!-- Mobile burger -->
-            <button class="navbar__burger" x-data @click="$dispatch('mobile-menu-toggle')"
-                    aria-label="Toggle menu" type="button">
+            <button class="navbar__burger" x-data
+                    @click="$dispatch('mobile-menu-toggle')"
+                    :aria-expanded="$store?.mobileMenuOpen?.toString() ?? 'false'"
+                    aria-controls="mobile-drawer"
+                    aria-label="Toggle navigation menu" type="button">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
                    stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
@@ -112,9 +117,12 @@
 
     <!-- Mobile drawer -->
     <div class="navbar__mobile"
+         id="mobile-drawer"
          x-data="{ open: false }"
          @mobile-menu-toggle.window="open = !open"
          x-show="open"
+         role="navigation"
+         aria-label="Mobile navigation"
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0 -translate-y-2"
          x-transition:enter-end="opacity-100 translate-y-0"
@@ -192,7 +200,7 @@
   </div>
   {% endif %}
 
-  <main class="page-main">
+  <main id="main-content" class="page-main">
     {% block content %}{% endblock %}
   </main>
 
@@ -227,7 +235,7 @@
         </div>
         <div>
           <p class="footer__col-title">Explore</p>
-          <nav class="footer__links">
+          <nav class="footer__links" aria-label="Explore SameFare">
             <a href="/trips">Find a ride</a>
             <a href="/trips/new">Offer a ride</a>
             {% if not current_user %}
@@ -237,7 +245,7 @@
         </div>
         <div>
           <p class="footer__col-title">Popular routes</p>
-          <nav class="footer__links">
+          <nav class="footer__links" aria-label="Popular routes">
             <a href="/trips?origin=Reykjav%C3%ADk&destination=Akureyri">Reykjavík → Akureyri</a>
             <a href="/trips?origin=Reykjav%C3%ADk&destination=Selfoss">Reykjavík → Selfoss</a>
             <a href="/trips?origin=Reykjav%C3%ADk&destination=V%C3%ADk">Reykjavík → Vík</a>
@@ -246,7 +254,7 @@
         </div>
         <div>
           <p class="footer__col-title">Company</p>
-          <nav class="footer__links">
+          <nav class="footer__links" aria-label="Company">
             <a href="/terms">Terms &amp; Conditions</a>
             <a href="/privacy">Privacy Policy</a>
             <a href="mailto:support@samefare.com">Contact us</a>
