@@ -7,7 +7,6 @@ from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Red
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import joinedload, Session
 
@@ -171,8 +170,6 @@ app.include_router(messages.router)
 app.include_router(reviews.router)
 app.include_router(newsletter.router)
 
-# Middleware must be added after routers are registered
-app.add_middleware(SlowAPIMiddleware)
 
 templates = Jinja2Templates(directory="templates")
 
