@@ -2723,6 +2723,85 @@ button, input, select, textarea { font: inherit; }
   margin: 1.25rem 0 1.5rem;
 }
 
+/* ── Admin dashboard ─────────────────────────────────── */
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+.dash-grid--4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 900px) { .dash-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 500px) { .dash-grid { grid-template-columns: 1fr; } }
+
+.dash-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+}
+.dash-card--highlight {
+  background: color-mix(in srgb, var(--c-primary) 8%, var(--c-surface));
+  border-color: color-mix(in srgb, var(--c-primary) 30%, transparent);
+}
+.dash-card--sm { padding: var(--space-4); }
+
+.dash-card__label {
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+  margin: 0 0 var(--space-2);
+}
+.dash-card__value {
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--c-text);
+  margin: 0 0 var(--space-2);
+}
+.dash-card__value--md  { font-size: 1.75rem; }
+.dash-card__value--warn { color: var(--c-warning, #f59e0b); }
+.dash-card__currency   { font-size: .9rem; font-weight: 500; color: var(--c-text-muted); }
+.dash-card__sub {
+  font-size: .8rem;
+  color: var(--c-text-muted);
+  margin: 0;
+}
+.dash-card__warn { color: var(--c-warning, #f59e0b); font-weight: 600; }
+
+.dash-tables {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+  margin-top: var(--space-6);
+}
+@media (max-width: 800px) { .dash-tables { grid-template-columns: 1fr; } }
+
+.dash-table-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.dash-table-card__title {
+  font-size: .85rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--c-border);
+  margin: 0;
+}
+.dash-empty {
+  padding: var(--space-5);
+  color: var(--c-text-muted);
+  font-size: .875rem;
+}
+.text-right { text-align: right; }
+
 /* ── Admin: users table ─────────────────────────────────────────────────────── */
 .admin-user-table { overflow-x: auto; }
 .data-table {

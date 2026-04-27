@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block title %}Dashboard — Admin{% endblock %}
+
+{% block content %}
+<div class="container" style="margin-top:2rem; margin-bottom:4rem;">
+
+  <div class="page-section-header">
+    <div>
+      <h1 class="page-title">Dashboard</h1>
+      <p style="margin:.25rem 0 0; color:var(--c-text-muted); font-size:.9rem;">Live snapshot — all time unless noted</p>
+    </div>
+    <div class="admin-nav-tabs">
+      <a href="/admin"              class="admin-tab admin-tab--active">Dashboard</a>
+      <a href="/admin/users"        class="admin-tab">Users</a>
+      <a href="/admin/verifications"class="admin-tab">Verifications</a>
+      <a href="/admin/newsletter"   class="admin-tab">Newsletter</a>
+    </div>
+  </div>
+
+  <!-- ── Row 1: headline numbers ─────────────────────────────────────────── -->
+  <div class="dash-grid">
+
+    <div class="dash-card">
+      <p class="dash-card__label">Total users</p>
+      <p class="dash-card__value">{{ "{:,}".format(total_users) }}</p>
+      <p class="dash-card__sub">+{{ new_users_7d }} this week · +{{ new_users_30d }} this month</p>
+    </div>
+
+    <div class="dash-card">
+      <p class="dash-card__label">Trips offered</p>
+      <p class="dash-card__value">{{ "{:,}".format(total_trips) }}</p>
+      <p class="dash-card__sub">+{{ trips_7d }} this week · {{ upcoming_trips }} upcoming</p>
+    </div>
+
+    <div class="dash-card">
+      <p class="dash-card__label">Confirmed bookings</p>
+      <p class="dash-card__value">{{ "{:,}".format(confirmed_bookings) }}</p>
+      <p class="dash-card__sub">
+        +{{ bookings_7d }} this week
+        {% if pending_bookings %}
+          · <span class="dash-card__warn">{{ pending_bookings }} pending</span>
+        {% endif %}
+      </p>
+    </div>
+
+    <div class="dash-card dash-card--highlight">
+      <p class="dash-card__label">Service fee revenue</p>
+      <p class="dash-card__value">{{ "{:,}".format(total_fees) }} <span class="dash-card__currency">ISK</span></p>
+      <p class="dash-card__sub">+{{ "{:,}".format(fees_7d) }} ISK this week</p>
+    </div>
+
+  </div>
+
+  <!-- ── Row 2: secondary numbers ────────────────────────────────────────── -->
+  <div class="dash-grid dash-grid--4" style="margin-top:var(--space-4);">
+
+    <div class="dash-card dash-card--sm">
+      <p class="dash-card__label">Verified users</p>
+      <p class="dash-card__value dash-card__value--md">{{ verified_users }}</p>
+      <p class="dash-card__sub">
+        {% if total_users %}{{ ((verified_users / total_users) * 100) | round(0) | int }}% of total{% endif %}
+      </p>
+    </div>
+
+    <div class="dash-card dash-card--sm">
+      <p class="dash-card__label">Total ride value (GMV)</p>
+      <p class="dash-card__value dash-card__value--md">{{ "{:,}".format(total_gmv) }} <span class="dash-card__currency">ISK</span></p>
+      <p class="dash-card__sub">All confirmed bookings</p>
+    </div>
+
+    <div class="dash-card dash-card--sm">
+      <p class="dash-card__label">Newsletter subscribers</p>
+      <p class="dash-card__value dash-card__value--md">{{ total_subscribers }}</p>
+      <p class="dash-card__sub">{{ discounts_used }} free ride{{ 's' if discounts_used != 1 }} used</p>
+    </div>
+
+    <div class="dash-card dash-card--sm">
+      <p class="dash-card__label">Pending bookings</p>
+      <p class="dash-card__value dash-card__value--md {% if pending_bookings %}dash-card__value--warn{% endif %}">{{ pending_bookings }}</p>
+      <p class="dash-card__sub"><a href="/admin/users" class="link">Review →</a></p>
+    </div>
+
+  </div>
+
+  <!-- ── Row 3: tables ────────────────────────────────────────────────────── -->
+  <div class="dash-tables">
+
+    <!-- Popular routes -->
+    <div class="dash-table-card">
+      <h2 class="dash-table-card__title">Popular routes</h2>
+      {% if popular_routes %}
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Route</th>
+            <th class="text-right">Trips</th>
+            <th class="text-right">Bookings</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for route in popular_routes %}
+          <tr>
+            <td>
+              <a href="/trips?origin={{ route.origin | urlencode }}&destination={{ route.destination | urlencode }}"
+                 class="link">{{ route.origin }} → {{ route.destination }}</a>
+            </td>
+            <td class="text-right">{{ route.trip_count }}</td>
+            <td class="text-right">{{ route.booking_count or 0 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+        <p class="dash-empty">No trips yet.</p>
+      {% endif %}
+    </div>
+
+    <!-- Recent bookings -->
+    <div class="dash-table-card">
+      <h2 class="dash-table-card__title">Recent bookings</h2>
+      {% if recent_bookings %}
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Passenger</th>
+            <th>Route</th>
+            <th class="text-right">Amount</th>
+            <th class="text-right">When</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in recent_bookings %}
+          <tr>
+            <td>{{ b.passenger.full_name.split()[0] }}</td>
+            <td>
+              <a href="/trips/{{ b.trip_id }}" class="link">
+                {{ b.trip.origin }} → {{ b.trip.destination }}
+              </a>
+            </td>
+            <td class="text-right">{{ "{:,}".format(b.total_price) }} ISK</td>
+            <td class="text-right" style="white-space:nowrap; color:var(--c-text-muted); font-size:.8rem;">
+              {{ b.created_at.strftime("%-d %b") }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+        <p class="dash-empty">No confirmed bookings yet.</p>
+      {% endif %}
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

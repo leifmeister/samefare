@@ -9,12 +9,13 @@ Admin routes (is_admin=True) let staff review and approve / reject documents.
 
 import os
 import uuid
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app import models
 from app.config import get_settings
@@ -164,6 +165,126 @@ def _require_admin(current_user: models.User = Depends(get_current_user)):
     if not current_user.is_admin:
         raise __import__("fastapi").HTTPException(status_code=403, detail="Forbidden")
     return current_user
+
+
+@router.get("/admin", response_class=HTMLResponse)
+def admin_dashboard(
+    request: Request,
+    ctx:     dict        = Depends(get_template_context),
+    admin:   models.User = Depends(_require_admin),
+    db:      Session     = Depends(get_db),
+):
+    now      = datetime.utcnow()
+    ago_7d   = now - timedelta(days=7)
+    ago_30d  = now - timedelta(days=30)
+
+    # ── Users ──────────────────────────────────────────────────────────────────
+    total_users    = db.query(func.count(models.User.id)).scalar() or 0
+    new_users_7d   = db.query(func.count(models.User.id)).filter(models.User.created_at >= ago_7d).scalar() or 0
+    new_users_30d  = db.query(func.count(models.User.id)).filter(models.User.created_at >= ago_30d).scalar() or 0
+    verified_users = db.query(func.count(models.User.id)).filter(
+        models.User.id_verification == "approved"
+    ).scalar() or 0
+
+    # ── Trips ──────────────────────────────────────────────────────────────────
+    total_trips    = db.query(func.count(models.Trip.id)).scalar() or 0
+    trips_7d       = db.query(func.count(models.Trip.id)).filter(models.Trip.created_at >= ago_7d).scalar() or 0
+    upcoming_trips = db.query(func.count(models.Trip.id)).filter(
+        models.Trip.departure_datetime >= now,
+        models.Trip.status == models.TripStatus.active,
+    ).scalar() or 0
+
+    # ── Bookings ───────────────────────────────────────────────────────────────
+    confirmed_bookings = db.query(func.count(models.Booking.id)).filter(
+        models.Booking.status == models.BookingStatus.confirmed
+    ).scalar() or 0
+    pending_bookings   = db.query(func.count(models.Booking.id)).filter(
+        models.Booking.status == models.BookingStatus.pending
+    ).scalar() or 0
+    bookings_7d        = db.query(func.count(models.Booking.id)).filter(
+        models.Booking.status == models.BookingStatus.confirmed,
+        models.Booking.created_at >= ago_7d,
+    ).scalar() or 0
+
+    # ── Revenue ────────────────────────────────────────────────────────────────
+    total_gmv = db.query(func.sum(models.Booking.total_price)).filter(
+        models.Booking.status == models.BookingStatus.confirmed
+    ).scalar() or 0
+    total_fees = db.query(func.sum(models.Booking.service_fee)).filter(
+        models.Booking.status == models.BookingStatus.confirmed
+    ).scalar() or 0
+    fees_7d = db.query(func.sum(models.Booking.service_fee)).filter(
+        models.Booking.status == models.BookingStatus.confirmed,
+        models.Booking.created_at >= ago_7d,
+    ).scalar() or 0
+
+    # ── Newsletter ─────────────────────────────────────────────────────────────
+    total_subscribers  = db.query(func.count(models.NewsletterSubscriber.id)).scalar() or 0
+    discounts_used     = db.query(func.count(models.NewsletterSubscriber.id)).filter(
+        models.NewsletterSubscriber.discount_used == True  # noqa: E712
+    ).scalar() or 0
+
+    # ── Popular routes (top 5) ─────────────────────────────────────────────────
+    popular_routes = (
+        db.query(
+            models.Trip.origin,
+            models.Trip.destination,
+            func.count(models.Trip.id).label("trip_count"),
+            func.sum(
+                db.query(func.count(models.Booking.id))
+                .filter(
+                    models.Booking.trip_id == models.Trip.id,
+                    models.Booking.status  == models.BookingStatus.confirmed,
+                )
+                .correlate(models.Trip)
+                .scalar_subquery()
+            ).label("booking_count"),
+        )
+        .group_by(models.Trip.origin, models.Trip.destination)
+        .order_by(func.count(models.Trip.id).desc())
+        .limit(6)
+        .all()
+    )
+
+    # ── Recent confirmed bookings ──────────────────────────────────────────────
+    recent_bookings = (
+        db.query(models.Booking)
+        .options(
+            joinedload(models.Booking.trip),
+            joinedload(models.Booking.passenger),
+        )
+        .filter(models.Booking.status == models.BookingStatus.confirmed)
+        .order_by(models.Booking.created_at.desc())
+        .limit(8)
+        .all()
+    )
+
+    return templates.TemplateResponse("admin/dashboard.html", {
+        **ctx,
+        # users
+        "total_users":    total_users,
+        "new_users_7d":   new_users_7d,
+        "new_users_30d":  new_users_30d,
+        "verified_users": verified_users,
+        # trips
+        "total_trips":    total_trips,
+        "trips_7d":       trips_7d,
+        "upcoming_trips": upcoming_trips,
+        # bookings
+        "confirmed_bookings": confirmed_bookings,
+        "pending_bookings":   pending_bookings,
+        "bookings_7d":        bookings_7d,
+        # revenue
+        "total_gmv":   total_gmv,
+        "total_fees":  total_fees,
+        "fees_7d":     fees_7d,
+        # newsletter
+        "total_subscribers": total_subscribers,
+        "discounts_used":    discounts_used,
+        # tables
+        "popular_routes":  popular_routes,
+        "recent_bookings": recent_bookings,
+    })
 
 
 @router.get("/admin/users", response_class=HTMLResponse)
