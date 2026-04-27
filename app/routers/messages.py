@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 from app import models, email as mailer
 from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
+from app.limiter import limiter
 
 templates = Jinja2Templates(directory="templates")
 router    = APIRouter(prefix="/messages", tags=["messages"])
@@ -173,6 +174,7 @@ def conversation(
 # ── Send ──────────────────────────────────────────────────────────────────────
 
 @router.post("/{booking_id}", response_class=HTMLResponse)
+@limiter.limit("30/minute")
 def send_message(
     booking_id:   int,
     request:      Request,

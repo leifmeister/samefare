@@ -9,6 +9,7 @@ from app import models, email as mailer
 from app.config import get_settings
 from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
+from app.limiter import limiter
 from app.routers.payments import calc_fees
 
 settings = get_settings()
@@ -67,6 +68,7 @@ def book_trip_page(
 
 
 @router.post("/trip/{trip_id}", response_class=HTMLResponse)
+@limiter.limit("10/minute")
 def create_booking(
     trip_id: int,
     request: Request,
@@ -285,6 +287,7 @@ def confirm_booking(
 
 
 @router.post("/{booking_id}/no-show")
+@limiter.limit("5/minute")
 def mark_passenger_no_show(
     booking_id: int,
     current_user: models.User = Depends(get_current_user),
@@ -310,6 +313,7 @@ def mark_passenger_no_show(
 
 
 @router.post("/{booking_id}/driver-no-show")
+@limiter.limit("5/minute")
 def report_driver_no_show(
     booking_id: int,
     current_user: models.User = Depends(get_current_user),

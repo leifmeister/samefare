@@ -12,6 +12,7 @@ from app import models, email as mailer
 from app.config import get_settings
 from app.database import get_db
 from app.dependencies import get_current_user_optional, get_template_context
+from app.limiter import limiter
 
 settings = get_settings()
 templates = Jinja2Templates(directory="templates")
@@ -53,6 +54,7 @@ def login_page(request: Request, ctx: dict = Depends(get_template_context)):
 
 
 @router.post("/login", response_class=HTMLResponse)
+@limiter.limit("5/minute")
 def login(
     request: Request,
     email: str = Form(...),
@@ -88,6 +90,7 @@ def register_page(request: Request, ctx: dict = Depends(get_template_context)):
 
 
 @router.post("/register", response_class=HTMLResponse)
+@limiter.limit("10/hour")
 def register(
     request: Request,
     full_name: str = Form(...),
@@ -181,6 +184,7 @@ def verify_email(
 
 
 @router.post("/resend-verification", response_class=HTMLResponse)
+@limiter.limit("5/hour")
 def resend_verification(
     request:      Request,
     ctx:          dict         = Depends(get_template_context),
@@ -203,6 +207,7 @@ def forgot_password_page(request: Request, ctx: dict = Depends(get_template_cont
 
 
 @router.post("/forgot-password", response_class=HTMLResponse)
+@limiter.limit("5/hour")
 def forgot_password(
     request: Request,
     ctx:   dict    = Depends(get_template_context),
@@ -237,6 +242,7 @@ def reset_password_page(
 
 
 @router.post("/reset-password", response_class=HTMLResponse)
+@limiter.limit("5/minute")
 def reset_password(
     request:          Request,
     ctx:              dict    = Depends(get_template_context),

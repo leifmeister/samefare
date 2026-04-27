@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block title %}Too many requests — SameFare{% endblock %}
+{% block content %}
+<div class="error-page">
+  <div class="error-page__code">429</div>
+  <h1 class="error-page__title">Slow down a little</h1>
+  <p class="error-page__body">
+    You've made too many requests in a short time. Please wait a moment and try again.
+    {% if retry_after %}
+      You can retry in <strong>{{ retry_after }} second{{ 's' if retry_after != 1 }}</strong>.
+    {% endif %}
+  </p>
+  <div class="error-page__actions">
+    <a href="/" class="btn btn-primary">Back to home</a>
+    <a href="javascript:history.back()" class="btn btn-outline">Go back</a>
+  </div>
+</div>
+{% endblock %}
