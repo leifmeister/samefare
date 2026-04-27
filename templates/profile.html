@@ -93,7 +93,14 @@
             </div>
             <div class="form-group"
                  x-data="phoneField('{{ current_user.phone or '' }}')">
-              <label class="label">Phone</label>
+              <label class="label">
+                Phone
+                {% if current_user.phone_verified %}
+                  <span class="verify-chip verify-chip--approved" style="margin-left:.4rem;">✓ Verified</span>
+                {% elif current_user.phone %}
+                  <span class="verify-chip verify-chip--pending" style="margin-left:.4rem;">Unverified</span>
+                {% endif %}
+              </label>
               <input type="hidden" name="phone" :value="full" />
               <div class="phone-input">
                 {{ phone_select(x_model="code") }}
@@ -102,6 +109,47 @@
                        autocomplete="tel-national"
                        placeholder="xxx xxxx" />
               </div>
+
+              {# OTP verification widget — only shown when phone saved but not yet verified #}
+              {% if current_user.phone and not current_user.phone_verified %}
+              <div x-data="phoneOtp()" style="margin-top:.6rem;">
+                <div x-show="!codeSent" style="display:flex; gap:.5rem; align-items:center;">
+                  <button type="button" class="btn btn-outline btn-sm"
+                          :disabled="sending"
+                          @click="sendCode()">
+                    <span x-show="!sending">Send verification code</span>
+                    <span x-show="sending">Sending…</span>
+                  </button>
+                  <span x-show="error" x-text="error" class="form-hint form-hint--error"></span>
+                </div>
+                <div x-show="codeSent" style="margin-top:.5rem;">
+                  <p class="form-hint" style="margin-bottom:.4rem;">
+                    Code sent to {{ current_user.phone }}. Enter it below:
+                  </p>
+                  <div style="display:flex; gap:.5rem; align-items:center;">
+                    <input type="text" inputmode="numeric" maxlength="6" class="input"
+                           style="width:7rem; letter-spacing:.15em; font-size:1.1rem;"
+                           x-model="otp"
+                           placeholder="------"
+                           @keyup.enter="confirmCode()" />
+                    <button type="button" class="btn btn-primary btn-sm"
+                            :disabled="confirming || otp.length < 6"
+                            @click="confirmCode()">
+                      <span x-show="!confirming">Verify</span>
+                      <span x-show="confirming">Checking…</span>
+                    </button>
+                    <button type="button" class="btn btn-ghost btn-sm"
+                            @click="codeSent = false; otp = ''; error = ''">
+                      Resend
+                    </button>
+                  </div>
+                  <p x-show="error" x-text="error" class="form-hint form-hint--error" style="margin-top:.3rem;"></p>
+                  <p x-show="success" class="form-hint form-hint--success" style="margin-top:.3rem;">
+                    ✓ Phone verified! Refreshing…
+                  </p>
+                </div>
+              </div>
+              {% endif %}
             </div>
           </div>
           <div class="form-group">
@@ -157,4 +205,50 @@
 
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function phoneOtp() {
+  return {
+    sending:    false,
+    confirming: false,
+    codeSent:   false,
+    otp:        '',
+    error:      '',
+    success:    false,
+
+    async sendCode() {
+      this.sending = true;
+      this.error   = '';
+      try {
+        const r = await fetch('/verify-phone/send', { method: 'POST' });
+        const j = await r.json();
+        if (j.ok) { this.codeSent = true; }
+        else       { this.error = j.error || 'Could not send code.'; }
+      } catch(e) { this.error = 'Network error. Please try again.'; }
+      finally    { this.sending = false; }
+    },
+
+    async confirmCode() {
+      if (this.otp.length < 6) return;
+      this.confirming = true;
+      this.error      = '';
+      try {
+        const fd = new FormData();
+        fd.append('code', this.otp);
+        const r = await fetch('/verify-phone/confirm', { method: 'POST', body: fd });
+        const j = await r.json();
+        if (j.ok) {
+          this.success = true;
+          setTimeout(() => location.reload(), 1200);
+        } else {
+          this.error = j.error || 'Verification failed.';
+        }
+      } catch(e) { this.error = 'Network error. Please try again.'; }
+      finally    { this.confirming = false; }
+    },
+  };
+}
+</script>
 {% endblock %}

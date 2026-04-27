@@ -13,8 +13,8 @@ from app.config import get_settings
 from app.database import Base, engine, SessionLocal
 from app.dependencies import get_current_user_optional
 from app import models  # noqa: F401 — register models before create_all
-from app.routers import auth, bookings, language, messages, newsletter, payments, reviews, trips, users, verification
-from app.tasks import auto_complete_loop, _run_auto_complete, _run_auto_ratings
+from app.routers import auth, bookings, language, messages, newsletter, payments, phone, reviews, trips, users, verification
+from app.tasks import auto_complete_loop, _run_auto_complete, _run_auto_ratings, _run_trip_reminders
 
 settings = get_settings()
 
@@ -75,7 +75,8 @@ _MIGRATIONS = [
     "ALTER TYPE bookingstatus ADD VALUE IF NOT EXISTS 'no_show'",
 
     # ── trips ─────────────────────────────────────────────────────────────────
-    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS driver_no_show BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS driver_no_show  BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS reminder_sent   BOOLEAN NOT NULL DEFAULT FALSE",
 
     # ── reviews ───────────────────────────────────────────────────────────────
     "ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_auto BOOLEAN NOT NULL DEFAULT FALSE",
@@ -165,6 +166,7 @@ app.include_router(verification.router)
 app.include_router(messages.router)
 app.include_router(reviews.router)
 app.include_router(newsletter.router)
+app.include_router(phone.router)
 
 
 templates = Jinja2Templates(directory="templates")

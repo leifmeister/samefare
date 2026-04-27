@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block title %}Test Users — Admin{% endblock %}
+
+{% block content %}
+<div class="container" style="margin-top:2rem; margin-bottom:4rem;">
+
+  <div class="page-section-header">
+    <div>
+      <h1 class="page-title">Test Users</h1>
+      <p style="margin:.25rem 0 0; color:var(--c-text-muted); font-size:.9rem;">
+        Seeded demo accounts for testing — credentials visible only to admins
+      </p>
+    </div>
+    <div class="admin-nav-tabs">
+      <a href="/admin"               class="admin-tab">Dashboard</a>
+      <a href="/admin/users"         class="admin-tab">Users</a>
+      <a href="/admin/verifications" class="admin-tab">Verifications</a>
+      <a href="/admin/newsletter"    class="admin-tab">Newsletter</a>
+      <a href="/admin/test-users"    class="admin-tab admin-tab--active">Test Users</a>
+    </div>
+  </div>
+
+  {% if request.query_params.get('seeded') %}
+    <div class="alert alert--success" style="margin-bottom:1.5rem;" role="alert">
+      ✓ Seed complete — accounts created (existing ones skipped).
+    </div>
+  {% endif %}
+
+  {% set all_exist = test_users | selectattr('exists') | list | length == test_users | length %}
+
+  {% if not all_exist %}
+  <div class="alert alert--warning" style="margin-bottom:1.5rem;" role="alert">
+    Some test accounts don't exist yet.
+    <form method="post" action="/admin/test-users/seed" style="display:inline; margin-left:.75rem;">
+      <button type="submit" class="btn btn-primary btn-sm">Seed now</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <div class="test-user-grid">
+    {% for u in test_users %}
+    <div class="test-user-card {% if not u.exists %}test-user-card--missing{% endif %}">
+
+      <div class="test-user-card__header">
+        <div>
+          <p class="test-user-card__name">{{ u.full_name }}</p>
+          {% if u.exists %}
+            <span class="badge badge--success">Active</span>
+            {% if u.trip_count %}
+              <span class="badge badge--neutral">{{ u.trip_count }} ride{{ 's' if u.trip_count != 1 }}</span>
+            {% else %}
+              <span class="badge badge--neutral">Passenger only</span>
+            {% endif %}
+          {% else %}
+            <span class="badge badge--warning">Not seeded</span>
+          {% endif %}
+        </div>
+        {% if u.exists %}
+          <a href="/admin/users?q={{ u.email }}" class="btn btn-ghost btn-sm">View →</a>
+        {% endif %}
+      </div>
+
+      <dl class="test-user-card__creds">
+        <div class="test-user-card__row">
+          <dt>Email</dt>
+          <dd><code>{{ u.email }}</code></dd>
+        </div>
+        <div class="test-user-card__row">
+          <dt>Password</dt>
+          <dd><code>{{ u.password }}</code></dd>
+        </div>
+        {% if u.phone %}
+        <div class="test-user-card__row">
+          <dt>Phone</dt>
+          <dd><code>{{ u.phone }}</code></dd>
+        </div>
+        {% endif %}
+        <div class="test-user-card__row">
+          <dt>Identity</dt>
+          <dd>
+            {% if u.id_verification == 'approved' %}
+              <span class="verify-chip verify-chip--approved">✓ Verified</span>
+            {% else %}
+              <span class="verify-chip verify-chip--unverified">Unverified</span>
+            {% endif %}
+          </dd>
+        </div>
+        <div class="test-user-card__row">
+          <dt>Driving</dt>
+          <dd>
+            {% if u.license_verification == 'approved' %}
+              <span class="verify-chip verify-chip--approved">✓ Verified</span>
+            {% else %}
+              <span class="verify-chip verify-chip--unverified">Unverified</span>
+            {% endif %}
+          </dd>
+        </div>
+      </dl>
+
+      {% if u.bio %}
+        <p class="test-user-card__bio">{{ u.bio }}</p>
+      {% endif %}
+
+      {% if u.trips %}
+        <div class="test-user-card__trips">
+          <p class="test-user-card__trips-title">Rides posted</p>
+          {% for t in u.trips %}
+          <div class="test-user-card__trip">
+            <span class="test-user-card__route">{{ t.origin }} → {{ t.destination }}</span>
+            <span class="test-user-card__meta">{{ t.price_per_seat | int | string + ' ISK' }} · {{ t.seats_total }} seat{{ 's' if t.seats_total != 1 }} · +{{ t.days_ahead }}d</span>
+          </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

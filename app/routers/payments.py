@@ -159,7 +159,7 @@ def process_payment(
     db.commit()
     db.refresh(booking)
 
-    # Emails — fire and forget
+    # Notifications — fire and forget
     mailer.booking_confirmed_to_passenger(booking)
     mailer.booking_confirmed_to_driver(booking)
 

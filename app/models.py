@@ -175,6 +175,7 @@ class Trip(Base):
     smoking            = Column(Boolean, nullable=False, default=False)
     instant_book       = Column(Boolean, nullable=False, default=True)
     driver_no_show     = Column(Boolean, nullable=False, default=False)  # reported by a passenger
+    reminder_sent      = Column(Boolean, nullable=False, default=False)  # day-before SMS reminder fired
     status             = Column(Enum(TripStatus), nullable=False, default=TripStatus.active)
     created_at         = Column(DateTime, nullable=False, default=datetime.utcnow)
 

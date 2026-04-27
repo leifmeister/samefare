@@ -30,8 +30,8 @@ def profile_completion(user: models.User) -> dict:
         },
         {
             "key":   "phone",
-            "label": "Add your phone number",
-            "done":  bool(user.phone),
+            "label": "Verify your phone number",
+            "done":  bool(user.phone and user.phone_verified),
             "url":   "/profile",
         },
         {

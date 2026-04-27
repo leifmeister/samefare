@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 
-from app import models, email as mailer
+from app import models, email as mailer, sms as texter
 from app.config import get_settings
 from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
@@ -500,6 +500,7 @@ def cancel_trip(
     db.commit()
     for b in affected:
         mailer.trip_cancelled_to_passenger(b)
+        texter.trip_cancelled_to_passenger(b)
 
     return RedirectResponse("/my-trips?tab=rides&cancelled=1", status_code=303)
 

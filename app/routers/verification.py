@@ -167,6 +167,57 @@ def _require_admin(current_user: models.User = Depends(get_current_user)):
     return current_user
 
 
+@router.get("/admin/test-users", response_class=HTMLResponse)
+def admin_test_users(
+    request: Request,
+    ctx:     dict        = Depends(get_template_context),
+    admin:   models.User = Depends(_require_admin),
+    db:      Session     = Depends(get_db),
+):
+    # Import TEST_USERS from the seed script — single source of truth
+    import importlib.util, os
+    spec = importlib.util.spec_from_file_location(
+        "seed_test_data",
+        os.path.join(os.path.dirname(__file__), "..", "..", "seed_test_data.py"),
+    )
+    seed_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(seed_mod)
+    test_users_def = seed_mod.TEST_USERS
+
+    # Enrich with live DB state (exists? how many trips?)
+    enriched = []
+    for u in test_users_def:
+        db_user = db.query(models.User).filter(models.User.email == u["email"]).first()
+        enriched.append({
+            **u,
+            "exists":     db_user is not None,
+            "user_id":    db_user.id if db_user else None,
+            "trip_count": len(db_user.trips) if db_user else 0,
+        })
+
+    return templates.TemplateResponse("admin/test_users.html", {
+        **ctx,
+        "test_users": enriched,
+    })
+
+
+@router.post("/admin/test-users/seed", response_class=HTMLResponse)
+def seed_test_users(
+    request: Request,
+    admin:   models.User = Depends(_require_admin),
+):
+    """Run the seed script from the admin panel."""
+    import importlib.util, os
+    spec = importlib.util.spec_from_file_location(
+        "seed_test_data",
+        os.path.join(os.path.dirname(__file__), "..", "..", "seed_test_data.py"),
+    )
+    seed_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(seed_mod)
+    seed_mod.run()
+    return RedirectResponse("/admin/test-users?seeded=1", status_code=303)
+
+
 @router.get("/admin", response_class=HTMLResponse)
 def admin_dashboard(
     request: Request,

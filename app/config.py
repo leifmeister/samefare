@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     email_from:     str = Field(default="SameFare <noreply@samefare.com>", alias="EMAIL_FROM")
     base_url:       str = Field(default="https://samefare.com", alias="BASE_URL")
 
+    # SMS via Twilio (https://twilio.com)
+    twilio_account_sid:  str = Field(default="", alias="TWILIO_ACCOUNT_SID")
+    twilio_auth_token:   str = Field(default="", alias="TWILIO_AUTH_TOKEN")
+    twilio_from_number:  str = Field(default="", alias="TWILIO_FROM_NUMBER")
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", populate_by_name=True)
 
 
