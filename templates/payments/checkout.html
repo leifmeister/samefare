@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "partials/avatar.html" import avatar %}
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
-{% block title %}Complete payment — {{ booking.trip.origin }} → {{ booking.trip.destination }}{% endblock %}
+{% block title %}Complete payment — {{ booking.pickup_city or booking.trip.origin }} → {{ booking.dropoff_city or booking.trip.destination }}{% endblock %}
 
 {% block content %}
 <div class="container container--narrow" style="margin-top:2rem; margin-bottom:4rem;">
@@ -15,13 +15,13 @@
       {% if payment_case == 'B' %}
         <h1 class="form-page__title">Save your card</h1>
         <p class="form-page__sub">
-          {{ booking.trip.origin }} → {{ booking.trip.destination }} &nbsp;·&nbsp;
+          {{ booking.pickup_city or booking.trip.origin }} → {{ booking.dropoff_city or booking.trip.destination }} &nbsp;·&nbsp;
           {{ booking.trip.departure_datetime.strftime("%a %-d %b, %H:%M") }}
         </p>
       {% else %}
         <h1 class="form-page__title">Complete your payment</h1>
         <p class="form-page__sub">
-          {{ booking.trip.origin }} → {{ booking.trip.destination }} &nbsp;·&nbsp;
+          {{ booking.pickup_city or booking.trip.origin }} → {{ booking.dropoff_city or booking.trip.destination }} &nbsp;·&nbsp;
           {{ booking.trip.departure_datetime.strftime("%a %-d %b, %H:%M") }}
         </p>
       {% endif %}
@@ -182,11 +182,21 @@
         <div class="trip-mini-detail">
           <div class="trip-mini-detail__row">
             <span class="trip-mini-detail__label">From</span>
-            <span>{{ booking.trip.origin }}</span>
+            <span>
+              {{ booking.pickup_city or booking.trip.origin }}
+              {% if booking.pickup_city and booking.pickup_city != booking.trip.origin %}
+              <span class="booking-route__context">Driver boards at {{ booking.trip.origin }}</span>
+              {% endif %}
+            </span>
           </div>
           <div class="trip-mini-detail__row">
             <span class="trip-mini-detail__label">To</span>
-            <span>{{ booking.trip.destination }}</span>
+            <span>
+              {{ booking.dropoff_city or booking.trip.destination }}
+              {% if booking.dropoff_city and booking.dropoff_city != booking.trip.destination %}
+              <span class="booking-route__context">Driver continues to {{ booking.trip.destination }}</span>
+              {% endif %}
+            </span>
           </div>
           <div class="trip-mini-detail__row">
             <span class="trip-mini-detail__label">Departs</span>

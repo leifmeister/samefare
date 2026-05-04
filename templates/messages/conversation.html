@@ -46,7 +46,7 @@
         </span>
       </div>
       <a href="/trips/{{ booking.trip_id }}" class="chat-header__trip-link">
-        {{ booking.trip.origin }} → {{ booking.trip.destination }}
+        {{ booking.pickup_city or booking.trip.origin }} → {{ booking.dropoff_city or booking.trip.destination }}
         · {{ booking.trip.departure_datetime.strftime("%-d %b · %H:%M") }}
       </a>
     </div>

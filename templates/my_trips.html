@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "partials/avatar.html" import avatar %}
 {% from "partials/profile_completion.html" import completion_card %}
+{% from "partials/booking_route.html" import booking_route %}
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
 {% block title %}My trips — SameFare{% endblock %}
 
@@ -47,14 +48,19 @@
 {% set review_deadline  = trip.departure_datetime + timedelta(days=14) %}
 {% set can_review       = not already_reviewed and now < review_deadline %}
 
+{% set _seg_o  = booking.pickup_city  or trip.origin %}
+{% set _seg_d  = booking.dropoff_city or trip.destination %}
+{% set _is_seg = booking.pickup_city and (_seg_o != trip.origin or _seg_d != trip.destination) %}
+
 <div class="booking-row booking-row--{{ status }}">
 
   {# Route + pill #}
   <div class="booking-row__header">
     <div class="booking-row__route">
-      <strong class="booking-row__city">{{ trip.origin }}</strong>
+      <strong class="booking-row__city">{{ _seg_o }}</strong>
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" class="booking-row__arrow" aria-hidden="true"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-      <strong class="booking-row__city">{{ trip.destination }}</strong>
+      <strong class="booking-row__city">{{ _seg_d }}</strong>
+      {% if _is_seg %}<span class="booking-row__route-context">Part of {{ trip.origin }} → {{ trip.destination }}</span>{% endif %}
     </div>
     {{ status_pill(status) }}
   </div>
@@ -454,7 +460,15 @@
           {{ avatar(booking.passenger, cls="avatar--sm") }}
           <div>
             <p class="request-card__name">{{ booking.passenger.full_name }}</p>
-            <p class="request-card__route">{{ booking.trip.origin }} → {{ booking.trip.destination }} · {{ booking.trip.departure_datetime.strftime("%-d %b · %H:%M") }}</p>
+            <p class="request-card__route">
+              {% set _ro = booking.pickup_city or booking.trip.origin %}
+              {% set _rd = booking.dropoff_city or booking.trip.destination %}
+              {{ _ro }} → {{ _rd }}
+              {% if booking.pickup_city and (_ro != booking.trip.origin or _rd != booking.trip.destination) %}
+              <span class="booking-route__context">Part of {{ booking.trip.origin }} → {{ booking.trip.destination }}</span>
+              {% endif %}
+              · {{ booking.trip.departure_datetime.strftime("%-d %b · %H:%M") }}
+            </p>
           </div>
           <div class="request-card__price-aside">
             {{ "{:,}".format(booking.total_price) }} ISK

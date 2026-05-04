@@ -17,8 +17,11 @@
         How was your ride with {{ reviewee.full_name.split()[0] }}?
       </h1>
       <p style="color:var(--c-text-muted); font-size:.9rem;">
-        {{ booking.trip.origin }} → {{ booking.trip.destination }} &nbsp;·&nbsp;
-        {{ booking.trip.departure_datetime.strftime("%-d %b %Y") }}
+        {{ booking.pickup_city or booking.trip.origin }} → {{ booking.dropoff_city or booking.trip.destination }}
+        {% if booking.pickup_city and (booking.pickup_city != booking.trip.origin or booking.dropoff_city != booking.trip.destination) %}
+        <span class="booking-route__context">Part of {{ booking.trip.origin }} → {{ booking.trip.destination }}</span>
+        {% endif %}
+        &nbsp;·&nbsp; {{ booking.trip.departure_datetime.strftime("%-d %b %Y") }}
       </p>
     </div>
 

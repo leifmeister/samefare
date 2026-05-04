@@ -1,0 +1,38 @@
+{#
+  booking_route(booking, secondary=True)
+
+  Renders the passenger's actual travel segment (pickup_city → dropoff_city)
+  falling back to the full trip route when the booking covers the whole journey.
+
+  secondary: if True and the booking is a partial segment, appends a muted
+             "Part of origin → destination" context line so the driver's full
+             route is never lost.
+
+  Usage:
+    {% from "partials/booking_route.html" import booking_route, seg_origin, seg_dest %}
+    {{ booking_route(booking) }}
+    {# inline text: #}
+    {{ seg_origin(booking) }} → {{ seg_dest(booking) }}
+#}
+
+{% macro seg_origin(booking) %}{{ booking.pickup_city or booking.trip.origin }}{% endmacro %}
+{% macro seg_dest(booking)   %}{{ booking.dropoff_city or booking.trip.destination }}{% endmacro %}
+
+{% macro booking_route(booking, secondary=True) %}
+{% set _o    = booking.pickup_city  or booking.trip.origin %}
+{% set _d    = booking.dropoff_city or booking.trip.destination %}
+{% set _full_o = booking.trip.origin %}
+{% set _full_d = booking.trip.destination %}
+{% set _seg  = booking.pickup_city and (_o != _full_o or _d != _full_d) %}
+<span class="booking-route">
+  <strong>{{ _o }}</strong>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+       width="12" height="12" class="booking-route__arrow" aria-hidden="true">
+    <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
+  </svg>
+  <strong>{{ _d }}</strong>
+  {% if secondary and _seg %}
+  <span class="booking-route__context">Part of {{ _full_o }} → {{ _full_d }}</span>
+  {% endif %}
+</span>
+{% endmacro %}

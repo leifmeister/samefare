@@ -2125,6 +2125,25 @@ button, input, select, textarea { font: inherit; }
 }
 .verified-badge svg { display: block; }
 
+/* ── Segment route context ("Part of origin → destination") ─────────────── */
+/* Used in booking rows, payment summaries, and driver request cards to show  */
+/* the passenger's actual segment while keeping the full driver route visible. */
+.booking-route__context,
+.booking-row__route-context {
+  display: block;
+  font-size: .72rem;
+  font-weight: 400;
+  color: var(--c-text-muted);
+  margin-top: 1px;
+}
+
+/* Inline variant for tight single-line contexts (request-card__route, etc.) */
+.booking-route__context--inline {
+  display: inline;
+  font-size: .72rem;
+  color: var(--c-text-muted);
+}
+
 /* ── Trust signals (public profile verification list) ────────────────────── */
 .trust-signals {
   background: var(--c-surface);

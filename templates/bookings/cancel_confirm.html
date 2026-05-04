@@ -14,8 +14,11 @@
     <div class="form-page__header">
       <h1 class="form-page__title">Cancel booking</h1>
       <p class="form-page__sub">
-        {{ booking.trip.origin }} → {{ booking.trip.destination }} &mdash;
-        {{ booking.trip.departure_datetime.strftime("%a %-d %b %Y, %H:%M") }}
+        {{ booking.pickup_city or booking.trip.origin }} → {{ booking.dropoff_city or booking.trip.destination }}
+        {% if booking.pickup_city and (booking.pickup_city != booking.trip.origin or booking.dropoff_city != booking.trip.destination) %}
+        <span class="booking-route__context">Part of {{ booking.trip.origin }} → {{ booking.trip.destination }}</span>
+        {% endif %}
+        &mdash; {{ booking.trip.departure_datetime.strftime("%a %-d %b %Y, %H:%M") }}
       </p>
     </div>
 

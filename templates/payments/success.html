@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
-{% block title %}Booking confirmed — {{ booking.trip.origin }} → {{ booking.trip.destination }}{% endblock %}
+{% block title %}Booking confirmed — {{ booking.pickup_city or booking.trip.origin }} → {{ booking.dropoff_city or booking.trip.destination }}{% endblock %}
 
 {% block content %}
 <div class="container container--narrow" style="margin-top:2rem; margin-bottom:4rem;">
@@ -24,7 +24,12 @@
 
       <div class="price-row">
         <span>Route</span>
-        <span><strong>{{ booking.trip.origin }} → {{ booking.trip.destination }}</strong></span>
+        <span>
+          <strong>{{ booking.pickup_city or booking.trip.origin }} → {{ booking.dropoff_city or booking.trip.destination }}</strong>
+          {% if booking.pickup_city and (booking.pickup_city != booking.trip.origin or booking.dropoff_city != booking.trip.destination) %}
+          <span class="booking-route__context">Part of {{ booking.trip.origin }} → {{ booking.trip.destination }}</span>
+          {% endif %}
+        </span>
       </div>
       <div class="price-row">
         <span>Departure</span>
