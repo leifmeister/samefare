@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% from "partials/avatar.html" import avatar %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block title %}Reports — Admin{% endblock %}
+
+{% block content %}
+<div class="container" style="margin-top:2rem; margin-bottom:4rem;">
+  <div class="page-section-header">
+    <div>
+      <h1 class="page-title">Safety reports</h1>
+      <p style="margin:.25rem 0 0; color:var(--c-text-muted); font-size:.9rem;">
+        {{ reports|length }} report{{ 's' if reports|length != 1 }}
+      </p>
+    </div>
+    <div class="admin-nav-tabs">
+      <a href="/admin"               class="admin-tab">Dashboard</a>
+      <a href="/admin/users"         class="admin-tab">Users</a>
+      <a href="/admin/verifications" class="admin-tab">Verifications</a>
+      <a href="/admin/reports"          class="admin-tab admin-tab--active">Reports</a>
+      <a href="/admin/city-suggestions" class="admin-tab">City suggestions</a>
+      <a href="/admin/newsletter"       class="admin-tab">Newsletter</a>
+      <a href="/admin/test-users"    class="admin-tab">Test Users</a>
+    </div>
+  </div>
+
+  {% if not reports %}
+  <div class="empty-state" style="margin-top:3rem;">
+    <h3 class="empty-state__title">No reports yet</h3>
+    <p class="empty-state__body">Safety reports submitted by users will appear here.</p>
+  </div>
+  {% else %}
+  <div class="admin-list">
+    {% for r in reports %}
+    <div class="admin-list__row" style="display:grid; gap:.75rem;">
+      <div style="display:flex; align-items:center; gap:.75rem; flex-wrap:wrap;">
+        <!-- Reporter -->
+        <div style="display:flex; align-items:center; gap:.5rem;">
+          {% if r.reporter %}
+            {{ avatar(r.reporter, cls="avatar--sm") }}
+            <div>
+              <p style="font-weight:600; font-size:.9rem; margin:0;">{{ r.reporter.full_name }}</p>
+              <p style="font-size:.78rem; color:var(--c-text-muted); margin:0;">reporter</p>
+            </div>
+          {% else %}
+            <span class="text-muted" style="font-size:.85rem;">Deleted user</span>
+          {% endif %}
+        </div>
+
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" style="color:#94A3B8; flex-shrink:0;" aria-hidden="true"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+
+        <!-- Reported -->
+        <div style="display:flex; align-items:center; gap:.5rem;">
+          {{ avatar(r.reported, cls="avatar--sm") }}
+          <div>
+            <p style="font-weight:600; font-size:.9rem; margin:0;">
+              <a href="/users/{{ r.reported.id }}" class="link">{{ r.reported.full_name }}</a>
+            </p>
+            <p style="font-size:.78rem; color:var(--c-text-muted); margin:0;">reported</p>
+          </div>
+        </div>
+
+        <!-- Reason chip -->
+        <span class="bk-pill bk-pill--urgent" style="margin-left:auto;">
+          {{ reason_labels.get(r.reason | string, r.reason | string) }}
+        </span>
+      </div>
+
+      {% if r.comment %}
+      <p style="font-size:.875rem; color:var(--c-text); background:var(--c-surface);
+                border:1px solid var(--c-border); border-radius:var(--radius-sm);
+                padding:.6rem .85rem; margin:0;">
+        "{{ r.comment }}"
+      </p>
+      {% endif %}
+
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+        <div style="display:flex; gap:1.5rem; font-size:.8rem; color:var(--c-text-muted); flex-wrap:wrap;">
+          <span>{{ r.created_at.strftime("%-d %b %Y · %H:%M") }}</span>
+          {% if r.booking %}
+          <span>
+            Booking: <a href="/trips/{{ r.booking.trip_id }}" class="link">
+              {{ r.booking.trip.origin }} → {{ r.booking.trip.destination }}
+              ({{ r.booking.trip.departure_datetime.strftime("%-d %b %Y") }})
+            </a>
+          </span>
+          {% endif %}
+          {% if r.reviewed_at %}
+          <span style="color:#059669;">✓ Reviewed {{ r.reviewed_at.strftime("%-d %b %Y") }}</span>
+          {% endif %}
+        </div>
+
+        {% if not r.reviewed_at %}
+        <div style="display:flex; gap:.5rem; align-items:flex-start; flex-shrink:0;"
+             x-data="{ suspendOpen: false }">
+          <form method="post" action="/admin/reports/{{ r.id }}/dismiss">
+            <button class="btn btn-ghost btn-xs">Dismiss</button>
+          </form>
+          <div>
+            <button class="btn btn-danger btn-xs" @click="suspendOpen = !suspendOpen">Suspend user</button>
+            <form x-show="suspendOpen" method="post" action="/admin/reports/{{ r.id }}/suspend"
+                  style="margin-top:.5rem; min-width:220px;"
+                  onsubmit="return confirm('Suspend {{ r.reported.full_name }}?')">
+              <input name="reason" type="text" class="input input--xs"
+                     value="{{ reason_labels.get(r.reason | string, '') }}"
+                     placeholder="Suspension reason" style="margin-bottom:.35rem;" />
+              <button type="submit" class="btn btn-danger btn-xs">Confirm suspend</button>
+            </form>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

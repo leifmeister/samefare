@@ -46,16 +46,29 @@
           This is a test build. Click below to confirm your booking instantly — no card details needed and no money will be charged.
         </p>
 
+        {% if service_fee == 0 %}
+        <div class="discount-banner">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>
+          Newsletter subscriber discount — service fee waived on this booking!
+        </div>
+        {% endif %}
         <div class="booking-summary">
           <h3 class="booking-summary__title">What would be charged in production</h3>
           <div class="price-row">
             <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }} × {{ "{:,}".format(booking.trip.price_per_seat) }} ISK</span>
             <span>{{ "{:,}".format(contribution) }} ISK</span>
           </div>
+          {% if service_fee == 0 %}
+          <div class="price-row price-row--muted">
+            <span>Service fee</span>
+            <span class="discount-strike">waived ✓</span>
+          </div>
+          {% else %}
           <div class="price-row price-row--muted">
             <span>Service fee ({{ fee_pct }}%)</span>
             <span>{{ "{:,}".format(service_fee) }} ISK</span>
           </div>
+          {% endif %}
           <div class="price-row price-row--total">
             <span>Total</span>
             <span class="price-row--strikethrough">{{ "{:,}".format(total) }} ISK</span>

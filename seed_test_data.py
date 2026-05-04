@@ -146,7 +146,21 @@ TEST_USERS = [
         "license_verification": "unverified",
         "id_doc_type":          None,
         "email_verified":       True,
+        "newsletter_subscriber": False,
         "trips": [],   # passenger-only account, no rides posted
+    },
+    {
+        "full_name":   "Helga Sigurðardóttir",
+        "email":       "helga@test.samefare.com",
+        "password":    "Test1234!",
+        "phone":       "+354 7774321",
+        "bio":         "First-time rider. Newsletter subscriber — service fee waived on first booking.",
+        "id_verification":      "approved",
+        "license_verification": "unverified",
+        "id_doc_type":          None,
+        "email_verified":       True,
+        "newsletter_subscriber": True,   # has an unused first-ride discount
+        "trips": [],   # passenger-only, used for testing the newsletter discount flow
     },
 ]
 
@@ -202,8 +216,20 @@ def run():
                 )
                 db.add(trip)
 
+            if u.get("newsletter_subscriber"):
+                sub_exists = (
+                    db.query(models.NewsletterSubscriber)
+                    .filter(models.NewsletterSubscriber.email == u["email"])
+                    .first()
+                )
+                if not sub_exists:
+                    db.add(models.NewsletterSubscriber(email=u["email"], source="test_seed"))
+
             db.commit()
-            print(f"  added {u['email']}  ({len(u['trips'])} trip{'s' if len(u['trips']) != 1 else ''})")
+            label = f"({len(u['trips'])} trip{'s' if len(u['trips']) != 1 else ''})"
+            if u.get("newsletter_subscriber"):
+                label += " [newsletter discount]"
+            print(f"  added {u['email']}  {label}")
             created += 1
 
     finally:

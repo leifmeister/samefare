@@ -15,7 +15,7 @@ from app.routers.alerts import notify_matching_alerts
 from app.routers.payments import _issue_rapyd_refund
 from app.estimator import estimate_trip_cost, route_lookup
 from app.fuel import active_policy, get_cached_petrol_price
-from app.utils import canonical_city, build_route_graph, is_on_route, shortest_path_km, prorate_segment_price, resolve_segment
+from app.utils import canonical_city, nearest_cities, build_route_graph, is_on_route, shortest_path_km, prorate_segment_price, resolve_segment, segments_overlap
 
 settings = get_settings()
 
@@ -245,6 +245,7 @@ def _find_segment_trips(
             models.Trip.status == models.TripStatus.active,
             models.Trip.departure_datetime >= datetime.utcnow(),
             models.Trip.seats_available > 0,
+            models.Trip.allow_segments == True,  # noqa: E712
         )
     )
     if direct_ids:
@@ -403,6 +404,7 @@ def trips_list(
             "same_city_error": True,
             "popular_routes": POPULAR_ROUTES,
             "travel_date_display": "",
+            "origin_suggestions": [], "destination_suggestions": [],
         }
         if request.headers.get("HX-Request"):
             return templates.TemplateResponse("trips/_list_partial.html", {**ctx, **ctx_extra})
@@ -462,6 +464,10 @@ def trips_list(
     seats_active = bool(seats) and seats > 1
     active_filters = sum([bool(origin), bool(destination), date_active, seats_active])
 
+    _known = set(ICELANDIC_CITIES)
+    origin_suggestions      = nearest_cities(origin)      if origin      and origin      not in _known else []
+    destination_suggestions = nearest_cities(destination) if destination and destination not in _known else []
+
     ctx_extra = {
         "trips": trips,
         "origin": origin or "",
@@ -478,6 +484,8 @@ def trips_list(
         "same_city_error": False,
         "popular_routes": POPULAR_ROUTES,
         "travel_date_display": parsed_date.strftime("%-d %b") if parsed_date else "",
+        "origin_suggestions":      origin_suggestions,
+        "destination_suggestions": destination_suggestions,
     }
 
     if request.headers.get("HX-Request"):
@@ -600,6 +608,7 @@ def create_trip(
     child_seat_raw:      Optional[str] = Form(None),
     flexible_pickup_raw: Optional[str] = Form(None),
     instant_book_raw:    Optional[str] = Form(None),
+    allow_segments_raw:  Optional[str] = Form(None),
 ):
     if current_user.license_verification != models.VerificationStatus.approved:
         return RedirectResponse("/verify?next=driver", status_code=303)
@@ -613,6 +622,7 @@ def create_trip(
     child_seat      = child_seat_raw      is not None
     flexible_pickup = flexible_pickup_raw is not None
     instant_book    = instant_book_raw    is not None
+    allow_segments  = allow_segments_raw  is not None
 
     # Resolve fuel type (None is fine — estimator infers from car_type)
     try:
@@ -730,6 +740,7 @@ def create_trip(
         child_seat=child_seat,
         flexible_pickup=flexible_pickup,
         instant_book=instant_book,
+        allow_segments=allow_segments,
     )
     db.add(trip)
 
@@ -800,6 +811,7 @@ def edit_trip_page(
             "child_seat":      trip.child_seat,
             "flexible_pickup": trip.flexible_pickup,
             "instant_book":    trip.instant_book,
+            "allow_segments":  trip.allow_segments,
             "description":     trip.description or "",
             "fuel_type":       str(trip.fuel_type) if trip.fuel_type else "",
         },
@@ -842,8 +854,9 @@ def update_trip(
     chattiness:          Optional[str] = Form(None),  # 'quiet', 'chatty', or '' / None
     winter_ready_raw:    Optional[str] = Form(None),
     child_seat_raw:      Optional[str] = Form(None),
-    flexible_pickup_raw: Optional[str] = Form(None),
-    instant_book_raw:    Optional[str] = Form(None),
+    flexible_pickup_raw:  Optional[str] = Form(None),
+    instant_book_raw:     Optional[str] = Form(None),
+    allow_segments_raw:   Optional[str] = Form(None),
 ):
     trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
     if not trip or trip.driver_id != current_user.id:
@@ -860,6 +873,7 @@ def update_trip(
     child_seat      = child_seat_raw      is not None
     flexible_pickup = flexible_pickup_raw is not None
     instant_book    = instant_book_raw    is not None
+    allow_segments  = allow_segments_raw  is not None
 
     try:
         fuel_type_val = models.FuelType(fuel_type_raw) if fuel_type_raw else None
@@ -889,6 +903,7 @@ def update_trip(
             "chattiness":     chattiness_val,
             "winter_ready":   winter_ready,   "child_seat":      child_seat,
             "flexible_pickup": flexible_pickup, "instant_book":  instant_book,
+            "allow_segments":  allow_segments,
             "description": description,
             "fuel_type":   str(fuel_type_val) if fuel_type_val else "",
         },
@@ -975,6 +990,7 @@ def update_trip(
     trip.child_seat         = child_seat
     trip.flexible_pickup    = flexible_pickup
     trip.instant_book       = instant_book
+    trip.allow_segments     = allow_segments
 
     db.commit()
     return RedirectResponse(f"/trips/{trip.id}", status_code=303)
@@ -1124,6 +1140,57 @@ def trip_detail(
         build_route_graph(db), trip, pickup or "", dropoff or ""
     )
 
+    # Occupancy timeline — driver-only: shows seat usage per leg when segments are allowed.
+    occupancy_timeline = []
+    if current_user and current_user.id == trip.driver_id and trip.allow_segments:
+        _graph = build_route_graph(db)
+        _active = [b for b in trip.bookings
+                   if b.status in (models.BookingStatus.awaiting_payment,
+                                   models.BookingStatus.card_saved,
+                                   models.BookingStatus.confirmed,
+                                   models.BookingStatus.pending)]
+        _waypoints = sorted(
+            {b.pickup_city  or trip.origin      for b in _active} |
+            {b.dropoff_city or trip.destination for b in _active} |
+            {trip.origin, trip.destination},
+            key=lambda c: shortest_path_km(_graph, trip.origin, c) or 0.0,
+        )
+        for _i in range(len(_waypoints) - 1):
+            _a, _b = _waypoints[_i], _waypoints[_i + 1]
+            _occ = sum(
+                bk.seats_booked for bk in _active
+                if segments_overlap(
+                    _graph, trip.origin,
+                    bk.pickup_city  or trip.origin,
+                    bk.dropoff_city or trip.destination,
+                    _a, _b,
+                )
+            )
+            occupancy_timeline.append({
+                "from": _a,
+                "to":   _b,
+                "occupied": _occ,
+                "available": max(0, trip.seats_total - _occ),
+            })
+
+    # Look up the stored polyline for map rendering.
+    # polyline is a JSON [lat,lng] array string or None when not yet fetched.
+    route_row = (
+        db.query(models.Route)
+        .filter(
+            models.Route.origin      == trip.origin,
+            models.Route.destination == trip.destination,
+            models.Route.is_active   == True,  # noqa: E712
+        )
+        .first()
+    )
+    trip_polyline = None
+    if route_row and route_row.polyline:
+        try:
+            trip_polyline = json.loads(route_row.polyline)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
     return templates.TemplateResponse("trips/detail.html", {
         **ctx,
         "trip": trip,
@@ -1136,6 +1203,8 @@ def trip_detail(
         "segment_pickup":  segment_pickup,
         "segment_dropoff": segment_dropoff,
         "segment_price":   segment_price,
+        "trip_polyline":      trip_polyline,
+        "occupancy_timeline": occupancy_timeline,
     })
 
 
@@ -1222,3 +1291,39 @@ def complete_trip_beta(
                 b.status = models.BookingStatus.completed
         db.commit()
     return RedirectResponse("/bookings", status_code=303)
+
+
+# ── City suggestions ──────────────────────────────────────────────────────────
+
+@router.post("/suggest-city", response_class=HTMLResponse)
+def suggest_city(
+    request:     Request,
+    db:          Session = Depends(get_db),
+    city_name:   str     = Form(...),
+    origin:      str     = Form(""),
+    destination: str     = Form(""),
+):
+    from app.dependencies import get_current_user_optional
+    current_user = get_current_user_optional(request, db)
+
+    city_name = city_name.strip()[:150]
+    if not city_name:
+        return HTMLResponse("", status_code=204)
+
+    # Deduplicate: one suggestion per city per session (simple IP-free check via user)
+    existing = db.query(models.CitySuggestion).filter(
+        models.CitySuggestion.city_name.ilike(city_name),
+        models.CitySuggestion.suggested_by_id == (current_user.id if current_user else None),
+    ).first()
+    if not existing:
+        db.add(models.CitySuggestion(
+            city_name           = city_name,
+            context_origin      = origin.strip()[:150] or None,
+            context_destination = destination.strip()[:150] or None,
+            suggested_by_id     = current_user.id if current_user else None,
+        ))
+        db.commit()
+
+    return HTMLResponse(
+        '<span class="suggest-city__thanks">✓ Thanks — we\'ll consider adding it!</span>'
+    )

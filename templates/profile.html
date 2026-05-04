@@ -71,7 +71,7 @@
         <summary class="details-card__summary">Edit profile</summary>
 
         <!-- Profile photo -->
-        <div class="details-card__section">
+        <div class="details-card__section" id="photo">
           <p class="label" style="margin-bottom:.75rem;">Profile photo</p>
           <div style="display:flex; align-items:center; gap:1rem;">
             {{ avatar(current_user, cls="avatar--lg") }}
@@ -91,7 +91,7 @@
               <input id="full_name" name="full_name" type="text" class="input"
                      value="{{ current_user.full_name }}" required />
             </div>
-            <div class="form-group"
+            <div class="form-group" id="phone"
                  x-data="phoneField({{ (current_user.phone or '')|tojson }})">
               <label class="label">
                 Phone
@@ -152,7 +152,7 @@
               {% endif %}
             </div>
           </div>
-          <div class="form-group">
+          <div class="form-group" id="bio">
             <label for="bio" class="label">Bio</label>
             <textarea id="bio" name="bio" class="input textarea" rows="2"
                       placeholder="A short intro for fellow travellers…">{{ current_user.bio or '' }}</textarea>
@@ -193,10 +193,48 @@
 
           <button type="submit" class="btn btn-primary">Save changes</button>
         </form>
+
       </details>
+
+      <!-- Change password -->
+      <div class="details-card" style="display:flex; align-items:center; justify-content:space-between; gap:1rem;">
+        <div>
+          <p class="details-card__summary" style="cursor:default; margin:0;">Change password</p>
+          <p class="field-hint" style="margin:.25rem 0 0;">We'll send a reset link to {{ current_user.email }}</p>
+        </div>
+        <a href="/forgot-password" class="btn btn-outline btn-sm" style="white-space:nowrap;">Send reset link</a>
+      </div>
 
       <div style="padding:1rem 0;">
         <a href="/my-trips" class="btn btn-outline">View my trips &amp; bookings →</a>
+      </div>
+
+      <!-- Danger zone -->
+      <div class="danger-zone">
+        <h2 class="danger-zone__title">Danger zone</h2>
+
+        {% if delete_error %}
+          <div class="alert alert--error" role="alert" style="margin-bottom:1rem;">{{ delete_error }}</div>
+        {% endif %}
+
+        <details class="danger-zone__details">
+          <summary class="danger-zone__summary">Delete my account</summary>
+          <div class="danger-zone__body">
+            <p class="danger-zone__warning">
+              This permanently removes your personal data from SameFare. Your trip and payment history is retained for 6 years as required by Icelandic tax law, but your name, email, phone, photo and bio will be erased immediately. Any upcoming trips you are driving will be cancelled.
+              <strong>This cannot be undone.</strong>
+            </p>
+            <form method="post" action="/profile/delete"
+                  onsubmit="return confirm('Permanently delete your account? This cannot be undone.')">
+              <div class="form-group" style="max-width:320px;">
+                <label for="delete_password" class="label">Confirm your password</label>
+                <input id="delete_password" name="password" type="password" class="input"
+                       required autocomplete="current-password" placeholder="••••••••" />
+              </div>
+              <button type="submit" class="btn btn-danger">Delete my account</button>
+            </form>
+          </div>
+        </details>
       </div>
 
     </div>
@@ -208,6 +246,19 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+// Open the "Edit profile" details panel and scroll to the anchored section
+// when arriving via a #photo / #phone / #bio fragment link.
+(function () {
+  var hash = window.location.hash.slice(1);
+  if (!hash) return;
+  var target = document.getElementById(hash);
+  if (!target) return;
+  var details = target.closest('details');
+  if (details) details.open = true;
+  setTimeout(function () { target.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 50);
+}());
+</script>
 <script>
 function phoneOtp() {
   return {

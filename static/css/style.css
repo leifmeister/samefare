@@ -533,11 +533,26 @@ button, input, select, textarea { font: inherit; }
   gap: var(--space-3);
   align-items: end;
 }
-.search-box__divider {
+.search-swap-btn {
   display: flex;
-  align-items: flex-end;
-  padding-bottom: .625rem;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  align-self: flex-end;
+  margin-bottom: .55rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--c-border);
+  background: var(--c-surface);
   color: var(--c-text-muted);
+  cursor: pointer;
+  transition: border-color var(--t-fast), color var(--t-fast), box-shadow var(--t-fast);
+}
+.search-swap-btn:hover {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(0,108,91,.10);
 }
 .search-field { display: flex; flex-direction: column; gap: var(--space-1); }
 .search-field--date { min-width: 0; }
@@ -597,13 +612,6 @@ button, input, select, textarea { font: inherit; }
 .search-bar__field        { display: flex; flex-direction: column; gap: .3rem; }
 .search-bar__field--date  { /* width controlled by grid column */ }
 .search-bar__field--xs    { /* width controlled by grid column */ }
-/* Arrow divider between From and To — mirrors .search-box__divider */
-.search-bar__divider {
-  display: flex;
-  align-items: flex-end;
-  padding-bottom: .625rem;
-  color: var(--c-text-muted);
-}
 /* Submit cell — button sits flush with the bottom of the row */
 .search-bar__submit       { display: flex; align-items: flex-end; }
 
@@ -1184,6 +1192,29 @@ button, input, select, textarea { font: inherit; }
 }
 .trip-status-banner--cancelled { background: var(--c-error-light); color: #991B1B; }
 .trip-status-banner--completed { background: var(--c-primary-light); color: var(--c-primary-dark); }
+
+/* ── Route map ───────────────────────────────────────────────────────────── */
+.route-map {
+  height: 220px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  margin-bottom: var(--space-1);
+  border: 1px solid var(--c-border-light);
+  background: #e8f4ea;
+}
+.route-map__disclaimer {
+  font-size: .75rem;
+  color: var(--c-text-muted);
+  margin: 0 0 var(--space-4);
+}
+.map-marker {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2.5px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.35);
+}
+.map-marker--from { background: var(--c-primary); }
+.map-marker--to   { background: var(--c-accent);  }
 
 .detail-cards { display: flex; flex-direction: column; gap: var(--space-4); }
 .detail-card {
@@ -2288,7 +2319,7 @@ button, input, select, textarea { font: inherit; }
   .hero { padding: 3rem 0 2.5rem; }
   .search-box { padding: 1rem; }
   .search-box__fields { grid-template-columns: 1fr; gap: var(--space-3); }
-  .search-box__divider { display: none; }
+  .search-swap-btn { display: none; }
 
   .list-layout   { grid-template-columns: 1fr; }
   .sidebar       { position: static; }
@@ -2314,7 +2345,6 @@ button, input, select, textarea { font: inherit; }
   .hero__title { font-size: 2rem; }
   .section-title { font-size: 1.5rem; }
   .search-bar__fields { grid-template-columns: 1fr 1fr; }
-  .search-bar__divider { display: none; }
   .search-bar__submit  { grid-column: 1 / -1; }
   .search-bar__submit .btn { width: 100%; }
   .date-chips { display: none; } /* hidden on mobile — date wheel is fine */
@@ -2898,7 +2928,8 @@ button, input, select, textarea { font: inherit; }
   transition: background .15s, color .15s;
 }
 .chat-action-btn:hover { background: var(--c-border-light); color: var(--c-text); }
-.chat-action-btn--report:hover { color: #DC2626; }
+.chat-action-btn--report:hover,
+.chat-action-btn--muted:hover { color: #DC2626; }
 
 /* ── Conversation status chip (in header) ───────────────────────────────── */
 .chat-status {
@@ -4512,4 +4543,338 @@ button, input, select, textarea { font: inherit; }
 .city-combo__option--active {
   background: var(--c-primary-light);
   color: var(--c-primary-dark);
+}
+
+/* ── Driver earnings tab ─────────────────────────────────────────────────── */
+.earn-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.earn-summary__stat {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+.earn-summary__value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--c-text);
+  line-height: 1.2;
+}
+.earn-summary__label {
+  font-size: .78rem;
+  color: var(--c-text-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.earn-table {
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  font-size: .9rem;
+}
+.earn-table__head,
+.earn-table__row,
+.earn-table__footer {
+  display: grid;
+  grid-template-columns: 1fr 5rem 7rem 9rem;
+  padding: .65rem 1rem;
+  align-items: center;
+  gap: .5rem;
+}
+.earn-table__head {
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border);
+  font-size: .75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--c-text-muted);
+}
+.earn-table__row {
+  border-bottom: 1px solid var(--c-border);
+  color: var(--c-text);
+}
+.earn-table__row:last-of-type { border-bottom: none; }
+.earn-table__row:nth-child(even) { background: var(--c-surface); }
+.earn-table__footer {
+  background: var(--c-surface);
+  border-top: 1px solid var(--c-border);
+  font-weight: 600;
+  color: var(--c-text);
+}
+.earn-table__col--right { text-align: right; }
+.earn-table__payout { color: var(--c-primary-dark); font-weight: 600; }
+.earn-table__month { font-weight: 500; }
+
+@media (max-width: 540px) {
+  .earn-table__head,
+  .earn-table__row,
+  .earn-table__footer {
+    grid-template-columns: 1fr 4rem 9rem;
+  }
+  .earn-table__head span:nth-child(3),
+  .earn-table__row span:nth-child(3),
+  .earn-table__footer span:nth-child(3) { display: none; }
+}
+
+/* ── Rating distribution bars ────────────────────────────────────────────── */
+.rating-dist {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  margin-top: .6rem;
+  width: 100%;
+  max-width: 220px;
+}
+.rating-dist__row {
+  display: grid;
+  grid-template-columns: 1rem .75rem 1fr 1.5rem;
+  align-items: center;
+  gap: .35rem;
+  font-size: .78rem;
+}
+.rating-dist__label {
+  color: var(--c-text-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.rating-dist__track {
+  height: 6px;
+  background: var(--c-border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.rating-dist__fill {
+  height: 100%;
+  background: #F59E0B;
+  border-radius: 99px;
+  transition: width .3s ease;
+}
+.rating-dist__count {
+  color: var(--c-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Report form ─────────────────────────────────────────────────────────── */
+.report-subject {
+  display: flex;
+  align-items: center;
+  gap: .875rem;
+  padding: .875rem 1rem;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+}
+.report-subject__name  { font-weight: 600; font-size: .95rem; margin: 0; }
+.report-subject__sub   { font-size: .8rem; color: var(--c-text-muted); margin: .1rem 0 0; }
+
+.report-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+.report-reason {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .6rem .875rem;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.report-reason:hover { background: var(--c-surface); }
+.report-reason input[type="radio"] { accent-color: var(--c-primary); flex-shrink: 0; }
+.report-reason input[type="radio"]:checked ~ .report-reason__label { font-weight: 600; }
+.report-reason:has(input:checked) {
+  border-color: var(--c-primary);
+  background: var(--c-primary-light);
+}
+.report-reason__label { font-size: .9rem; color: var(--c-text); }
+
+/* ── "Did you mean?" strip ───────────────────────────────────────────────── */
+.did-you-mean {
+  display: flex;
+  gap: .5rem;
+  align-items: flex-start;
+  background: #FFF7ED;
+  border: 1px solid #FED7AA;
+  border-radius: var(--radius-md);
+  padding: .7rem 1rem;
+  margin-bottom: 1rem;
+  font-size: .875rem;
+  color: #92400E;
+  line-height: 1.5;
+}
+.did-you-mean__link {
+  color: var(--c-primary-dark);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.did-you-mean__link:hover { color: var(--c-primary); }
+
+.city-combo__no-match {
+  padding: .5rem .875rem;
+  font-size: .875rem;
+  color: var(--c-text-muted);
+  font-style: italic;
+  cursor: default;
+  list-style: none;
+}
+
+/* ── Chattiness radio row ─────────────────────────────────────────────────── */
+.pref-chattiness {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--c-border);
+}
+.pref-chattiness__label {
+  font-size: .8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--c-text-muted);
+  margin: 0 0 .65rem;
+}
+.pref-chattiness__row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .65rem;
+}
+@media (max-width: 540px) {
+  .pref-chattiness__row { grid-template-columns: 1fr; }
+}
+
+/* ── City suggestion button ──────────────────────────────────────────────── */
+.suggest-city__btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: inherit;
+  color: var(--c-primary-dark);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.suggest-city__btn:hover { color: var(--c-primary); }
+.suggest-city__thanks {
+  font-size: inherit;
+  color: #065F46;
+  font-weight: 500;
+}
+
+/* ── Seat occupancy timeline (driver trip detail) ────────────────────────── */
+.occ-timeline { display: flex; flex-direction: column; gap: var(--space-2); }
+.occ-leg {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--c-border);
+}
+.occ-leg:last-child { border-bottom: none; }
+.occ-leg__route {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+}
+.occ-leg__city {
+  font-size: .85rem;
+  font-weight: 500;
+  color: var(--c-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.occ-leg__arrow { color: var(--c-text-muted); font-size: .8rem; flex-shrink: 0; }
+.occ-leg__bar-wrap { display: flex; gap: 3px; flex-shrink: 0; }
+.occ-leg__seat {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--c-border);
+  border: 1px solid var(--c-border-strong, #cbd5e0);
+}
+.occ-leg__seat--taken { background: var(--c-primary); border-color: var(--c-primary-dark); }
+.occ-leg__label {
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  min-width: 2.8rem;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Danger zone (account deletion) ─────────────────────────────────────── */
+.danger-zone {
+  margin-top: var(--space-4);
+  padding: var(--space-5) var(--space-5);
+  border: 1px solid #fca5a5;
+  border-radius: var(--r-lg);
+  background: #fff;
+}
+.danger-zone__title {
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--c-error);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin: 0 0 var(--space-3);
+}
+.danger-zone__details summary { cursor: pointer; }
+.danger-zone__summary {
+  font-size: .9rem;
+  font-weight: 500;
+  color: var(--c-error);
+  list-style: none;
+}
+.danger-zone__summary::-webkit-details-marker { display: none; }
+.danger-zone__body {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  background: #fef2f2;
+  border-radius: var(--r-md);
+  border: 1px solid #fecaca;
+}
+.danger-zone__warning {
+  font-size: .875rem;
+  color: var(--c-text);
+  margin: 0 0 var(--space-4);
+  line-height: 1.6;
+}
+
+/* ── Compact input for inline admin forms ────────────────────────────────── */
+.input--xs {
+  display: block;
+  width: 100%;
+  padding: .3rem .5rem;
+  font-size: .8rem;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  color: var(--c-text);
+}
+
+/* Hide the native browser datalist dropdown arrow (Chrome/Safari) —
+   the city combobox has its own styled toggle button */
+input[list]::-webkit-list-button { display: none !important; }
+input[list]::-webkit-calendar-picker-indicator { display: none !important; }
+input[list] {
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2394a3b8' stroke-width='1.75'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right .625rem center;
+  background-size: 16px 16px;
 }

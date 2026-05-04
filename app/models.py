@@ -83,6 +83,15 @@ class ReviewType(_StrEnum):
     driver_to_passenger = "driver_to_passenger"
 
 
+class ReportReason(_StrEnum):
+    harassment = "harassment"
+    safety     = "safety"
+    fraud      = "fraud"
+    no_show    = "no_show"
+    spam       = "spam"
+    other      = "other"
+
+
 class VerificationStatus(_StrEnum):
     unverified = "unverified"
     pending    = "pending"
@@ -145,9 +154,12 @@ class User(Base):
     full_name       = Column(String(255), nullable=False)
     phone           = Column(String(50))
     hashed_password = Column(String(255), nullable=False)
+    birth_year      = Column(Integer, nullable=True)
     role            = Column(Enum(UserRole), nullable=False, default=UserRole.both)
-    is_active       = Column(Boolean, nullable=False, default=True)
-    is_admin        = Column(Boolean, nullable=False, default=False)
+    is_active          = Column(Boolean, nullable=False, default=True)
+    is_admin           = Column(Boolean, nullable=False, default=False)
+    suspension_reason  = Column(String(500), nullable=True)
+    deleted_at         = Column(DateTime,    nullable=True)
     avatar_url      = Column(String(512))
     bio             = Column(Text)
     created_at      = Column(DateTime, nullable=False, default=datetime.utcnow)
@@ -275,6 +287,7 @@ class Trip(Base):
     child_seat         = Column(Boolean, nullable=False, default=False)  # child seat available
     flexible_pickup    = Column(Boolean, nullable=False, default=False)  # can adjust meeting point
     instant_book       = Column(Boolean, nullable=False, default=True)
+    allow_segments     = Column(Boolean, nullable=False, default=False)  # allow partial-route bookings
     driver_no_show     = Column(Boolean, nullable=False, default=False)  # reported by a passenger
     reminder_sent      = Column(Boolean, nullable=False, default=False)  # day-before SMS reminder fired
     status             = Column(Enum(TripStatus), nullable=False, default=TripStatus.active)
@@ -476,6 +489,31 @@ class Payment(Base):
 
     def __repr__(self) -> str:
         return f"<Payment id={self.id} booking_id={self.booking_id} status={self.status}>"
+
+
+# ── User reports ─────────────────────────────────────────────────────────────
+
+class UserReport(Base):
+    __tablename__ = "user_reports"
+
+    id          = Column(Integer, primary_key=True)
+    reporter_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    reported_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    booking_id  = Column(Integer, ForeignKey("bookings.id", ondelete="SET NULL"), nullable=True)
+    reason      = Column(Enum(ReportReason), nullable=False)
+    comment     = Column(Text, nullable=True)
+    created_at  = Column(DateTime, nullable=False, default=datetime.utcnow)
+    reviewed_at = Column(DateTime, nullable=True)
+
+    reporter = relationship("User",    foreign_keys=[reporter_id])
+    reported = relationship("User",    foreign_keys=[reported_id])
+    booking  = relationship("Booking", foreign_keys=[booking_id])
+
+    __table_args__ = (
+        Index("ix_user_reports_reported_id",  "reported_id"),
+        Index("ix_user_reports_reporter_id",  "reporter_id"),
+        Index("ix_user_reports_created_at",   "created_at"),
+    )
 
 
 # ── Newsletter ────────────────────────────────────────────────────────────────
@@ -866,4 +904,25 @@ class FuelPriceCache(Base):
     __table_args__ = (
         Index("ix_fuel_price_cache_fuel_type",  "fuel_type"),
         Index("ix_fuel_price_cache_fetched_at", "fetched_at"),
+    )
+
+
+# ── City suggestions ──────────────────────────────────────────────────────────
+
+class CitySuggestion(Base):
+    """User-submitted suggestions for cities/routes not yet in the network."""
+    __tablename__ = "city_suggestions"
+
+    id               = Column(Integer, primary_key=True)
+    city_name        = Column(String(150), nullable=False)
+    context_origin   = Column(String(150), nullable=True)   # what they searched from
+    context_destination = Column(String(150), nullable=True)  # what they searched to
+    suggested_by_id  = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at       = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    suggested_by = relationship("User", foreign_keys=[suggested_by_id])
+
+    __table_args__ = (
+        Index("ix_city_suggestions_city_name",  "city_name"),
+        Index("ix_city_suggestions_created_at", "created_at"),
     )

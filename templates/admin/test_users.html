@@ -16,7 +16,9 @@
       <a href="/admin"               class="admin-tab">Dashboard</a>
       <a href="/admin/users"         class="admin-tab">Users</a>
       <a href="/admin/verifications" class="admin-tab">Verifications</a>
-      <a href="/admin/newsletter"    class="admin-tab">Newsletter</a>
+      <a href="/admin/reports"           class="admin-tab">Reports</a>
+      <a href="/admin/city-suggestions"  class="admin-tab">City suggestions</a>
+      <a href="/admin/newsletter"        class="admin-tab">Newsletter</a>
       <a href="/admin/test-users"    class="admin-tab admin-tab--active">Test Users</a>
     </div>
   </div>
@@ -96,6 +98,18 @@
             {% endif %}
           </dd>
         </div>
+        {% if u.discount_active or u.discount_used %}
+        <div class="test-user-card__row">
+          <dt>Newsletter</dt>
+          <dd>
+            {% if u.discount_active %}
+              <span class="verify-chip verify-chip--approved">🎉 Discount available</span>
+            {% else %}
+              <span class="verify-chip verify-chip--unverified">Discount used</span>
+            {% endif %}
+          </dd>
+        </div>
+        {% endif %}
       </dl>
 
       {% if u.bio %}

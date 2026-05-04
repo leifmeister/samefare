@@ -1,6 +1,11 @@
 import asyncio
+import json
+import logging
+import urllib.request
 from contextlib import asynccontextmanager
 from datetime import datetime
+
+log = logging.getLogger(__name__)
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, Response
@@ -13,7 +18,7 @@ from app.config import get_settings
 from app.database import Base, engine, SessionLocal
 from app.dependencies import get_current_user_optional
 from app import models  # noqa: F401 — register models before create_all
-from app.routers import alerts, auth, bookings, language, messages, newsletter, payments, phone, reviews, trips, users, verification, webhooks
+from app.routers import alerts, auth, bookings, language, messages, newsletter, payments, phone, reports, reviews, trips, users, verification, webhooks
 from app.tasks import (
     auto_complete_loop,
     _run_auto_complete, _run_auto_ratings, _run_trip_reminders,
@@ -49,6 +54,9 @@ _MIGRATIONS = [
        EXCEPTION WHEN duplicate_object THEN NULL; END $$""",
     """DO $$ BEGIN CREATE TYPE verificationstatus AS ENUM
            ('unverified','pending','approved','rejected');
+       EXCEPTION WHEN duplicate_object THEN NULL; END $$""",
+    """DO $$ BEGIN CREATE TYPE reportreason AS ENUM
+           ('harassment','safety','fraud','no_show','spam','other');
        EXCEPTION WHEN duplicate_object THEN NULL; END $$""",
 
     # ── users ─────────────────────────────────────────────────────────────────
@@ -107,6 +115,10 @@ _MIGRATIONS = [
     "ALTER TABLE trips ADD COLUMN IF NOT EXISTS child_seat      BOOLEAN NOT NULL DEFAULT FALSE",
     "ALTER TABLE trips ADD COLUMN IF NOT EXISTS flexible_pickup BOOLEAN NOT NULL DEFAULT FALSE",
     "ALTER TABLE trips ADD COLUMN IF NOT EXISTS instant_book    BOOLEAN NOT NULL DEFAULT TRUE",
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS allow_segments  BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_year         INTEGER",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS suspension_reason  VARCHAR(500)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at          TIMESTAMP",
     # Chattiness scale — replaces the separate quiet_ride / chat_ok booleans
     "ALTER TABLE trips ADD COLUMN IF NOT EXISTS chattiness VARCHAR(10)",
     "UPDATE trips SET chattiness = 'quiet'  WHERE quiet_ride = TRUE  AND chattiness IS NULL",
@@ -505,6 +517,92 @@ _MIGRATIONS = [
          ('Húsavík',      'Mývatn',         60,  55, 'seeded_approximate', TRUE, now())
        ON CONFLICT (origin, destination) DO NOTHING""",
 
+    # ── route polylines — approximate waypoints for map display ─────────────────
+    # Stored as JSON [lat,lng] arrays; idempotent (only fills NULL rows).
+    # Waypoints trace the Ring Road and major Icelandic highways.
+    # Source remains 'seeded_approximate' until a routing API overwrites them.
+    """UPDATE routes AS r
+       SET polyline = p.poly
+       FROM (VALUES
+         ('Reykjavík','Keflavík','[[64.135,-21.895],[64.000,-22.150],[63.985,-22.556]]'),
+         ('Keflavík','Reykjavík','[[63.985,-22.556],[64.000,-22.150],[64.135,-21.895]]'),
+         ('Reykjavík','Hveragerði','[[64.135,-21.895],[64.023,-21.544],[63.991,-21.184]]'),
+         ('Hveragerði','Reykjavík','[[63.991,-21.184],[64.023,-21.544],[64.135,-21.895]]'),
+         ('Hveragerði','Selfoss','[[63.991,-21.184],[63.933,-20.998]]'),
+         ('Selfoss','Hveragerði','[[63.933,-20.998],[63.991,-21.184]]'),
+         ('Reykjavík','Selfoss','[[64.135,-21.895],[64.023,-21.544],[63.991,-21.184],[63.933,-20.998]]'),
+         ('Selfoss','Reykjavík','[[63.933,-20.998],[63.991,-21.184],[64.023,-21.544],[64.135,-21.895]]'),
+         ('Reykjavík','Hella','[[64.135,-21.895],[64.023,-21.544],[63.991,-21.184],[63.933,-20.998],[63.834,-20.387]]'),
+         ('Hella','Reykjavík','[[63.834,-20.387],[63.933,-20.998],[63.991,-21.184],[64.023,-21.544],[64.135,-21.895]]'),
+         ('Reykjavík','Vík','[[64.135,-21.895],[64.023,-21.544],[63.991,-21.184],[63.933,-20.998],[63.834,-20.387],[63.530,-19.500],[63.419,-18.998]]'),
+         ('Vík','Reykjavík','[[63.419,-18.998],[63.530,-19.500],[63.834,-20.387],[63.933,-20.998],[63.991,-21.184],[64.023,-21.544],[64.135,-21.895]]'),
+         ('Reykjavík','Kirkjubæjarklaustur','[[64.135,-21.895],[64.023,-21.544],[63.991,-21.184],[63.933,-20.998],[63.834,-20.387],[63.530,-19.500],[63.419,-18.998],[63.783,-18.055]]'),
+         ('Kirkjubæjarklaustur','Reykjavík','[[63.783,-18.055],[63.419,-18.998],[63.530,-19.500],[63.834,-20.387],[63.933,-20.998],[63.991,-21.184],[64.023,-21.544],[64.135,-21.895]]'),
+         ('Reykjavík','Höfn','[[64.135,-21.895],[64.023,-21.544],[63.991,-21.184],[63.933,-20.998],[63.834,-20.387],[63.530,-19.500],[63.419,-18.998],[63.783,-18.055],[64.048,-16.180],[64.253,-15.207]]'),
+         ('Höfn','Reykjavík','[[64.253,-15.207],[64.048,-16.180],[63.783,-18.055],[63.419,-18.998],[63.530,-19.500],[63.834,-20.387],[63.933,-20.998],[63.991,-21.184],[64.023,-21.544],[64.135,-21.895]]'),
+         ('Selfoss','Vík','[[63.933,-20.998],[63.834,-20.387],[63.530,-19.500],[63.419,-18.998]]'),
+         ('Vík','Selfoss','[[63.419,-18.998],[63.530,-19.500],[63.834,-20.387],[63.933,-20.998]]'),
+         ('Selfoss','Kirkjubæjarklaustur','[[63.933,-20.998],[63.834,-20.387],[63.530,-19.500],[63.419,-18.998],[63.783,-18.055]]'),
+         ('Kirkjubæjarklaustur','Selfoss','[[63.783,-18.055],[63.419,-18.998],[63.530,-19.500],[63.834,-20.387],[63.933,-20.998]]'),
+         ('Selfoss','Höfn','[[63.933,-20.998],[63.834,-20.387],[63.530,-19.500],[63.419,-18.998],[63.783,-18.055],[64.048,-16.180],[64.253,-15.207]]'),
+         ('Höfn','Selfoss','[[64.253,-15.207],[64.048,-16.180],[63.783,-18.055],[63.419,-18.998],[63.530,-19.500],[63.834,-20.387],[63.933,-20.998]]'),
+         ('Vík','Kirkjubæjarklaustur','[[63.419,-18.998],[63.783,-18.055]]'),
+         ('Kirkjubæjarklaustur','Vík','[[63.783,-18.055],[63.419,-18.998]]'),
+         ('Kirkjubæjarklaustur','Höfn','[[63.783,-18.055],[64.048,-16.180],[64.253,-15.207]]'),
+         ('Höfn','Kirkjubæjarklaustur','[[64.253,-15.207],[64.048,-16.180],[63.783,-18.055]]'),
+         ('Höfn','Vík','[[64.253,-15.207],[64.048,-16.180],[63.783,-18.055],[63.419,-18.998]]'),
+         ('Vík','Höfn','[[63.419,-18.998],[63.783,-18.055],[64.048,-16.180],[64.253,-15.207]]'),
+         ('Reykjavík','Borgarnes','[[64.135,-21.895],[64.215,-21.878],[64.350,-21.920],[64.537,-21.914]]'),
+         ('Borgarnes','Reykjavík','[[64.537,-21.914],[64.350,-21.920],[64.215,-21.878],[64.135,-21.895]]'),
+         ('Reykjavík','Stykkishólmur','[[64.135,-21.895],[64.215,-21.878],[64.537,-21.914],[64.780,-21.750],[65.000,-22.350],[65.073,-22.726]]'),
+         ('Stykkishólmur','Reykjavík','[[65.073,-22.726],[65.000,-22.350],[64.780,-21.750],[64.537,-21.914],[64.215,-21.878],[64.135,-21.895]]'),
+         ('Reykjavík','Ólafsvík','[[64.135,-21.895],[64.215,-21.878],[64.537,-21.914],[64.780,-21.750],[65.000,-22.350],[65.073,-22.726],[64.894,-23.714]]'),
+         ('Ólafsvík','Reykjavík','[[64.894,-23.714],[65.073,-22.726],[65.000,-22.350],[64.780,-21.750],[64.537,-21.914],[64.215,-21.878],[64.135,-21.895]]'),
+         ('Borgarnes','Stykkishólmur','[[64.537,-21.914],[64.780,-21.750],[65.000,-22.350],[65.073,-22.726]]'),
+         ('Stykkishólmur','Borgarnes','[[65.073,-22.726],[65.000,-22.350],[64.780,-21.750],[64.537,-21.914]]'),
+         ('Borgarnes','Ólafsvík','[[64.537,-21.914],[64.780,-21.750],[65.000,-22.350],[65.073,-22.726],[64.894,-23.714]]'),
+         ('Ólafsvík','Borgarnes','[[64.894,-23.714],[65.073,-22.726],[65.000,-22.350],[64.780,-21.750],[64.537,-21.914]]'),
+         ('Stykkishólmur','Ólafsvík','[[65.073,-22.726],[64.894,-23.714]]'),
+         ('Ólafsvík','Stykkishólmur','[[64.894,-23.714],[65.073,-22.726]]'),
+         ('Reykjavík','Blönduós','[[64.135,-21.895],[64.215,-21.878],[64.537,-21.914],[64.780,-21.750],[65.397,-20.948],[65.662,-20.291]]'),
+         ('Blönduós','Reykjavík','[[65.662,-20.291],[65.397,-20.948],[64.780,-21.750],[64.537,-21.914],[64.215,-21.878],[64.135,-21.895]]'),
+         ('Reykjavík','Sauðárkrókur','[[64.135,-21.895],[64.215,-21.878],[64.537,-21.914],[64.780,-21.750],[65.397,-20.948],[65.662,-20.291],[65.573,-19.469],[65.746,-19.639]]'),
+         ('Sauðárkrókur','Reykjavík','[[65.746,-19.639],[65.573,-19.469],[65.662,-20.291],[65.397,-20.948],[64.780,-21.750],[64.537,-21.914],[64.215,-21.878],[64.135,-21.895]]'),
+         ('Reykjavík','Akureyri','[[64.135,-21.895],[64.215,-21.878],[64.537,-21.914],[64.780,-21.750],[65.397,-20.948],[65.662,-20.291],[65.573,-19.469],[65.683,-18.088]]'),
+         ('Akureyri','Reykjavík','[[65.683,-18.088],[65.573,-19.469],[65.662,-20.291],[65.397,-20.948],[64.780,-21.750],[64.537,-21.914],[64.215,-21.878],[64.135,-21.895]]'),
+         ('Reykjavík','Ísafjörður','[[64.135,-21.895],[64.215,-21.878],[64.537,-21.914],[64.780,-21.750],[65.063,-21.784],[65.705,-21.690],[65.900,-22.500],[66.075,-23.137]]'),
+         ('Ísafjörður','Reykjavík','[[66.075,-23.137],[65.900,-22.500],[65.705,-21.690],[65.063,-21.784],[64.780,-21.750],[64.537,-21.914],[64.215,-21.878],[64.135,-21.895]]'),
+         ('Reykjavík','Egilsstaðir','[[64.135,-21.895],[64.215,-21.878],[64.537,-21.914],[64.780,-21.750],[65.397,-20.948],[65.662,-20.291],[65.573,-19.469],[65.683,-18.088],[65.600,-16.970],[65.267,-14.395]]'),
+         ('Egilsstaðir','Reykjavík','[[65.267,-14.395],[65.600,-16.970],[65.683,-18.088],[65.573,-19.469],[65.662,-20.291],[65.397,-20.948],[64.780,-21.750],[64.537,-21.914],[64.215,-21.878],[64.135,-21.895]]'),
+         ('Borgarnes','Blönduós','[[64.537,-21.914],[64.780,-21.750],[65.397,-20.948],[65.662,-20.291]]'),
+         ('Blönduós','Borgarnes','[[65.662,-20.291],[65.397,-20.948],[64.780,-21.750],[64.537,-21.914]]'),
+         ('Blönduós','Sauðárkrókur','[[65.662,-20.291],[65.573,-19.469],[65.746,-19.639]]'),
+         ('Sauðárkrókur','Blönduós','[[65.746,-19.639],[65.573,-19.469],[65.662,-20.291]]'),
+         ('Sauðárkrókur','Borgarnes','[[65.746,-19.639],[65.573,-19.469],[65.397,-20.948],[64.780,-21.750],[64.537,-21.914]]'),
+         ('Borgarnes','Sauðárkrókur','[[64.537,-21.914],[64.780,-21.750],[65.397,-20.948],[65.573,-19.469],[65.746,-19.639]]'),
+         ('Borgarnes','Akureyri','[[64.537,-21.914],[64.780,-21.750],[65.397,-20.948],[65.662,-20.291],[65.573,-19.469],[65.683,-18.088]]'),
+         ('Akureyri','Borgarnes','[[65.683,-18.088],[65.573,-19.469],[65.662,-20.291],[65.397,-20.948],[64.780,-21.750],[64.537,-21.914]]'),
+         ('Akureyri','Húsavík','[[65.683,-18.088],[65.870,-17.600],[66.042,-17.339]]'),
+         ('Húsavík','Akureyri','[[66.042,-17.339],[65.870,-17.600],[65.683,-18.088]]'),
+         ('Akureyri','Mývatn','[[65.683,-18.088],[65.600,-16.970]]'),
+         ('Mývatn','Akureyri','[[65.600,-16.970],[65.683,-18.088]]'),
+         ('Akureyri','Siglufjörður','[[65.683,-18.088],[65.900,-18.500],[66.152,-18.910]]'),
+         ('Siglufjörður','Akureyri','[[66.152,-18.910],[65.900,-18.500],[65.683,-18.088]]'),
+         ('Akureyri','Sauðárkrókur','[[65.683,-18.088],[65.573,-19.469],[65.746,-19.639]]'),
+         ('Sauðárkrókur','Akureyri','[[65.746,-19.639],[65.573,-19.469],[65.683,-18.088]]'),
+         ('Akureyri','Blönduós','[[65.683,-18.088],[65.573,-19.469],[65.662,-20.291]]'),
+         ('Blönduós','Akureyri','[[65.662,-20.291],[65.573,-19.469],[65.683,-18.088]]'),
+         ('Akureyri','Egilsstaðir','[[65.683,-18.088],[65.600,-16.970],[65.267,-14.395]]'),
+         ('Egilsstaðir','Akureyri','[[65.267,-14.395],[65.600,-16.970],[65.683,-18.088]]'),
+         ('Mývatn','Egilsstaðir','[[65.600,-16.970],[65.267,-14.395]]'),
+         ('Egilsstaðir','Mývatn','[[65.267,-14.395],[65.600,-16.970]]'),
+         ('Mývatn','Húsavík','[[65.600,-16.970],[65.870,-17.100],[66.042,-17.339]]'),
+         ('Húsavík','Mývatn','[[66.042,-17.339],[65.870,-17.100],[65.600,-16.970]]'),
+         ('Egilsstaðir','Höfn','[[65.267,-14.395],[64.790,-14.020],[64.657,-14.285],[64.253,-15.207]]'),
+         ('Höfn','Egilsstaðir','[[64.253,-15.207],[64.657,-14.285],[64.790,-14.020],[65.267,-14.395]]')
+       ) AS p(o, d, poly)
+       WHERE r.origin = p.o AND r.destination = p.d AND r.polyline IS NULL""",
+
     # ── rename legacy route names to match city list ──────────────────────────
     # Hvolsvöllur was the original seed name; Hella is the city in the dropdown.
     # Snæfellsnes is a peninsula, not a city; Stykkishólmur is the main town.
@@ -514,6 +612,91 @@ _MIGRATIONS = [
     "UPDATE routes SET origin      = 'Stykkishólmur' WHERE origin      = 'Snæfellsnes'",
     "UPDATE routes SET destination = 'Stykkishólmur' WHERE destination = 'Snæfellsnes'",
 ]
+
+
+# ── OSRM road-geometry fetch ───────────────────────────────────────────────────
+
+# WGS-84 coordinates for every city SameFare routes through.
+_CITY_COORDS: dict[str, tuple[float, float]] = {
+    "Akureyri":              (65.6885, -18.1059),
+    "Blönduós":              (65.6617, -20.2886),
+    "Borgarnes":             (64.5390, -21.9224),
+    "Egilsstaðir":           (65.2675, -14.3947),
+    "Hella":                 (63.8333, -20.4000),
+    "Höfn":                  (64.2539, -15.2082),
+    "Húsavík":               (66.0442, -17.3390),
+    "Hveragerði":            (63.9915, -21.1844),
+    "Ísafjörður":            (66.0750, -23.1351),
+    "Keflavík":              (63.9850, -22.5607),
+    "Kirkjubæjarklaustur":   (63.7850, -18.0597),
+    "Mývatn":                (65.5955, -17.0093),
+    "Ólafsvík":              (64.8955, -23.7149),
+    "Reykjavík":             (64.1355, -21.8954),
+    "Sauðárkrókur":          (65.7453, -19.6389),
+    "Selfoss":               (63.9330, -20.9978),
+    "Siglufjörður":          (66.1520, -18.9063),
+    "Stykkishólmur":         (65.0720, -22.7287),
+    "Vík":                   (63.4187, -19.0054),
+}
+
+_OSRM_BASE = "https://router.project-osrm.org/route/v1/driving"
+
+
+def _fetch_osrm_polyline(origin: str, destination: str) -> list | None:
+    """
+    Call the public OSRM demo server and return a [[lat, lon], …] list
+    suitable for Leaflet, or None on any error.
+    Uses overview=full so the geometry covers the entire road, not just
+    a simplified version.
+    """
+    o = _CITY_COORDS.get(origin)
+    d = _CITY_COORDS.get(destination)
+    if not o or not d:
+        return None
+    url = (
+        f"{_OSRM_BASE}/{o[1]},{o[0]};{d[1]},{d[0]}"
+        "?overview=full&geometries=geojson"
+    )
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "SameFare/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+        coords = data["routes"][0]["geometry"]["coordinates"]
+        # OSRM returns [lon, lat]; Leaflet expects [lat, lon]
+        return [[lat, lon] for lon, lat in coords]
+    except Exception as exc:
+        log.warning("OSRM fetch failed for %s→%s: %s", origin, destination, exc)
+        return None
+
+
+def _refresh_osrm_polylines() -> None:
+    """
+    For every active route whose polyline was hand-seeded (source='seeded_approximate')
+    or is still NULL, fetch the real road geometry from OSRM and store it.
+    Runs once at startup; safe to re-run (idempotent via source flag).
+    """
+    db: Session = SessionLocal()
+    try:
+        routes = (
+            db.query(models.Route)
+            .filter(
+                models.Route.is_active == True,  # noqa: E712
+                models.Route.source.in_(["seeded_approximate", None]),
+            )
+            .all()
+        )
+        updated = 0
+        for route in routes:
+            poly = _fetch_osrm_polyline(route.origin, route.destination)
+            if poly:
+                route.polyline = json.dumps(poly)
+                route.source   = "osrm"
+                updated += 1
+        if updated:
+            db.commit()
+            log.info("OSRM: updated polylines for %d routes", updated)
+    finally:
+        db.close()
 
 
 @asynccontextmanager
@@ -534,6 +717,11 @@ async def lifespan(app: FastAPI):
     _run_create_payout_items()
     _run_advance_payout_items()
     _run_refresh_fuel_price()   # prime the fuel price cache on startup
+    # Fetch real road geometry from OSRM in a background thread so startup
+    # isn't delayed by network I/O.  Runs only for routes still flagged
+    # 'seeded_approximate'; no-ops once all routes have real polylines.
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(None, _refresh_osrm_polylines)
     task = asyncio.create_task(auto_complete_loop())
     yield
     task.cancel()
@@ -563,6 +751,7 @@ app.include_router(reviews.router)
 app.include_router(newsletter.router)
 app.include_router(phone.router)
 app.include_router(webhooks.router)
+app.include_router(reports.router)
 
 
 templates = Jinja2Templates(directory="templates")

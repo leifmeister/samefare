@@ -55,6 +55,18 @@
                autocomplete="new-password" placeholder="••••••••" minlength="8" />
       </div>
 
+      <div class="form-group">
+        <label for="birth_year" class="label">Birth year <span class="required">*</span></label>
+        <input id="birth_year" name="birth_year" type="number" class="input"
+               required min="1900" max="{{ current_year }}"
+               placeholder="e.g. 1990" autocomplete="bday-year" />
+      </div>
+
+      <label class="checkbox-opt-in checkbox-opt-in--required">
+        <input type="checkbox" name="age_confirmed" value="1" required />
+        <span>I confirm I am 18 or older</span>
+      </label>
+
       <label class="checkbox-opt-in">
         <input type="checkbox" name="newsletter" value="1" checked />
         <span>

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% from "partials/avatar.html" import avatar %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block title %}Report a user — SameFare{% endblock %}
+
+{% block content %}
+<div class="container" style="margin-top:2rem; margin-bottom:4rem; max-width:520px;">
+
+  <a href="javascript:history.back()" class="back-link">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+    Back
+  </a>
+
+  <div style="margin-top:1.5rem;">
+    <h1 class="page-title" style="margin-bottom:.35rem;">Report a user</h1>
+    <p class="text-muted" style="margin-bottom:2rem; font-size:.9rem;">
+      Reports are reviewed by the SameFare safety team within 24 hours.
+      Your identity is kept confidential.
+    </p>
+
+    <!-- Who is being reported -->
+    <div class="report-subject">
+      {{ avatar(reported, cls="avatar--md") }}
+      <div>
+        <p class="report-subject__name">{{ reported.full_name }}</p>
+        <p class="report-subject__sub">Member since {{ reported.created_at.strftime("%B %Y") }}</p>
+      </div>
+    </div>
+
+    <form method="post" action="/report/{{ reported.id }}" class="details-card__form" style="margin-top:1.5rem;">
+      {% if booking %}
+      <input type="hidden" name="booking_id" value="{{ booking.id }}" />
+      {% endif %}
+
+      <div class="form-group">
+        <label class="label">What happened?</label>
+        <div class="report-reasons">
+          {% for value, label in reason_labels.items() %}
+          <label class="report-reason">
+            <input type="radio" name="reason" value="{{ value }}" required
+                   {% if loop.first %}autofocus{% endif %} />
+            <span class="report-reason__label">{{ label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:1rem;">
+        <label for="comment" class="label">Additional details <span class="text-muted">(optional)</span></label>
+        <textarea id="comment" name="comment" class="input textarea" rows="3"
+                  placeholder="Describe what happened — dates, locations, any evidence…"></textarea>
+      </div>
+
+      {% if booking %}
+      <p class="field-hint" style="margin-bottom:1rem;">
+        This report will be linked to your booking:
+        <strong>{{ booking.trip.origin }} → {{ booking.trip.destination }},
+        {{ booking.trip.departure_datetime.strftime("%-d %b %Y") }}</strong>.
+      </p>
+      {% endif %}
+
+      <div style="display:flex; gap:.75rem; align-items:center; margin-top:1.25rem;">
+        <button type="submit" class="btn btn-primary">Submit report</button>
+        <a href="javascript:history.back()" class="btn btn-ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

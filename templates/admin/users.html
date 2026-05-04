@@ -17,7 +17,9 @@
       <a href="/admin"               class="admin-tab">Dashboard</a>
       <a href="/admin/users"         class="admin-tab admin-tab--active">Users</a>
       <a href="/admin/verifications" class="admin-tab">Verifications</a>
-      <a href="/admin/newsletter"    class="admin-tab">Newsletter</a>
+      <a href="/admin/reports"           class="admin-tab">Reports</a>
+      <a href="/admin/city-suggestions"  class="admin-tab">City suggestions</a>
+      <a href="/admin/newsletter"        class="admin-tab">Newsletter</a>
       <a href="/admin/test-users"    class="admin-tab">Test Users</a>
     </div>
   </div>
@@ -97,26 +99,43 @@
             </span>
           </td>
           <td>
-            {% if u.is_active %}
+            {% if u.deleted_at %}
+              <span class="badge badge--neutral">Deleted</span>
+            {% elif u.is_active %}
               <span class="badge badge--success">Active</span>
             {% else %}
               <span class="badge badge--danger">Suspended</span>
+              {% if u.suspension_reason %}
+                <p style="font-size:.72rem; color:var(--c-text-muted); margin:.25rem 0 0; max-width:160px;">{{ u.suspension_reason }}</p>
+              {% endif %}
             {% endif %}
           </td>
           <td>
             <div class="admin-row-actions">
-              {% if u.id != current_user.id %}
+              {% if u.id != current_user.id and not u.deleted_at %}
                 <form method="post" action="/admin/users/{{ u.id }}/toggle-admin">
                   <button class="btn btn-ghost btn-xs" title="{{ 'Remove admin' if u.is_admin else 'Make admin' }}">
                     {{ '★ Remove admin' if u.is_admin else '☆ Make admin' }}
                   </button>
                 </form>
-                <form method="post" action="/admin/users/{{ u.id }}/toggle-active"
-                      onsubmit="return confirm('{{ 'Reactivate' if not u.is_active else 'Suspend' }} {{ u.full_name }}?')">
-                  <button class="btn btn-ghost btn-xs btn-danger-text">
-                    {{ 'Reactivate' if not u.is_active else 'Suspend' }}
-                  </button>
+                {% if u.is_active %}
+                <div x-data="{ open: false }">
+                  <button class="btn btn-ghost btn-xs btn-danger-text" @click="open = !open">Suspend</button>
+                  <form x-show="open" method="post" action="/admin/users/{{ u.id }}/suspend"
+                        style="margin-top:.5rem;" @submit="return confirm('Suspend {{ u.full_name }}?')">
+                    <input name="reason" type="text" class="input input--xs"
+                           placeholder="Reason (shown internally)" style="margin-bottom:.35rem;" />
+                    <button type="submit" class="btn btn-danger btn-xs">Confirm suspend</button>
+                  </form>
+                </div>
+                {% else %}
+                <form method="post" action="/admin/users/{{ u.id }}/reactivate"
+                      onsubmit="return confirm('Reactivate {{ u.full_name }}?')">
+                  <button class="btn btn-ghost btn-xs">Reactivate</button>
                 </form>
+                {% endif %}
+              {% elif u.deleted_at %}
+                <span class="data-table__meta">Deleted</span>
               {% else %}
                 <span class="data-table__meta">You</span>
               {% endif %}

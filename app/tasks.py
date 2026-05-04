@@ -24,6 +24,7 @@ from app.database import SessionLocal
 from app import models, sms, email as mailer
 from app import rapyd as rapyd_client
 from app.fuel import refresh_fuel_price
+from app.utils import build_route_graph, recompute_seats_available
 from app.rapyd import RapydError
 
 log = logging.getLogger(__name__)
@@ -101,9 +102,15 @@ def _run_expire_payments() -> None:
                     .first()
                 )
                 if trip:
-                    trip.seats_available = min(
-                        trip.seats_total,
-                        trip.seats_available + booking.seats_booked,
+                    active = [b for b in trip.bookings
+                              if b.id != booking.id and b.status in {
+                                  models.BookingStatus.awaiting_payment,
+                                  models.BookingStatus.confirmed,
+                                  models.BookingStatus.card_saved,
+                              }]
+                    graph = build_route_graph(db)
+                    trip.seats_available = recompute_seats_available(
+                        graph, trip.seats_total, active, trip.origin, trip.destination,
                     )
         if expired:
             db.commit()
@@ -610,9 +617,16 @@ def _run_retry_expiry() -> None:
                     .first()
                 )
                 if locked_trip:
-                    locked_trip.seats_available = min(
-                        locked_trip.seats_total,
-                        locked_trip.seats_available + booking.seats_booked,
+                    active = [b for b in locked_trip.bookings
+                              if b.id != booking.id and b.status in {
+                                  models.BookingStatus.awaiting_payment,
+                                  models.BookingStatus.confirmed,
+                                  models.BookingStatus.card_saved,
+                              }]
+                    graph = build_route_graph(db)
+                    locked_trip.seats_available = recompute_seats_available(
+                        graph, locked_trip.seats_total, active,
+                        locked_trip.origin, locked_trip.destination,
                     )
 
             db.commit()

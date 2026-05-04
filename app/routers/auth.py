@@ -1,5 +1,6 @@
 import secrets
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Form, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -75,6 +76,18 @@ def login(
             {**ctx, "error": "wrong_password", "email": email},
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
+    if user.deleted_at:
+        return templates.TemplateResponse(
+            "auth/login.html",
+            {**ctx, "error": "deleted", "email": email},
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+    if not user.is_active:
+        return templates.TemplateResponse(
+            "auth/login.html",
+            {**ctx, "error": "suspended", "email": email},
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
     token = create_access_token(user.id)
     response = RedirectResponse("/", status_code=303)
     response.set_cookie(key="access_token", value=token, httponly=True,
@@ -87,7 +100,7 @@ def login(
 def register_page(request: Request, ctx: dict = Depends(get_template_context)):
     if ctx["current_user"]:
         return RedirectResponse("/", status_code=303)
-    return templates.TemplateResponse("auth/register.html", {**ctx, "error": None})
+    return templates.TemplateResponse("auth/register.html", {**ctx, "error": None, "current_year": date.today().year})
 
 
 @router.post("/register", response_class=HTMLResponse)
@@ -99,6 +112,8 @@ def register(
     password: str = Form(...),
     confirm_password: str = Form(...),
     newsletter: str = Form(""),
+    birth_year: Optional[int] = Form(None),
+    age_confirmed: str = Form(""),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user_optional),
     _rl=rate_limit(10, 3600),
@@ -110,25 +125,46 @@ def register(
     ctx = {"request": request, "current_user": None, "is_newsletter_subscriber": False}
     email = email.strip().lower()
 
+    current_year = date.today().year
+    _reg_ctx = {**ctx, "current_year": current_year}
+
     if password != confirm_password:
         return templates.TemplateResponse(
             "auth/register.html",
-            {**ctx, "error": "Passwords do not match."},
+            {**_reg_ctx, "error": "Passwords do not match."},
+            status_code=400,
+        )
+
+    if not birth_year:
+        return templates.TemplateResponse(
+            "auth/register.html",
+            {**_reg_ctx, "error": "Please enter your birth year."},
+            status_code=400,
+        )
+    if current_year - birth_year < 18:
+        return templates.TemplateResponse(
+            "auth/register.html",
+            {**_reg_ctx, "error": "You must be 18 or older to register on SameFare."},
+            status_code=400,
+        )
+    if not age_confirmed:
+        return templates.TemplateResponse(
+            "auth/register.html",
+            {**_reg_ctx, "error": "Please confirm that you are 18 or older."},
             status_code=400,
         )
 
     existing = db.query(models.User).filter(models.User.email == email).first()
     if existing:
-        # Check if it's an unverified account created moments ago by this same person
         if not existing.email_verified:
             return templates.TemplateResponse(
                 "auth/register.html",
-                {**ctx, "error": "We already sent a verification email to that address. Check your inbox (and spam folder)."},
+                {**_reg_ctx, "error": "We already sent a verification email to that address. Check your inbox (and spam folder)."},
                 status_code=400,
             )
         return templates.TemplateResponse(
             "auth/register.html",
-            {**ctx, "error": "That email is already registered. <a href='/login'>Log in</a> or <a href='/forgot-password'>reset your password</a>."},
+            {**_reg_ctx, "error": "That email is already registered. <a href='/login'>Log in</a> or <a href='/forgot-password'>reset your password</a>."},
             status_code=400,
         )
 
@@ -142,6 +178,7 @@ def register(
             phone=phone or None,
             hashed_password=hash_password(password),
             email_verified=True,
+            birth_year=birth_year,
         )
         db.add(user)
         db.commit()
@@ -163,6 +200,7 @@ def register(
         hashed_password=hash_password(password),
         email_verified=False,
         email_verify_token=verify_token,
+        birth_year=birth_year,
     )
     db.add(user)
     db.commit()

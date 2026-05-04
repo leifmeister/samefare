@@ -184,15 +184,22 @@ def admin_test_users(
     spec.loader.exec_module(seed_mod)
     test_users_def = seed_mod.TEST_USERS
 
-    # Enrich with live DB state (exists? how many trips?)
+    # Enrich with live DB state (exists? how many trips? newsletter discount?)
     enriched = []
     for u in test_users_def:
         db_user = db.query(models.User).filter(models.User.email == u["email"]).first()
+        sub = (
+            db.query(models.NewsletterSubscriber)
+            .filter(models.NewsletterSubscriber.email == u["email"])
+            .first()
+        ) if db_user else None
         enriched.append({
             **u,
-            "exists":     db_user is not None,
-            "user_id":    db_user.id if db_user else None,
-            "trip_count": len(db_user.trips) if db_user else 0,
+            "exists":           db_user is not None,
+            "user_id":          db_user.id if db_user else None,
+            "trip_count":       len(db_user.trips) if db_user else 0,
+            "discount_active":  sub is not None and not sub.discount_used,
+            "discount_used":    sub is not None and sub.discount_used,
         })
 
     return templates.TemplateResponse("admin/test_users.html", {
@@ -393,15 +400,31 @@ def toggle_admin(
     return RedirectResponse("/admin/users", status_code=303)
 
 
-@router.post("/admin/users/{user_id}/toggle-active", response_class=HTMLResponse)
-def toggle_active(
+@router.post("/admin/users/{user_id}/suspend", response_class=HTMLResponse)
+def suspend_user(
+    user_id: int,
+    reason:  str         = Form(""),
+    admin:   models.User = Depends(_require_admin),
+    db:      Session     = Depends(get_db),
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user and user.id != admin.id and not user.deleted_at:
+        user.is_active         = False
+        user.suspension_reason = reason.strip() or None
+        db.commit()
+    return RedirectResponse("/admin/users", status_code=303)
+
+
+@router.post("/admin/users/{user_id}/reactivate", response_class=HTMLResponse)
+def reactivate_user(
     user_id: int,
     admin:   models.User = Depends(_require_admin),
     db:      Session     = Depends(get_db),
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
-    if user and user.id != admin.id:
-        user.is_active = not user.is_active
+    if user and user.id != admin.id and not user.deleted_at:
+        user.is_active         = True
+        user.suspension_reason = None
         db.commit()
     return RedirectResponse("/admin/users", status_code=303)
 

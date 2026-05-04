@@ -21,6 +21,14 @@
         Wrong password.
         <a href="/forgot-password" class="alert__link">Forgot it?</a>
       </div>
+    {% elif error == 'suspended' %}
+      <div class="alert alert--error" role="alert">
+        Your account has been suspended. Contact us at <a href="mailto:support@samefare.com" class="alert__link">support@samefare.com</a> if you believe this is a mistake.
+      </div>
+    {% elif error == 'deleted' %}
+      <div class="alert alert--error" role="alert">
+        This account has been deleted.
+      </div>
     {% endif %}
 
     <form method="post" action="/login" class="auth-form">

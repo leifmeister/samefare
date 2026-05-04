@@ -46,10 +46,13 @@
               <span class="city-combo__btn" @mousedown.prevent="oToggle()">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
               </span>
-              <ul class="city-combo__list" x-show="oOpen && oFiltered.length">
+              <ul class="city-combo__list" x-show="oOpen && (oFiltered.length || (fromCity.length > 1 && !oShowAll))">
                 <template x-for="(city, i) in oFiltered" :key="city">
                   <li class="city-combo__option" :class="{'city-combo__option--active':i===oCursor}" @mousedown.prevent="oPick(city)" x-text="city"></li>
                 </template>
+                <li x-show="!oFiltered.length && fromCity.length > 1" class="city-combo__no-match">
+                  No city found — pick from the list
+                </li>
               </ul>
             </div>
           </div>
@@ -68,10 +71,13 @@
               <span class="city-combo__btn" @mousedown.prevent="dToggle()">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
               </span>
-              <ul class="city-combo__list" x-show="dOpen && dFiltered.length">
+              <ul class="city-combo__list" x-show="dOpen && (dFiltered.length || (toCity.length > 1 && !dShowAll))">
                 <template x-for="(city, i) in dFiltered" :key="city">
                   <li class="city-combo__option" :class="{'city-combo__option--active':i===dCursor}" @mousedown.prevent="dPick(city)" x-text="city"></li>
                 </template>
+                <li x-show="!dFiltered.length && toCity.length > 1" class="city-combo__no-match">
+                  No city found — pick from the list
+                </li>
               </ul>
             </div>
           </div>
@@ -228,6 +234,16 @@
             <span class="toggle-switch__track"></span>
           </label>
         </div>
+        <div class="instant-book-toggle" style="margin-top:1rem;">
+          <div class="instant-book-toggle__labels">
+            <p class="instant-book-toggle__title">Allow shorter legs</p>
+            <p class="instant-book-toggle__sub">Let passengers book a partial segment of your route (e.g. Borgarnes→Akureyri on a Reykjavík→Akureyri trip). With instant booking on, multiple passengers can fill different legs automatically.</p>
+          </div>
+          <label class="toggle-switch" aria-label="Allow shorter legs">
+            <input type="checkbox" name="allow_segments_raw" value="true" {{ 'checked' if vals.allow_segments }} />
+            <span class="toggle-switch__track"></span>
+          </label>
+        </div>
       </fieldset>
 
       <fieldset class="form-section">
@@ -291,39 +307,6 @@
           </label>
 
           <label class="pref-check">
-            <input type="radio" name="chattiness" value="quiet" {{ 'checked' if vals.chattiness == 'quiet' }} />
-            <span class="pref-check__body">
-              <span class="pref-check__icon">🤫</span>
-              <span>
-                <span class="pref-check__label">Quiet ride</span>
-                <span class="pref-check__desc">Low conversation preferred</span>
-              </span>
-            </span>
-          </label>
-
-          <label class="pref-check">
-            <input type="radio" name="chattiness" value="" {{ 'checked' if not vals.chattiness }} />
-            <span class="pref-check__body">
-              <span class="pref-check__icon">🗣️</span>
-              <span>
-                <span class="pref-check__label">No preference</span>
-                <span class="pref-check__desc">Happy either way</span>
-              </span>
-            </span>
-          </label>
-
-          <label class="pref-check">
-            <input type="radio" name="chattiness" value="chatty" {{ 'checked' if vals.chattiness == 'chatty' }} />
-            <span class="pref-check__body">
-              <span class="pref-check__icon">💬</span>
-              <span>
-                <span class="pref-check__label">Chatty driver</span>
-                <span class="pref-check__desc">Music and conversation welcome</span>
-              </span>
-            </span>
-          </label>
-
-          <label class="pref-check">
             <input type="checkbox" name="flexible_pickup_raw" value="true" {{ 'checked' if vals.flexible_pickup }} />
             <span class="pref-check__body">
               <span class="pref-check__icon">📍</span>
@@ -345,6 +328,46 @@
             </span>
           </label>
 
+        </div>
+
+        <div class="pref-chattiness">
+          <p class="pref-chattiness__label">Conversation style</p>
+          <div class="pref-chattiness__row">
+
+            <label class="pref-check pref-check--radio">
+              <input type="radio" name="chattiness" value="quiet" {{ 'checked' if vals.chattiness == 'quiet' }} />
+              <span class="pref-check__body">
+                <span class="pref-check__icon">🤫</span>
+                <span>
+                  <span class="pref-check__label">Quiet ride</span>
+                  <span class="pref-check__desc">Low conversation preferred</span>
+                </span>
+              </span>
+            </label>
+
+            <label class="pref-check pref-check--radio">
+              <input type="radio" name="chattiness" value="" {{ 'checked' if not vals.chattiness }} />
+              <span class="pref-check__body">
+                <span class="pref-check__icon">🗣️</span>
+                <span>
+                  <span class="pref-check__label">No preference</span>
+                  <span class="pref-check__desc">Happy either way</span>
+                </span>
+              </span>
+            </label>
+
+            <label class="pref-check pref-check--radio">
+              <input type="radio" name="chattiness" value="chatty" {{ 'checked' if vals.chattiness == 'chatty' }} />
+              <span class="pref-check__body">
+                <span class="pref-check__icon">💬</span>
+                <span>
+                  <span class="pref-check__label">Chatty driver</span>
+                  <span class="pref-check__desc">Music and conversation welcome</span>
+                </span>
+              </span>
+            </label>
+
+          </div>
         </div>
       </fieldset>
 

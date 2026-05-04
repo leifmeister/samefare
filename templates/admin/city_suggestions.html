@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block title %}City suggestions — Admin{% endblock %}
+
+{% block content %}
+<div class="container" style="margin-top:2rem; margin-bottom:4rem;">
+  <div class="page-section-header">
+    <div>
+      <h1 class="page-title">City suggestions</h1>
+      <p style="margin:.25rem 0 0; color:var(--c-text-muted); font-size:.9rem;">
+        {{ suggestions|length }} unique cit{{ 'ies' if suggestions|length != 1 else 'y' }} suggested
+      </p>
+    </div>
+    <div class="admin-nav-tabs">
+      <a href="/admin"                   class="admin-tab">Dashboard</a>
+      <a href="/admin/users"             class="admin-tab">Users</a>
+      <a href="/admin/verifications"     class="admin-tab">Verifications</a>
+      <a href="/admin/reports"           class="admin-tab">Reports</a>
+      <a href="/admin/city-suggestions"  class="admin-tab admin-tab--active">City suggestions</a>
+      <a href="/admin/newsletter"        class="admin-tab">Newsletter</a>
+      <a href="/admin/test-users"        class="admin-tab">Test Users</a>
+    </div>
+  </div>
+
+  {% if not suggestions %}
+  <div class="empty-state" style="margin-top:3rem;">
+    <h3 class="empty-state__title">No suggestions yet</h3>
+    <p class="empty-state__body">When users search for an unrecognised city and tap "Suggest", it will appear here.</p>
+  </div>
+
+  {% else %}
+  <div class="earn-table" style="margin-top:1.5rem;">
+    <div class="earn-table__head" style="grid-template-columns: 1fr 5rem 10rem 10rem;">
+      <span>City</span>
+      <span style="text-align:center;">Requests</span>
+      <span>Sample search context</span>
+      <span>Last seen</span>
+    </div>
+    {% for row in suggestions %}
+    <div class="earn-table__row" style="grid-template-columns: 1fr 5rem 10rem 10rem; align-items:start;">
+      <span style="font-weight:600;">{{ row.city_name }}</span>
+      <span style="text-align:center;">
+        <span class="tab-badge" style="background:var(--c-primary-light); color:var(--c-primary-dark);">{{ row.count }}</span>
+      </span>
+      <span style="font-size:.82rem; color:var(--c-text-muted);">
+        {% if row.sample_origin or row.sample_destination %}
+          {{ row.sample_origin or '—' }} → {{ row.sample_destination or '—' }}
+        {% else %}
+          —
+        {% endif %}
+      </span>
+      <span style="font-size:.82rem; color:var(--c-text-muted);">
+        {{ row.last_seen.strftime("%-d %b %Y") }}
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

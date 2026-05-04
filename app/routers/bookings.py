@@ -13,11 +13,23 @@ from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
 from app.limiter import rate_limit
 from app.routers.payments import calc_fees, _issue_rapyd_refund
-from app.utils import build_route_graph, resolve_segment
+from app.utils import (
+    build_route_graph, resolve_segment,
+    seats_for_segment, recompute_seats_available,
+)
 
 settings = get_settings()
 templates = Jinja2Templates(directory="templates")
 router = APIRouter(prefix="/bookings", tags=["bookings"])
+
+
+def _refresh_seats(trip: "models.Trip", db: "Session") -> None:
+    """Recompute trip.seats_available from current active bookings (segment-aware)."""
+    graph = build_route_graph(db)
+    active = [b for b in trip.bookings if b.status in _SEAT_HOLDING_STATUSES]
+    trip.seats_available = recompute_seats_available(
+        graph, trip.seats_total, active, trip.origin, trip.destination,
+    )
 
 
 def _newsletter_discount(db: Session, user: models.User):
@@ -163,6 +175,13 @@ def create_booking(
         return templates.TemplateResponse("bookings/create.html",
             {**err_ctx, "error": "You already have a booking on this trip."}, status_code=400)
 
+    # Block segment bookings when the driver hasn't opted in
+    is_segment = (pickup_city and pickup_city != trip.origin) or \
+                 (dropoff_city and dropoff_city != trip.destination)
+    if is_segment and not trip.allow_segments:
+        return templates.TemplateResponse("bookings/create.html",
+            {**err_ctx, "error": "This driver only accepts full-route bookings."}, status_code=400)
+
     # Validate and apply segment (partial-route) pricing
     graph = build_route_graph(db)
     pickup_city, dropoff_city, prorated_price, seg_err = resolve_segment(
@@ -177,6 +196,21 @@ def create_booking(
             "segment_price": None,
         }, status_code=400)
     price_per_seat = prorated_price if prorated_price is not None else trip.price_per_seat
+
+    # Segment-aware seat check: count only bookings that overlap this leg
+    active_bookings = [
+        b for b in trip.bookings
+        if b.status in _SEAT_HOLDING_STATUSES
+    ]
+    seg_pickup  = pickup_city  or trip.origin
+    seg_dropoff = dropoff_city or trip.destination
+    available_on_segment = seats_for_segment(
+        graph, trip.seats_total, active_bookings,
+        trip.origin, trip.destination, seg_pickup, seg_dropoff,
+    )
+    if seats_booked > available_on_segment:
+        return templates.TemplateResponse("bookings/create.html",
+            {**err_ctx, "error": f"Only {available_on_segment} seat(s) available on that leg."}, status_code=400)
 
     contribution = price_per_seat * seats_booked
     subscriber   = _newsletter_discount(db, current_user)
@@ -195,7 +229,15 @@ def create_booking(
             trip.departure_datetime,
         )
         initial_status   = models.BookingStatus.awaiting_payment
-        trip.seats_available = max(0, trip.seats_available - seats_booked)
+        # Recompute seats_available as true peak occupancy (segment-aware)
+        trip.seats_available = recompute_seats_available(
+            graph, trip.seats_total,
+            active_bookings + [type('_B', (), {
+                'pickup_city': pickup_city, 'dropoff_city': dropoff_city,
+                'seats_booked': seats_booked,
+            })()],
+            trip.origin, trip.destination,
+        )
     else:
         # Requires approval: don't hold seats yet, wait for driver
         initial_status   = models.BookingStatus.pending
@@ -343,10 +385,9 @@ def cancel_booking(
             .first()
         )
         if trip:
-            trip.seats_available = min(
-                trip.seats_total,
-                trip.seats_available + booking.seats_booked,
-            )
+            booking.status = models.BookingStatus.cancelled  # mark first so refresh excludes it
+            db.flush()
+            _refresh_seats(trip, db)
     booking.status = models.BookingStatus.cancelled
 
     if booking.payment:
@@ -389,10 +430,21 @@ def confirm_booking(
                 trip
                 and trip.status == models.TripStatus.active
                 and trip.departure_datetime > datetime.utcnow()
-                and trip.seats_available >= booking.seats_booked
             ):
-                trip.seats_available     = trip.seats_available - booking.seats_booked
-                booking.status           = models.BookingStatus.awaiting_payment
+                graph   = build_route_graph(db)
+                active  = [b for b in trip.bookings if b.status in _SEAT_HOLDING_STATUSES]
+                seg_p   = booking.pickup_city  or trip.origin
+                seg_d   = booking.dropoff_city or trip.destination
+                avail   = seats_for_segment(
+                    graph, trip.seats_total, active,
+                    trip.origin, trip.destination, seg_p, seg_d,
+                )
+                if avail < booking.seats_booked:
+                    # No room on this leg — leave pending, driver must handle manually
+                    db.commit()
+                    return RedirectResponse("/my-trips?tab=rides", status_code=303)
+                booking.status       = models.BookingStatus.awaiting_payment
+                _refresh_seats(trip, db)
                 # Cap at departure so the passenger can never hold an unpaid
                 # seat past the point the trip has left.
                 booking.payment_deadline = min(

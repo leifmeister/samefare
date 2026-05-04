@@ -1,6 +1,7 @@
 """
 Shared utility helpers.
 """
+import difflib
 import heapq
 import unicodedata
 from typing import TYPE_CHECKING, Optional
@@ -54,6 +55,30 @@ def canonical_city(name: str) -> str:
     ILIKE substring matching on freeform input still works.
     """
     return _CITY_LOOKUP.get(_strip_diacritics(name.strip()), name.strip())
+
+
+def nearest_cities(name: str, n: int = 3) -> list[str]:
+    """
+    Return up to n canonical city names closest to the given input.
+    Returns an empty list when the name already resolves to a known city.
+    Used to power "Did you mean?" suggestions on the search results page.
+    """
+    normalized = _strip_diacritics(name.strip())
+    if not normalized:
+        return []
+    # Already a known city — no suggestions needed
+    if normalized in _CITY_LOOKUP:
+        return []
+    # Substring match: user typed a prefix/fragment of a city, OR a city name
+    # is embedded in what the user typed (e.g. "hofn" inside "raufarhofn")
+    substr = [c for k, c in _CITY_LOOKUP.items()
+              if k.startswith(normalized) or normalized.startswith(k) or
+              (len(k) >= 4 and k in normalized)]
+    if substr:
+        return substr[:n]
+    # Fall back to difflib sequence matching with a tighter cutoff
+    close_keys = difflib.get_close_matches(normalized, _CITY_LOOKUP.keys(), n=n, cutoff=0.6)
+    return [_CITY_LOOKUP[k] for k in close_keys]
 
 
 # ── Route graph & intermediate-stop detection ────────────────────────────────
@@ -236,6 +261,85 @@ def resolve_segment(
             "Please book the full route or choose a longer segment."
         )
     return pickup, dropoff, price, None
+
+
+def segments_overlap(
+    graph: dict[str, dict[str, float]],
+    origin: str,
+    a_pickup: str, a_dropoff: str,
+    b_pickup: str, b_dropoff: str,
+) -> bool:
+    """Return True if two route segments share at least one road leg.
+
+    Uses distance-from-origin as a proxy for position on the route.
+    Two segments [a_start, a_end) and [b_start, b_end) overlap when
+    a_start < b_end AND b_start < a_end.
+    """
+    d = lambda c: shortest_path_km(graph, origin, c) or 0.0
+    return d(a_pickup) < d(b_dropoff) and d(b_pickup) < d(a_dropoff)
+
+
+def seats_for_segment(
+    graph: dict[str, dict[str, float]],
+    seats_total: int,
+    active_bookings: list,
+    trip_origin: str,
+    trip_destination: str,
+    new_pickup: str,
+    new_dropoff: str,
+) -> int:
+    """Return available seats for a new booking on [new_pickup, new_dropoff].
+
+    Counts only existing bookings whose segment overlaps the new one.
+    """
+    used = sum(
+        b.seats_booked for b in active_bookings
+        if segments_overlap(
+            graph, trip_origin,
+            b.pickup_city  or trip_origin,
+            b.dropoff_city or trip_destination,
+            new_pickup, new_dropoff,
+        )
+    )
+    return max(0, seats_total - used)
+
+
+def recompute_seats_available(
+    graph: dict[str, dict[str, float]],
+    seats_total: int,
+    active_bookings: list,
+    trip_origin: str,
+    trip_destination: str,
+) -> int:
+    """Recompute seats_available as seats_total minus peak concurrent occupancy.
+
+    Collects all boarding/alighting waypoints from active bookings, then for
+    each consecutive waypoint pair counts how many bookings are on board.
+    Returns the minimum remaining capacity across all such legs.
+    """
+    if not active_bookings:
+        return seats_total
+
+    waypoints = sorted(
+        {b.pickup_city  or trip_origin      for b in active_bookings} |
+        {b.dropoff_city or trip_destination for b in active_bookings},
+        key=lambda c: shortest_path_km(graph, trip_origin, c) or 0.0,
+    )
+
+    max_occ = 0
+    for i in range(len(waypoints) - 1):
+        occ = sum(
+            b.seats_booked for b in active_bookings
+            if segments_overlap(
+                graph, trip_origin,
+                b.pickup_city  or trip_origin,
+                b.dropoff_city or trip_destination,
+                waypoints[i], waypoints[i + 1],
+            )
+        )
+        max_occ = max(max_occ, occ)
+
+    return max(0, seats_total - max_occ)
 
 
 def safe_redirect(target: str, fallback: str = "/") -> str:

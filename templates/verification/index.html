@@ -28,6 +28,23 @@
       <p class="form-page__sub">We verify every member to keep the community safe.</p>
     </div>
 
+    {% if request.query_params.get('next') == 'book' %}
+      {% set _id_state = current_user.id_verification %}
+      {% if _id_state == 'pending' %}
+      <div class="alert alert--warning" role="alert">
+        Your identity document is under review. You'll be able to book trips once an admin approves it — we'll notify you by email.
+      </div>
+      {% elif _id_state == 'rejected' %}
+      <div class="alert alert--error" role="alert">
+        Your identity document was rejected. Please resubmit below before you can book trips.
+      </div>
+      {% else %}
+      <div class="alert alert--info" role="alert">
+        Identity verification is required before booking trips. Upload a document below to get started.
+      </div>
+      {% endif %}
+    {% endif %}
+
     {% if error %}
       <div class="alert alert--error" role="alert">{{ error }}</div>
     {% endif %}

@@ -1,3 +1,44 @@
+{# "Did you mean?" — shown when a typed city isn't in the known list #}
+{% macro _city_unknown(city, ctx_origin, ctx_destination, suggestions) %}
+{% set _replacing_origin = (city == ctx_origin) %}
+<div class="did-you-mean">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true" style="flex-shrink:0; margin-top:.15rem;"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+  <span>
+    <strong>"{{ city }}"</strong> isn't a city we serve —
+    {% if suggestions %}
+      did you mean
+      {% for s in suggestions %}
+        {% if _replacing_origin %}
+          <a href="/trips?origin={{ s | urlencode }}&destination={{ ctx_destination | urlencode }}" class="did-you-mean__link">{{ s }}</a>
+        {% else %}
+          <a href="/trips?origin={{ ctx_origin | urlencode }}&destination={{ s | urlencode }}" class="did-you-mean__link">{{ s }}</a>
+        {% endif %}
+        {%- if not loop.last %}, {% endif %}
+      {% endfor %}?&ensp;
+    {% endif %}
+    <span class="suggest-city__wrap"
+          hx-post="/trips/suggest-city"
+          hx-vals='{"city_name": "{{ city }}", "origin": "{{ ctx_origin }}", "destination": "{{ ctx_destination }}"}'
+          hx-trigger="click"
+          hx-swap="outerHTML"
+          hx-target="closest .suggest-city__wrap">
+      <button type="button" class="suggest-city__btn">Suggest "{{ city }}"</button>
+    </span>
+  </span>
+</div>
+{% endmacro %}
+
+{% if origin_suggestions %}
+  {{ _city_unknown(origin, origin, destination, origin_suggestions) }}
+{% elif origin and origin not in cities %}
+  {{ _city_unknown(origin, origin, destination, []) }}
+{% endif %}
+{% if destination_suggestions %}
+  {{ _city_unknown(destination, origin, destination, destination_suggestions) }}
+{% elif destination and destination not in cities %}
+  {{ _city_unknown(destination, origin, destination, []) }}
+{% endif %}
+
 {% if trips or active_filters > 0 %}
 <div class="list-main__toolbar">
   <p class="list-main__count">

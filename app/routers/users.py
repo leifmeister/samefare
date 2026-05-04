@@ -1,7 +1,9 @@
 import logging
 import os
 import uuid
+from collections import defaultdict
 from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -12,6 +14,7 @@ from app import models
 from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
 from app.fuel import active_policy
+from app.routers.auth import verify_password
 
 log = logging.getLogger(__name__)
 
@@ -30,19 +33,19 @@ def profile_completion(user: models.User) -> dict:
             "key":   "photo",
             "label": "Add a profile photo",
             "done":  bool(user.avatar_url),
-            "url":   "/profile",
+            "url":   "/profile#photo",
         },
         {
             "key":   "phone",
             "label": "Verify your phone number",
             "done":  bool(user.phone and user.phone_verified),
-            "url":   "/profile",
+            "url":   "/profile#phone",
         },
         {
             "key":   "bio",
             "label": "Write a short bio",
             "done":  bool(user.bio),
-            "url":   "/profile",
+            "url":   "/profile#bio",
         },
         {
             "key":   "identity",
@@ -118,12 +121,16 @@ def public_profile(
         reverse=True,
     )
 
+    # Rating distribution for driver reviews (stars 5 → 1)
+    driver_rating_dist = {s: sum(1 for r in driver_reviews if r.rating == s) for s in range(5, 0, -1)}
+
     return templates.TemplateResponse("users/public_profile.html", {
         **ctx,
-        "profile_user":      user,
-        "upcoming_trips":    upcoming_trips,
-        "driver_reviews":    driver_reviews,
-        "passenger_reviews": passenger_reviews,
+        "profile_user":       user,
+        "upcoming_trips":     upcoming_trips,
+        "driver_reviews":     driver_reviews,
+        "passenger_reviews":  passenger_reviews,
+        "driver_rating_dist": driver_rating_dist,
     })
 
 
@@ -181,18 +188,49 @@ def my_trips_page(
         if b.status == models.BookingStatus.pending
     ]
 
+    # ── Driver earnings aggregation ───────────────────────────────────────────
+    _monthly: dict = defaultdict(lambda: {"rides": 0, "passengers": 0, "payout": 0})
+    for trip in all_rides:
+        if trip.status != models.TripStatus.completed:
+            continue
+        key = trip.departure_datetime.strftime("%Y-%m")
+        _monthly[key]["rides"] += 1
+        for b in trip.bookings:
+            if b.status == models.BookingStatus.completed and b.payment:
+                _monthly[key]["passengers"] += 1
+                _monthly[key]["payout"] += b.payment.driver_payout or 0
+
+    earnings_months = [
+        {
+            "month":      k,
+            "label":      datetime.strptime(k, "%Y-%m").strftime("%B %Y"),
+            "rides":      v["rides"],
+            "passengers": v["passengers"],
+            "payout":     v["payout"],
+        }
+        for k, v in sorted(_monthly.items(), reverse=True)
+    ]
+    lifetime_payout     = sum(m["payout"]     for m in earnings_months)
+    lifetime_passengers = sum(m["passengers"] for m in earnings_months)
+    lifetime_rides      = sum(m["rides"]      for m in earnings_months)
+
     # Which tab to open: default to bookings if passenger has any, else rides
     tab = request.query_params.get("tab", "bookings" if all_bookings else "rides")
 
     return templates.TemplateResponse("my_trips.html", {
         **ctx,
-        "upcoming_bookings": upcoming_bookings,
-        "past_bookings":     past_bookings,
-        "upcoming_rides":    upcoming_rides,
-        "past_rides":        past_rides,
-        "pending_bookings":  pending_bookings,
-        "tab":               tab,
-        "completion":        profile_completion(current_user),
+        "upcoming_bookings":    upcoming_bookings,
+        "past_bookings":        past_bookings,
+        "upcoming_rides":       upcoming_rides,
+        "past_rides":           past_rides,
+        "all_rides":            all_rides,
+        "pending_bookings":     pending_bookings,
+        "tab":                  tab,
+        "completion":           profile_completion(current_user),
+        "earnings_months":      earnings_months,
+        "lifetime_payout":      lifetime_payout,
+        "lifetime_passengers":  lifetime_passengers,
+        "lifetime_rides":       lifetime_rides,
     })
 
 
@@ -256,6 +294,97 @@ def edit_profile(
         current_user.default_car_type = models.CarType.sedan
     db.commit()
     return RedirectResponse("/profile", status_code=303)
+
+
+@router.post("/profile/change-password", response_class=HTMLResponse)
+def change_password(
+    request:              Request,
+    ctx:                  dict        = Depends(get_template_context),
+    current_user:         models.User = Depends(get_current_user),
+    db:                   Session     = Depends(get_db),
+    current_password:     str         = Form(...),
+    new_password:         str         = Form(...),
+    confirm_new_password: str         = Form(...),
+):
+    from app.routers.auth import hash_password
+    completion = profile_completion(current_user)
+
+    def _err(msg):
+        return templates.TemplateResponse(
+            "profile.html",
+            {**ctx, "completion": completion, "password_error": msg},
+            status_code=400,
+        )
+
+    if not verify_password(current_password, current_user.hashed_password):
+        return _err("Current password is incorrect.")
+    if len(new_password) < 8:
+        return _err("New password must be at least 8 characters.")
+    if new_password != confirm_new_password:
+        return _err("New passwords do not match.")
+    if new_password == current_password:
+        return _err("New password must be different from your current password.")
+
+    current_user.hashed_password = hash_password(new_password)
+    db.commit()
+
+    return templates.TemplateResponse(
+        "profile.html",
+        {**ctx, "completion": completion, "password_ok": True},
+    )
+
+
+@router.post("/profile/delete", response_class=HTMLResponse)
+def delete_account(
+    request:      Request,
+    ctx:          dict        = Depends(get_template_context),
+    current_user: models.User = Depends(get_current_user),
+    db:           Session     = Depends(get_db),
+    password:     str         = Form(...),
+):
+    if not verify_password(password, current_user.hashed_password):
+        return templates.TemplateResponse(
+            "profile.html",
+            {**ctx, "completion": profile_completion(current_user),
+             "delete_error": "Incorrect password. Account not deleted."},
+            status_code=400,
+        )
+
+    # Cancel future active trips the user is driving
+    for trip in current_user.trips:
+        if (trip.status == models.TripStatus.active
+                and trip.departure_datetime > datetime.utcnow()):
+            trip.status = models.TripStatus.cancelled
+
+    # Cancel pending/confirmed bookings the user holds as a passenger
+    cancellable = {
+        models.BookingStatus.pending,
+        models.BookingStatus.awaiting_payment,
+        models.BookingStatus.card_saved,
+        models.BookingStatus.confirmed,
+    }
+    for booking in current_user.bookings:
+        if booking.status in cancellable:
+            booking.status = models.BookingStatus.cancelled
+
+    # Anonymise PII — trip/payment rows are retained for legal/tax compliance
+    uid = current_user.id
+    current_user.full_name        = "Deleted User"
+    current_user.email            = f"deleted_{uid}@deleted.invalid"
+    current_user.phone            = None
+    current_user.phone_verified   = False
+    current_user.bio              = None
+    current_user.avatar_url       = None
+    current_user.birth_year       = None
+    current_user.hashed_password  = ""
+    current_user.is_active        = False
+    current_user.deleted_at       = datetime.utcnow()
+
+    db.commit()
+
+    response = RedirectResponse("/", status_code=303)
+    response.delete_cookie("access_token")
+    return response
 
 
 @router.post("/profile/avatar", response_class=HTMLResponse)
