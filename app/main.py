@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Red
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import text
-from sqlalchemy.orm import joinedload, Session
+from sqlalchemy.orm import joinedload, selectinload, Session
 
 from app.config import get_settings
 from app.database import Base, engine, SessionLocal
@@ -663,7 +663,10 @@ def home(request: Request):
 
         upcoming_trips = (
             db.query(models.Trip)
-            .options(joinedload(models.Trip.driver).joinedload(models.User.reviews_received))
+            .options(
+                joinedload(models.Trip.driver).joinedload(models.User.reviews_received),
+                joinedload(models.Trip.driver).selectinload(models.User.trips),
+            )
             .filter(
                 models.Trip.status == models.TripStatus.active,
                 models.Trip.departure_datetime >= datetime.utcnow(),

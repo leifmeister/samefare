@@ -5,7 +5,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app import models, email as mailer, sms as texter
 from app.config import get_settings
@@ -226,7 +226,10 @@ def _find_segment_trips(
     # Candidate query — all active trips except direct matches
     q = (
         db.query(models.Trip)
-        .options(joinedload(models.Trip.driver).joinedload(models.User.reviews_received))
+        .options(
+            joinedload(models.Trip.driver).joinedload(models.User.reviews_received),
+            joinedload(models.Trip.driver).selectinload(models.User.trips),
+        )
         .filter(
             models.Trip.status == models.TripStatus.active,
             models.Trip.departure_datetime >= datetime.utcnow(),
@@ -394,7 +397,10 @@ def trips_list(
 
     query = (
         db.query(models.Trip)
-        .options(joinedload(models.Trip.driver).joinedload(models.User.reviews_received))
+        .options(
+            joinedload(models.Trip.driver).joinedload(models.User.reviews_received),
+            joinedload(models.Trip.driver).selectinload(models.User.trips),
+        )
         .filter(
             models.Trip.status == models.TripStatus.active,
             models.Trip.departure_datetime >= datetime.utcnow(),
