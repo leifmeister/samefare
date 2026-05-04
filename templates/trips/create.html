@@ -129,12 +129,8 @@
               <span>Depreciation (partial)</span>
               <span x-text="fmtPerKm(policy.real_depr * policy.depr_factor) + ' ISK/km → ' + fmtTotal(policy.real_depr * policy.depr_factor) + ' ISK'"></span>
             </div>
-            <div class="price-cap-card__row price-cap-card__row--divider">
-              <span>Your share (1 of <span x-text="seats + 1"></span>)</span>
-              <span x-text="fmt(totalTripCost / (seats + 1)) + ' ISK'"></span>
-            </div>
             <div class="price-cap-card__row price-cap-card__row--cap">
-              <span>Maximum per seat</span>
+              <span>Each person's share (1 of <span x-text="seats + 1"></span>)</span>
               <span x-text="fmt(capPerSeat) + ' ISK'"></span>
             </div>
           </div>
@@ -178,7 +174,6 @@
             <label for="fuel_type_raw" class="label">Fuel type</label>
             <select id="fuel_type_raw" name="fuel_type_raw" class="input"
                     x-model="fuelType">
-              <option value="">Auto-detect from vehicle type</option>
               {% for ft in fuel_types %}
                 <option value="{{ ft }}" {{ 'selected' if ft == vals.fuel_type }}>{{ ft|capitalize }}</option>
               {% endfor %}
@@ -346,7 +341,7 @@ function tripPricing(routes, policy, fuelPrice) {
     destination: '{{ vals.destination | e }}',
     seats:       {{ vals.seats_total | default(3) }},
     carType:     '{{ defaults.car_type | default("sedan") | e }}',
-    fuelType:    '{{ vals.fuel_type | default("") | e }}',
+    fuelType:    '{{ vals.fuel_type or ("electric" if defaults.car_type == "electric" else "petrol") | e }}',
 
     get routeKey()  { return this.origin + '|' + this.destination; },
     get distanceKm(){ return routes[this.routeKey] || null; },
@@ -386,6 +381,10 @@ function tripPricing(routes, policy, fuelPrice) {
     fmtTotal(v) { return Math.round(this.distanceKm * v).toLocaleString('is-IS'); },
 
     init() {
+      this.$watch('carType', (newVal, oldVal) => {
+        if ((oldVal === 'electric') !== (newVal === 'electric'))
+          this.fuelType = newVal === 'electric' ? 'electric' : 'petrol';
+      });
       this.$watch('capPerSeat', cap => {
         if (cap === null) return;
         const el = this.$refs.priceInput;
