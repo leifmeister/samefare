@@ -106,12 +106,20 @@ def public_profile(
         key=lambda r: r.created_at,
         reverse=True,
     )
+    # Reviews received as a passenger, newest first
+    passenger_reviews = sorted(
+        [r for r in user.reviews_received
+         if r.review_type == models.ReviewType.driver_to_passenger],
+        key=lambda r: r.created_at,
+        reverse=True,
+    )
 
     return templates.TemplateResponse("users/public_profile.html", {
         **ctx,
-        "profile_user":   user,
-        "upcoming_trips": upcoming_trips,
-        "driver_reviews": driver_reviews,
+        "profile_user":      user,
+        "upcoming_trips":    upcoming_trips,
+        "driver_reviews":    driver_reviews,
+        "passenger_reviews": passenger_reviews,
     })
 
 

@@ -2161,6 +2161,48 @@ button, input, select, textarea { font: inherit; }
 .trust-signals__item--no  { color: var(--c-text-muted); }
 .trust-signals__item--no  svg { color: #D1D5DB; flex-shrink: 0; }
 
+/* ── Trust badges (compact verified-only chips) ─────────────────────────── */
+.trust-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+.trust-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .72rem;
+  font-weight: 600;
+  color: #065F46;
+  background: #D1FAE5;
+  border-radius: 999px;
+  padding: 2px 8px 2px 6px;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+.trust-badge svg { flex-shrink: 0; color: var(--c-primary); }
+
+/* Driver trust card: badges sit below name, compact */
+.driver-trust-card__identity .trust-badges { margin-top: var(--space-1); }
+.driver-trust-card__identity .trust-badge  { font-size: .68rem; }
+
+/* ── Report entry point on public profile ────────────────────────────────── */
+.profile-report-link {
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--c-border);
+}
+.profile-report-link__anchor {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: .8rem;
+  color: var(--c-text-muted);
+  text-decoration: none;
+}
+.profile-report-link__anchor:hover { color: #DC2626; text-decoration: underline; }
+
 /* Keep old verify-summary styles in case they're used elsewhere */
 .verify-summary {
   display: flex;
