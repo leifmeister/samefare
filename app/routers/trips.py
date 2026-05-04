@@ -990,6 +990,8 @@ def trip_detail(
                                           models.BookingStatus.card_saved,
                                           models.BookingStatus.confirmed,
                                           models.BookingStatus.completed)]
+    pending_bookings = [b for b in trip.bookings
+                        if b.status == models.BookingStatus.pending]
 
     # Does an active reverse-direction trip already exist for this driver?
     # Used to suppress "Post return trip" banner when the return is already posted.
@@ -1122,6 +1124,7 @@ def trip_detail(
         **ctx,
         "trip": trip,
         "confirmed_bookings": confirmed_bookings,
+        "pending_bookings": pending_bookings,
         "has_return_trip": has_return_trip,
         "driver_summary": driver_summary,
         "current_user_booking": current_user_booking,
