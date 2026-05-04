@@ -13,7 +13,7 @@ from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
 from app.limiter import rate_limit
 from app.routers.payments import calc_fees, _issue_rapyd_refund
-from app.utils import canonical_city, build_route_graph, route_km, prorate_segment_price
+from app.utils import canonical_city, build_route_graph, route_km, is_on_route, prorate_segment_price
 
 settings = get_settings()
 templates = Jinja2Templates(directory="templates")
@@ -43,6 +43,74 @@ def my_bookings(request: Request):
     return RedirectResponse(f"/my-trips{qs}", status_code=301)
 
 
+def _resolve_segment(
+    graph: dict,
+    trip: models.Trip,
+    raw_pickup: str,
+    raw_dropoff: str,
+) -> tuple:
+    """
+    Canonicalize, validate, and price a segment (partial-route) booking.
+
+    Returns (pickup_city, dropoff_city, segment_price, error_message).
+    - Empty input → (None, None, None, None)      — full-route booking
+    - Valid segment → (pickup, dropoff, price, None)
+    - Invalid → (None, None, None, error_str)
+
+    Validation rules (all checked against the trip's own route):
+    1. Either both or neither city must be provided.
+    2. pickup and dropoff must be different cities.
+    3. Both cities must lie on trip.origin → trip.destination.
+    4. pickup must precede dropoff in the direction of travel.
+    5. Distance data must exist for the segment to compute a prorated price.
+    """
+    pickup  = canonical_city(raw_pickup.strip())  if raw_pickup.strip()  else None
+    dropoff = canonical_city(raw_dropoff.strip()) if raw_dropoff.strip() else None
+
+    if not pickup and not dropoff:
+        return None, None, None, None
+
+    if bool(pickup) != bool(dropoff):
+        return None, None, None, "Please provide both a pickup and dropoff city for a partial route."
+
+    if pickup == dropoff:
+        return None, None, None, "Pickup and dropoff cities must be different."
+
+    # Both cities must be on this trip's route.
+    if not is_on_route(graph, trip.origin, trip.destination, pickup):
+        return None, None, None, (
+            f"'{pickup}' is not on this trip's route "
+            f"({trip.origin} → {trip.destination})."
+        )
+    if not is_on_route(graph, trip.origin, trip.destination, dropoff):
+        return None, None, None, (
+            f"'{dropoff}' is not on this trip's route "
+            f"({trip.origin} → {trip.destination})."
+        )
+
+    # pickup must precede dropoff: pickup must lie on trip.origin → dropoff.
+    if not is_on_route(graph, trip.origin, dropoff, pickup):
+        return None, None, None, (
+            f"'{pickup}' does not come before '{dropoff}' on this route. "
+            "Please check the order of your pickup and dropoff cities."
+        )
+
+    # Segment equals the full trip — no partial pricing needed.
+    if pickup == trip.origin and dropoff == trip.destination:
+        return None, None, None, None
+
+    seg_km   = route_km(graph, pickup, dropoff)
+    total_km = route_km(graph, trip.origin, trip.destination)
+    if not seg_km or not total_km:
+        return None, None, None, (
+            "We don't have distance data for that segment. "
+            "Please book the full route."
+        )
+
+    price = prorate_segment_price(trip.price_per_seat, seg_km, total_km)
+    return pickup, dropoff, price, None
+
+
 @router.get("/trip/{trip_id}", response_class=HTMLResponse)
 def book_trip_page(
     trip_id: int,
@@ -67,19 +135,12 @@ def book_trip_page(
         return RedirectResponse(f"/trips/{trip_id}", status_code=303)
 
     # Compute segment price if this is a partial-route booking
-    segment_pickup  = canonical_city(pickup)  if pickup  else None
-    segment_dropoff = canonical_city(dropoff) if dropoff else None
-    segment_price   = None
-    if (segment_pickup and segment_dropoff
-            and (segment_pickup != trip.origin or segment_dropoff != trip.destination)):
-        graph    = build_route_graph(db)
-        seg_km   = route_km(graph, segment_pickup, segment_dropoff)
-        total_km = route_km(graph, trip.origin, trip.destination)
-        if seg_km and total_km:
-            segment_price = prorate_segment_price(trip.price_per_seat, seg_km, total_km)
-        else:
-            segment_pickup  = None
-            segment_dropoff = None
+    graph = build_route_graph(db)
+    segment_pickup, segment_dropoff, segment_price, _ = _resolve_segment(
+        graph, trip, pickup or "", dropoff or ""
+    )
+    # Bad query-string params (invalid segment from a crafted URL) are silently
+    # dropped — the user sees a full-route booking form without an error banner.
 
     has_discount = _newsletter_discount(db, current_user) is not None
     return templates.TemplateResponse("bookings/create.html", {
@@ -170,25 +231,19 @@ def create_booking(
             {**err_ctx, "error": "You already have a booking on this trip."}, status_code=400)
 
     # Validate and apply segment (partial-route) pricing
-    pickup_city  = canonical_city(pickup_city.strip())  if pickup_city.strip()  else None
-    dropoff_city = canonical_city(dropoff_city.strip()) if dropoff_city.strip() else None
-    price_per_seat = trip.price_per_seat
-    if (pickup_city and dropoff_city
-            and (pickup_city != trip.origin or dropoff_city != trip.destination)):
-        graph    = build_route_graph(db)
-        seg_km   = route_km(graph, pickup_city, dropoff_city)
-        total_km = route_km(graph, trip.origin, trip.destination)
-        if seg_km and total_km:
-            price_per_seat = prorate_segment_price(trip.price_per_seat, seg_km, total_km)
-        else:
-            # Segment not in graph — reject rather than silently charging full price
-            has_discount = _newsletter_discount(db, current_user) is not None
-            return templates.TemplateResponse("bookings/create.html", {
-                **ctx, "trip": trip, "has_discount": has_discount,
-                "segment_pickup": pickup_city, "segment_dropoff": dropoff_city,
-                "segment_price": None,
-                "error": "We don't have distance data for that segment. Please book the full route.",
-            }, status_code=400)
+    graph = build_route_graph(db)
+    pickup_city, dropoff_city, prorated_price, seg_err = _resolve_segment(
+        graph, trip, pickup_city, dropoff_city
+    )
+    if seg_err:
+        return templates.TemplateResponse("bookings/create.html", {
+            **err_ctx,
+            "error": seg_err,
+            "segment_pickup": None,
+            "segment_dropoff": None,
+            "segment_price": None,
+        }, status_code=400)
+    price_per_seat = prorated_price if prorated_price is not None else trip.price_per_seat
 
     contribution = price_per_seat * seats_booked
     subscriber   = _newsletter_discount(db, current_user)
