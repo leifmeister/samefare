@@ -11,7 +11,7 @@
 
   {% if request.query_params.get('cancelled') %}
     <div class="alert alert--success" style="margin-bottom:1.5rem;">
-      ✓ Your booking has been cancelled. Any applicable refund will appear within 5–10 business days.
+      ✓ Your booking has been cancelled. If a refund applies it will be shown below.
     </div>
   {% endif %}
   {% if request.query_params.get('requested') %}
@@ -57,7 +57,7 @@
           <span>
             Driver: <strong>{{ booking.trip.driver.full_name.split()[0] }}</strong>
           </span>
-          {% if booking.status == 'confirmed' and booking.trip.driver.phone %}
+          {% if booking.status == 'confirmed' and booking.trip.driver.phone and booking.trip.driver.phone_verified %}
           <span>
             <a href="tel:{{ booking.trip.driver.phone }}" class="contact-phone">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
@@ -100,7 +100,7 @@
         {% elif booking.status == 'completed' %}
         <div class="booking-row__actions">
           <a href="/trips/{{ booking.trip_id }}" class="btn btn-ghost btn-sm">View trip</a>
-          {% set already_reviewed = booking.review and booking.review.reviewer_id == current_user.id %}
+          {% set already_reviewed = booking.reviews | selectattr('reviewer_id', 'equalto', current_user.id) | list | length > 0 %}
           {% set review_deadline = booking.trip.departure_datetime + timedelta(days=14) %}
           {% if not already_reviewed and now < review_deadline %}
             <a href="/reviews/new/{{ booking.id }}" class="btn btn-primary btn-sm">
@@ -114,7 +114,24 @@
         <div class="booking-row__actions">
           <a href="/trips/{{ booking.trip_id }}" class="btn btn-ghost btn-sm">View trip</a>
           {% if booking.payment and booking.payment.refund_amount > 0 %}
-            <span class="refund-badge">Refund: {{ "{:,}".format(booking.payment.refund_amount) }} ISK</span>
+            {% set ps = booking.payment.status %}
+            {% if ps == 'refunded' or ps == 'partial_refund' %}
+              <span class="refund-badge refund-badge--confirmed">
+                Refunded: {{ "{:,}".format(booking.payment.refund_amount) }} ISK
+              </span>
+            {% elif ps == 'refund_requested' %}
+              <span class="refund-badge refund-badge--pending" title="Your refund has been submitted and is being processed">
+                Refund processing…
+              </span>
+            {% elif ps == 'refund_failed' %}
+              <span class="refund-badge refund-badge--failed" title="There was an issue processing your refund — our team has been notified and will resolve it">
+                Refund under review
+              </span>
+            {% else %}
+              <span class="refund-badge">
+                Refund: {{ "{:,}".format(booking.payment.refund_amount) }} ISK
+              </span>
+            {% endif %}
           {% endif %}
         </div>
         {% endif %}

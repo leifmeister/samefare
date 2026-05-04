@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum as PyEnum
 
 from sqlalchemy import (
-    Boolean, CheckConstraint, Column, DateTime, Enum,
+    Boolean, CheckConstraint, Column, Date, DateTime, Enum, Float,
     ForeignKey, Index, Integer, SmallInteger, String, Text, UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
@@ -45,6 +45,7 @@ class TripStatus(_StrEnum):
 
 class BookingStatus(_StrEnum):
     awaiting_payment = "awaiting_payment"
+    card_saved       = "card_saved"        # Case B: card tokenised, MIT scheduled for ride_date-24h
     pending          = "pending"
     confirmed        = "confirmed"
     rejected         = "rejected"
@@ -54,10 +55,27 @@ class BookingStatus(_StrEnum):
 
 
 class PaymentStatus(_StrEnum):
-    authorised     = "authorised"
-    captured       = "captured"
-    refunded       = "refunded"
-    partial_refund = "partial_refund"
+    # Pre-Rapyd states
+    pending        = "pending"           # payment attempt created, Rapyd action not yet taken
+    card_saved     = "card_saved"        # Case B: SCA-authenticated CIT done, MIT scheduled
+    # Rapyd authorisation states
+    authorised         = "authorised"          # card authorised (ACT), capture pending
+    capture_requested  = "capture_requested"   # capture POST sent; awaiting PAYMENT_CAPTURED webhook
+    # Terminal states
+    captured       = "captured"          # funds captured — confirmed by Rapyd (CLO / PAYMENT_CAPTURED)
+    # Refund lifecycle — three distinct states so reconciliation is unambiguous:
+    #   refund_requested → Rapyd call in-flight or interrupted before response
+    #   refund_failed    → Rapyd returned an error; retry task will re-attempt
+    #   refunded         → Rapyd confirmed full refund; passenger whole
+    #   partial_refund   → Rapyd confirmed partial refund (service fee retained)
+    refund_requested = "refund_requested"  # intent recorded, Rapyd call not yet confirmed
+    refund_failed    = "refund_failed"     # Rapyd returned an error — needs retry
+    refunded       = "refunded"            # full refund confirmed by Rapyd
+    partial_refund = "partial_refund"      # partial refund confirmed by Rapyd
+    failed         = "failed"              # authorisation or capture failed permanently
+    auth_expired   = "auth_expired"        # authorisation lapsed before capture
+    # Case B retry
+    retry_pending  = "retry_pending"       # MIT failed; passenger has 2 h to update card (+5 % fee)
 
 
 class ReviewType(_StrEnum):
@@ -70,6 +88,51 @@ class VerificationStatus(_StrEnum):
     pending    = "pending"
     approved   = "approved"
     rejected   = "rejected"
+
+
+class PayoutMethod(_StrEnum):
+    blikk          = "blikk"           # Icelandic real-time bank transfer (IS IBAN)
+    stripe_connect = "stripe_connect"  # Stripe Connect for non-Icelandic accounts
+
+
+class PayoutItemStatus(_StrEnum):
+    pending          = "pending"           # captured, waiting for terminal booking state or bank details
+    payout_ready     = "payout_ready"      # eligible to batch into a DriverPayout
+    payout_sent      = "payout_sent"       # included in a DriverPayout that was submitted
+    payout_confirmed = "payout_confirmed"  # provider confirmed receipt
+    payout_failed    = "payout_failed"     # provider rejected — see DriverPayout.failure_reason
+    retry_ready      = "retry_ready"       # re-queued after a failed send
+    reversed         = "reversed"          # refund issued after payout; offset required
+    cancelled        = "cancelled"         # booking refunded/cancelled before payout was sent
+
+
+class DriverPayoutStatus(_StrEnum):
+    pending   = "pending"    # batch created, not yet submitted
+    sent      = "sent"       # submitted to provider
+    confirmed = "confirmed"  # provider confirmed receipt
+    failed    = "failed"     # provider rejected
+    reversed  = "reversed"   # payout reversed by provider or manually
+
+
+class FuelType(_StrEnum):
+    petrol   = "petrol"
+    diesel   = "diesel"
+    electric = "electric"
+    hybrid   = "hybrid"
+
+
+class LedgerEntryType(_StrEnum):
+    driver_payable_created    = "driver_payable_created"     # PayoutItem created
+    platform_fee_retained     = "platform_fee_retained"      # SameFare cut booked
+    driver_payout_ready       = "driver_payout_ready"        # item advanced to payout_ready
+    driver_payout_batched     = "driver_payout_batched"      # item included in DriverPayout
+    driver_payout_sent        = "driver_payout_sent"         # batch submitted to provider
+    driver_payout_confirmed   = "driver_payout_confirmed"    # provider confirmed
+    driver_payout_failed      = "driver_payout_failed"       # provider rejected
+    driver_payout_reversed    = "driver_payout_reversed"     # reversal posted
+    driver_balance_adjustment = "driver_balance_adjustment"  # manual correction
+    payout_item_cancelled     = "payout_item_cancelled"      # item voided (refund/cancellation)
+    passenger_refund_confirmed = "passenger_refund_confirmed"  # Rapyd confirmed outbound refund
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────
@@ -110,6 +173,14 @@ class User(Base):
     reset_token         = Column(String(64))
     reset_token_expires = Column(DateTime)
 
+    # Payout configuration
+    # Drivers with an Icelandic bank account (IS IBAN) are paid via Blikk.
+    # Others set up a Stripe Connect account and receive payouts in their local currency
+    # (with FX fees applied by Stripe — their choice, disclosed at onboarding).
+    payout_method      = Column(Enum(PayoutMethod), nullable=True)
+    blikk_account_iban = Column(String(34), nullable=True)   # e.g. IS14 0159 2600 7654 5510 7303 (IBAN)
+    stripe_account_id  = Column(String(255), nullable=True)  # Stripe Connect acct_xxx ID
+
     # Identity & licence verification
     id_verification          = Column(Enum(VerificationStatus), nullable=False,
                                       default=VerificationStatus.unverified)
@@ -136,9 +207,34 @@ class User(Base):
 
     @property
     def average_rating(self) -> float | None:
-        if not self.reviews_received:
+        """
+        Driver rating: average of passenger_to_driver reviews only.
+        Shown on trip cards, checkout, and public profiles so passengers
+        see a signal based solely on how this person drives — not mixed
+        with reviews they received as a passenger on someone else's trip.
+        """
+        ratings = [
+            r.rating for r in self.reviews_received
+            if r.review_type == ReviewType.passenger_to_driver
+        ]
+        if not ratings:
             return None
-        return round(sum(r.rating for r in self.reviews_received) / len(self.reviews_received), 1)
+        return round(sum(ratings) / len(ratings), 1)
+
+    @property
+    def passenger_rating(self) -> float | None:
+        """
+        Passenger rating: average of driver_to_passenger reviews only.
+        Kept separate so drivers can eventually surface it without
+        polluting the driver trust signal above.
+        """
+        ratings = [
+            r.rating for r in self.reviews_received
+            if r.review_type == ReviewType.driver_to_passenger
+        ]
+        if not ratings:
+            return None
+        return round(sum(ratings) / len(ratings), 1)
 
     @property
     def total_trips_as_driver(self) -> int:
@@ -171,13 +267,26 @@ class Trip(Base):
     pickup_address     = Column(String(255))   # exact pickup spot within origin city
     dropoff_address    = Column(String(255))   # exact dropoff spot within destination city
     allows_luggage     = Column(Boolean, nullable=False, default=True)
+    large_luggage      = Column(Boolean, nullable=False, default=False)  # skis, bikes, airport bags
     allows_pets        = Column(Boolean, nullable=False, default=False)
     smoking            = Column(Boolean, nullable=False, default=False)
+    chattiness         = Column(String(10), nullable=True)  # 'quiet', 'chatty', or NULL (no preference)
+    winter_ready       = Column(Boolean, nullable=False, default=False)  # 4WD, snow tyres
+    child_seat         = Column(Boolean, nullable=False, default=False)  # child seat available
+    flexible_pickup    = Column(Boolean, nullable=False, default=False)  # can adjust meeting point
     instant_book       = Column(Boolean, nullable=False, default=True)
     driver_no_show     = Column(Boolean, nullable=False, default=False)  # reported by a passenger
     reminder_sent      = Column(Boolean, nullable=False, default=False)  # day-before SMS reminder fired
     status             = Column(Enum(TripStatus), nullable=False, default=TripStatus.active)
     created_at         = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    # ── Pricing module ─────────────────────────────────────────────────────────
+    # fuel_type: petrol/diesel/electric/hybrid — used by the cost estimator.
+    # NULL on old trips; inferred from car_type ('electric' → electric, else petrol).
+    fuel_type      = Column(Enum(FuelType), nullable=True)
+    # price_snapshot: JSON-serialised TripCostEstimate stored at trip creation.
+    # Allows exact reproduction of the cap calculation for any historical trip.
+    price_snapshot = Column(Text, nullable=True)
 
     driver   = relationship("User",    back_populates="trips")
     bookings = relationship("Booking", back_populates="trip",
@@ -227,17 +336,22 @@ class Booking(Base):
     total_price  = Column(Integer, nullable=False)
     service_fee  = Column(Integer, nullable=False, default=0)
     message      = Column(Text)
-    status       = Column(Enum(BookingStatus), nullable=False,
-                          default=BookingStatus.pending)
-    created_at   = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at   = Column(DateTime, nullable=False, default=datetime.utcnow,
-                          onupdate=datetime.utcnow)
+    # Segment booking: passenger boards/exits at a city that differs from the
+    # driver's trip origin/destination.  NULL means use the trip's own city.
+    pickup_city  = Column(String(150), nullable=True)   # null → trip.origin
+    dropoff_city = Column(String(150), nullable=True)   # null → trip.destination
+    status           = Column(Enum(BookingStatus), nullable=False,
+                              default=BookingStatus.pending)
+    payment_deadline = Column(DateTime, nullable=True)   # set when status→awaiting_payment
+    created_at       = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at       = Column(DateTime, nullable=False, default=datetime.utcnow,
+                              onupdate=datetime.utcnow)
 
     trip      = relationship("Trip", back_populates="bookings")
     passenger = relationship("User", back_populates="bookings",
                              foreign_keys=[passenger_id])
-    review    = relationship("Review", back_populates="booking",
-                             uselist=False, cascade="all, delete-orphan")
+    reviews   = relationship("Review", back_populates="booking",
+                             cascade="all, delete-orphan")
     payment   = relationship("Payment", back_populates="booking",
                              uselist=False, cascade="all, delete-orphan")
     messages  = relationship("Message", back_populates="booking",
@@ -281,7 +395,7 @@ class Review(Base):
     is_auto     = Column(Boolean, nullable=False, default=False)
     created_at  = Column(DateTime, nullable=False, default=datetime.utcnow)
 
-    booking  = relationship("Booking", back_populates="review")
+    booking  = relationship("Booking", back_populates="reviews")
     trip     = relationship("Trip",    back_populates="reviews")
     reviewer = relationship("User",    back_populates="reviews_given",
                             foreign_keys=[reviewer_id])
@@ -321,15 +435,39 @@ class Payment(Base):
     platform_fee      = Column(Integer, nullable=False)   # service fee (ISK)
     refund_amount     = Column(Integer, nullable=False, default=0)
     status            = Column(Enum(PaymentStatus), nullable=False,
-                               default=PaymentStatus.authorised)
-    # Masked card for display — never store real card data
+                               default=PaymentStatus.pending)
+    # Masked card for display — never store raw card data
     card_last4        = Column(String(4))
     card_brand        = Column(String(20))
     created_at        = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at        = Column(DateTime, nullable=False, default=datetime.utcnow,
                                onupdate=datetime.utcnow)
 
-    booking = relationship("Booking", back_populates="payment")
+    # ── Rapyd integration ────────────────────────────────────────────────────
+    rapyd_payment_id        = Column(String(255), nullable=True)  # payment object ID (after auth)
+    rapyd_customer_id       = Column(String(255), nullable=True)  # customer ID (Case B)
+    rapyd_payment_method_id = Column(String(255), nullable=True)  # saved PM token (Case B)
+    rapyd_checkout_id       = Column(String(255), nullable=True)  # checkout page ID
+
+    # Idempotency key — generated once per payment attempt, reused for retries
+    idempotency_key         = Column(String(64), nullable=True)
+
+    # ── Timing ──────────────────────────────────────────────────────────────
+    payment_case        = Column(String(1), nullable=True)   # 'A' or 'B'
+    auth_expires_at     = Column(DateTime, nullable=True)    # when the 7-day auth window ends
+    capture_at          = Column(DateTime, nullable=True)    # scheduled capture (= departure_datetime)
+    auth_scheduled_for  = Column(DateTime, nullable=True)    # Case B: when to fire MIT (= departure - 24h)
+
+    # ── Retry state (Case B MIT failure) ────────────────────────────────────
+    retry_deadline      = Column(DateTime, nullable=True)    # 2 h after failed MIT
+    retry_fee_applied   = Column(Boolean,  nullable=False, default=False)
+
+    # ── Webhook deduplication ────────────────────────────────────────────────
+    # JSON array of Rapyd webhook IDs already processed for this payment.
+    seen_webhook_ids    = Column(Text, nullable=True)        # e.g. '["wh_abc","wh_def"]'
+
+    booking     = relationship("Booking",    back_populates="payment")
+    payout_item = relationship("PayoutItem", back_populates="payment", uselist=False)
 
     __table_args__ = (
         Index("ix_payments_booking_id", "booking_id"),
@@ -386,3 +524,346 @@ class Message(Base):
 
     def __repr__(self) -> str:
         return f"<Message id={self.id} booking_id={self.booking_id} sender_id={self.sender_id}>"
+
+
+# ── Ride Alerts ───────────────────────────────────────────────────────────────
+
+class RideAlert(Base):
+    """
+    A passenger's request to be notified when a matching ride appears.
+
+    Works for both logged-in users (user_id set) and guests (email only).
+    Each alert has a unique token so the owner can unsubscribe via an email link
+    without needing to log in.
+    """
+    __tablename__ = "ride_alerts"
+
+    id               = Column(Integer, primary_key=True)
+    # Nullable — guests don't have an account
+    user_id          = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"),
+                              nullable=True)
+    email            = Column(String(255), nullable=False)
+    origin           = Column(String(150), nullable=False)
+    destination      = Column(String(150), nullable=False)
+    # Optional — if set, only trips departing on this date trigger the alert
+    travel_date      = Column(Date, nullable=True)
+    seats            = Column(SmallInteger, nullable=False, default=1)
+    token            = Column(String(64), unique=True, nullable=False)
+    is_active        = Column(Boolean, nullable=False, default=True)
+    last_notified_at = Column(DateTime, nullable=True)
+    created_at       = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    user = relationship("User", backref="ride_alerts", foreign_keys=[user_id])
+
+    __table_args__ = (
+        Index("ix_ride_alerts_email",   "email"),
+        Index("ix_ride_alerts_user_id", "user_id"),
+        Index("ix_ride_alerts_active",  "is_active"),
+    )
+
+    def __repr__(self) -> str:
+        return (f"<RideAlert id={self.id} "
+                f"{self.origin}→{self.destination} email={self.email!r}>")
+
+
+# ── Payout ledger ─────────────────────────────────────────────────────────────
+#
+# Three-layer payout model:
+#
+#   Payment          — money collected from the passenger (Rapyd)
+#   PayoutItem       — driver's entitlement from one captured payment (1-to-1)
+#   DriverPayout     — outbound transfer batch through Blikk or Stripe Connect
+#   PayoutLedgerEntry— immutable append-only accounting log
+#
+# Rule: Rapyd, Blikk, and Stripe are rails. This ledger is the source of truth.
+# Never calculate "who should be paid" from Booking rows on the fly; always
+# derive it from PayoutItem / PayoutLedgerEntry.
+
+
+class DriverPayout(Base):
+    """
+    One outbound transfer (or batch of transfers) sent to a driver through
+    Blikk or Stripe Connect.  A single DriverPayout may cover multiple
+    PayoutItems (e.g. a driver with three passengers on one trip).
+
+    Status flow: pending → sent → confirmed
+                              ↘ failed → (manual retry creates new DriverPayout)
+    """
+    __tablename__ = "driver_payouts"
+
+    id                 = Column(Integer, primary_key=True)
+    driver_id          = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"),
+                                nullable=False)
+
+    amount             = Column(Integer, nullable=False)               # total ISK to transfer
+    currency           = Column(String(3), nullable=False, default="ISK")
+    payout_method      = Column(Enum(PayoutMethod), nullable=False)
+    status             = Column(Enum(DriverPayoutStatus), nullable=False,
+                                default=DriverPayoutStatus.pending)
+
+    # Provider tracking
+    idempotency_key    = Column(String(64), nullable=False, unique=True)
+    provider_payout_id = Column(String(255), nullable=True)  # Blikk ref / Stripe transfer ID
+    provider_response  = Column(Text, nullable=True)          # raw JSON from provider
+
+    # Outcome timestamps
+    sent_at            = Column(DateTime, nullable=True)
+    confirmed_at       = Column(DateTime, nullable=True)
+    failed_at          = Column(DateTime, nullable=True)
+    failure_reason     = Column(Text, nullable=True)
+
+    created_at         = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at         = Column(DateTime, nullable=False, default=datetime.utcnow,
+                                onupdate=datetime.utcnow)
+
+    driver = relationship("User", foreign_keys=[driver_id])
+    items  = relationship("PayoutItem", back_populates="driver_payout",
+                          foreign_keys="PayoutItem.driver_payout_id")
+
+    __table_args__ = (
+        Index("ix_driver_payouts_driver_id", "driver_id"),
+        Index("ix_driver_payouts_status",    "status"),
+    )
+
+    def __repr__(self) -> str:
+        return (f"<DriverPayout id={self.id} driver_id={self.driver_id} "
+                f"amount={self.amount} status={self.status}>")
+
+
+class PayoutItem(Base):
+    """
+    Pairs one captured passenger Payment to the driver's entitlement.
+    The unique constraint on payment_id is the critical guard that prevents
+    one passenger payment from funding two driver payouts.
+
+    Status flow: pending → payout_ready → payout_sent → payout_confirmed
+                                                       ↘ payout_failed → retry_ready
+                 pending → cancelled  (refund before payout)
+                 payout_confirmed → reversed  (refund after payout — needs offset)
+    """
+    __tablename__ = "payout_items"
+
+    id               = Column(Integer, primary_key=True)
+    payment_id       = Column(Integer, ForeignKey("payments.id",  ondelete="RESTRICT"),
+                              nullable=False, unique=True)   # enforces 1 item per payment
+    booking_id       = Column(Integer, ForeignKey("bookings.id",  ondelete="RESTRICT"),
+                              nullable=False)
+    driver_id        = Column(Integer, ForeignKey("users.id",     ondelete="RESTRICT"),
+                              nullable=False)
+    driver_payout_id = Column(Integer, ForeignKey("driver_payouts.id", ondelete="SET NULL"),
+                              nullable=True)   # set when item is batched
+
+    # Amounts snapshot at creation — never recalculate from live booking rows
+    amount           = Column(Integer, nullable=False)   # driver's cut (ISK)
+    platform_fee     = Column(Integer, nullable=False)   # SameFare's cut (ISK)
+    passenger_total  = Column(Integer, nullable=False)   # total charged to passenger (ISK)
+
+    payout_method    = Column(Enum(PayoutMethod), nullable=True)   # resolved from driver profile
+    status           = Column(Enum(PayoutItemStatus), nullable=False,
+                              default=PayoutItemStatus.pending)
+
+    # Stable idempotency key for the outbound transfer call (derived, not random)
+    idempotency_key  = Column(String(64), nullable=False, unique=True)
+
+    created_at       = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at       = Column(DateTime, nullable=False, default=datetime.utcnow,
+                              onupdate=datetime.utcnow)
+
+    payment      = relationship("Payment",     back_populates="payout_item")
+    booking      = relationship("Booking",     foreign_keys=[booking_id])
+    driver       = relationship("User",        foreign_keys=[driver_id])
+    driver_payout = relationship("DriverPayout", back_populates="items",
+                                 foreign_keys=[driver_payout_id])
+
+    __table_args__ = (
+        Index("ix_payout_items_driver_id", "driver_id"),
+        Index("ix_payout_items_status",    "status"),
+    )
+
+    def __repr__(self) -> str:
+        return (f"<PayoutItem id={self.id} payment_id={self.payment_id} "
+                f"amount={self.amount} status={self.status}>")
+
+
+class PayoutLedgerEntry(Base):
+    """
+    Immutable, append-only accounting log.
+
+    Rules:
+    - Never UPDATE or DELETE ledger rows.
+    - Post corrections as new rows with negative amounts or a specific
+      reversal entry_type.
+    - Every significant payout event writes at least one ledger row.
+    """
+    __tablename__ = "payout_ledger"
+
+    id               = Column(Integer, primary_key=True)
+    entry_type       = Column(Enum(LedgerEntryType), nullable=False)
+
+    # Context FKs — all nullable; not every entry relates to every object
+    payment_id       = Column(Integer, ForeignKey("payments.id"),       nullable=True)
+    payout_item_id   = Column(Integer, ForeignKey("payout_items.id"),   nullable=True)
+    driver_payout_id = Column(Integer, ForeignKey("driver_payouts.id"), nullable=True)
+    booking_id       = Column(Integer, ForeignKey("bookings.id"),       nullable=True)
+    driver_id        = Column(Integer, ForeignKey("users.id"),          nullable=True)
+
+    amount           = Column(Integer, nullable=False)          # ISK; negative = reversal/debit
+    currency         = Column(String(3), nullable=False, default="ISK")
+    note             = Column(Text, nullable=True)
+
+    created_at       = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    # No cascade deletes — ledger entries are permanent historical records.
+    # FKs point to their subjects for JOIN queries but do not own them.
+
+    __table_args__ = (
+        Index("ix_payout_ledger_driver_id",  "driver_id"),
+        Index("ix_payout_ledger_payment_id", "payment_id"),
+        Index("ix_payout_ledger_entry_type", "entry_type"),
+        Index("ix_payout_ledger_created_at", "created_at"),
+    )
+
+    def __repr__(self) -> str:
+        return (f"<PayoutLedgerEntry id={self.id} type={self.entry_type} "
+                f"amount={self.amount} driver_id={self.driver_id}>")
+
+
+# ── Pricing infrastructure ─────────────────────────────────────────────────────
+
+class PricingPolicy(Base):
+    """
+    Versioned table of cost-estimation constants.
+
+    One row per policy period.  The estimator picks the row where
+    effective_from <= today and (effective_to IS NULL OR effective_to >= today),
+    ordering by effective_from DESC to get the most recent active policy.
+
+    This means a future rate change (e.g. new kílómetragjald rate) can be
+    pre-entered with its future effective_from date and will apply automatically
+    at midnight on that date — no deployment needed.
+    """
+    __tablename__ = "pricing_policy"
+
+    id             = Column(Integer, primary_key=True)
+    effective_from = Column(Date, nullable=False)
+    effective_to   = Column(Date, nullable=True)   # NULL = open-ended (current)
+
+    # ── Kílómetragjald (ISK/km) ───────────────────────────────────────────────
+    # Statutory road-use charge, applies to all vehicles regardless of fuel type.
+    # Source: island.is/kilometragjald — rate set annually in the budget law.
+    # Heavier vehicles (>= 3.5 t) pay a higher band; most private cars use standard.
+    kilometragjald_standard = Column(Float, nullable=False)  # < 3.5 t
+    kilometragjald_heavy    = Column(Float, nullable=True)   # >= 3.5 t
+
+    # ── Default fuel consumption by vehicle class (L/100 km) ──────────────────
+    consumption_small    = Column(Float, nullable=False)   # small hatchback
+    consumption_standard = Column(Float, nullable=False)   # sedan / standard
+    consumption_suv      = Column(Float, nullable=False)   # SUV / 4x4
+    consumption_van      = Column(Float, nullable=False)   # van / camper
+
+    # ── Default EV consumption by vehicle class (kWh/100 km) ─────────────────
+    ev_consumption_standard = Column(Float, nullable=False)
+    ev_consumption_suv      = Column(Float, nullable=False)
+
+    # ── Electricity price (ISK/kWh) ───────────────────────────────────────────
+    electricity_price_isk_per_kwh = Column(Float, nullable=False)
+
+    # ── Wear and tear (ISK/km) ────────────────────────────────────────────────
+    # Conservative estimate covering tyres, brakes, filters, oil.
+    wear_and_tear_isk_per_km = Column(Float, nullable=False)
+
+    # ── Marginal depreciation ─────────────────────────────────────────────────
+    # Only a fraction of real ownership depreciation is passed to passengers.
+    # The driver already owns the car; we reimburse only the marginal usage cost.
+    # allowed_depreciation = real_depreciation_isk_per_km * depreciation_factor
+    real_depreciation_isk_per_km = Column(Float, nullable=False)
+    depreciation_factor          = Column(Float, nullable=False)  # 0.0–1.0, e.g. 0.40
+
+    # ── Platform cap (ISK/km) ─────────────────────────────────────────────────
+    # Hard ceiling: allowed_cost_per_km = min(raw_cost, cap).
+    # Prevents edge cases (heavy SUV + expensive diesel) from producing
+    # unreasonable per-seat caps.
+    platform_cost_cap_isk_per_km = Column(Float, nullable=False)
+
+    # ── Rounding ──────────────────────────────────────────────────────────────
+    rounding_unit = Column(Integer, nullable=False, default=50)  # ISK — always round DOWN
+
+    # ── Fuel price guardrails ─────────────────────────────────────────────────
+    # fallback: used when the live fetch and cache both fail.
+    # min/max: sanity bounds — reject the fetched price if outside this range.
+    fuel_price_fallback_isk_per_liter = Column(Float, nullable=False)
+    fuel_price_min_isk_per_liter      = Column(Float, nullable=False)
+    fuel_price_max_isk_per_liter      = Column(Float, nullable=False)
+
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    notes      = Column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("ix_pricing_policy_effective_from", "effective_from"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<PricingPolicy id={self.id} from={self.effective_from} to={self.effective_to}>"
+
+
+class Route(Base):
+    """
+    Canonical city-pair route table.
+
+    Distances are sourced from a routing API (or pre-seeded approximations
+    marked source='seeded_approximate') and stored as a snapshot so that
+    the estimator produces consistent results even if road distances change.
+
+    last_verified_at=NULL means the distance has never been verified against
+    a live routing API.  An admin task should periodically re-verify entries
+    and update the distance and polyline.
+
+    Both directions of a route are stored as separate rows (A→B and B→A),
+    because road distances and durations can differ.
+    """
+    __tablename__ = "routes"
+
+    id               = Column(Integer, primary_key=True)
+    origin           = Column(String(150), nullable=False)
+    destination      = Column(String(150), nullable=False)
+    distance_km      = Column(Float,       nullable=False)
+    duration_min     = Column(Integer,     nullable=True)
+    polyline         = Column(Text,        nullable=True)   # encoded polyline for map
+    source           = Column(String(50),  nullable=True)   # e.g. 'google_maps', 'seeded_approximate'
+    last_verified_at = Column(DateTime,    nullable=True)
+    is_active        = Column(Boolean,     nullable=False, default=True)
+    created_at       = Column(DateTime,    nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("origin", "destination", name="uq_routes_origin_destination"),
+        Index("ix_routes_origin",      "origin"),
+        Index("ix_routes_destination", "destination"),
+        Index("ix_routes_active",      "is_active"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Route {self.origin}→{self.destination} {self.distance_km} km>"
+
+
+class FuelPriceCache(Base):
+    """
+    Audit log of fetched fuel prices from apis.is.
+
+    Each successful fetch inserts a new row; no rows are updated.
+    The most recent row within MAX_CACHE_AGE_DAYS (7 days) is used
+    as the cached price when the live fetch fails.
+    """
+    __tablename__ = "fuel_price_cache"
+
+    id            = Column(Integer,  primary_key=True)
+    fuel_type     = Column(String(20), nullable=False, default="petrol")
+    p80_price     = Column(Float,    nullable=False)   # 80th percentile ISK/L
+    median_price  = Column(Float,    nullable=True)    # stored for reference / admin
+    station_count = Column(Integer,  nullable=True)    # number of stations in sample
+    source        = Column(String(50), nullable=False, default="apis_is")
+    fetched_at    = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_fuel_price_cache_fuel_type",  "fuel_type"),
+        Index("ix_fuel_price_cache_fetched_at", "fetched_at"),
+    )

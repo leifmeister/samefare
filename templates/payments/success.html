@@ -34,7 +34,7 @@
         <span>Driver</span>
         <span>{{ booking.trip.driver.full_name }}</span>
       </div>
-      {% if booking.trip.driver.phone %}
+      {% if booking.trip.driver.phone and booking.trip.driver.phone_verified %}
       <div class="price-row">
         <span>Driver's phone</span>
         <span>

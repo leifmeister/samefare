@@ -25,13 +25,31 @@
         <span>Seats booked</span>
         <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }}</span>
       </div>
+      {% if refund.policy == "card_not_charged" %}
+      <div class="price-row">
+        <span>Amount to be charged</span>
+        <span>{{ "{:,}".format(booking.total_price) }} ISK</span>
+      </div>
+      {% else %}
       <div class="price-row">
         <span>Amount paid</span>
         <span>{{ "{:,}".format(booking.total_price) }} ISK</span>
       </div>
+      {% endif %}
     </div>
 
-    <!-- Refund info -->
+    <!-- Refund / charge status -->
+    {% if refund.policy == "card_not_charged" %}
+    <div class="detail-card" style="margin-bottom:1.5rem; border-left:4px solid #22C55E;">
+      <h3 class="detail-card__title" style="margin-bottom:.5rem;">No charge</h3>
+      <p style="font-size:1.25rem; font-weight:700; margin-bottom:.25rem;">Card not billed</p>
+      <p class="text-muted" style="font-size:.875rem;">
+        Your seat was reserved and your card saved for authorisation, but
+        <strong>no money has been taken</strong>. Cancelling now discards the saved card
+        details — you will not be charged anything.
+      </p>
+    </div>
+    {% else %}
     <div class="detail-card" style="margin-bottom:1.5rem;
          border-left:4px solid {% if refund.amount == booking.total_price %}#22C55E{% elif refund.amount > 0 %}#F59E0B{% else %}#EF4444{% endif %};">
       <h3 class="detail-card__title" style="margin-bottom:.5rem;">Refund</h3>
@@ -43,6 +61,7 @@
         </p>
       {% endif %}
     </div>
+    {% endif %}
 
     <!-- Actions -->
     <div class="form-actions">

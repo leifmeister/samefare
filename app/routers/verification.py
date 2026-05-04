@@ -9,7 +9,7 @@ Admin routes (is_admin=True) let staff review and approve / reject documents.
 
 import os
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
@@ -310,6 +310,19 @@ def admin_dashboard(
         .all()
     )
 
+    # ── Annual pricing policy reminder (December only) ────────────────────────
+    # Show a banner in December when no PricingPolicy row has been entered for
+    # the coming year yet.  The banner disappears automatically once a row with
+    # effective_from >= Jan 1 of next year exists in the DB.
+    today     = date.today()
+    next_year = today.year + 1
+    pricing_reminder = (
+        today.month == 12
+        and not db.query(models.PricingPolicy)
+            .filter(models.PricingPolicy.effective_from >= date(next_year, 1, 1))
+            .first()
+    )
+
     return templates.TemplateResponse("admin/dashboard.html", {
         **ctx,
         # users
@@ -333,8 +346,11 @@ def admin_dashboard(
         "total_subscribers": total_subscribers,
         "discounts_used":    discounts_used,
         # tables
-        "popular_routes":  popular_routes,
-        "recent_bookings": recent_bookings,
+        "popular_routes":   popular_routes,
+        "recent_bookings":  recent_bookings,
+        # annual pricing reminder
+        "pricing_reminder": pricing_reminder,
+        "next_year":        next_year,
     })
 
 

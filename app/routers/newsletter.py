@@ -15,6 +15,7 @@ from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
 from app.limiter import rate_limit
 from app.routers.verification import _require_admin
+from app.utils import safe_redirect
 
 templates = Jinja2Templates(directory="templates")
 router = APIRouter(tags=["newsletter"])
@@ -41,11 +42,11 @@ def subscribe(
             db.add(models.NewsletterSubscriber(email=email, source=source))
             db.commit()
 
-    # Redirect back to wherever the form was submitted from
-    referer = request.headers.get("referer", "/")
-    # Append ?subscribed=1 so we can show a thank-you flash
-    sep = "&" if "?" in referer else "?"
-    return RedirectResponse(f"{referer}{sep}subscribed=1", status_code=303)
+    # Redirect back to wherever the form was submitted from.
+    # safe_redirect strips the host so a forged Referer can't send the user off-site.
+    origin = safe_redirect(request.headers.get("referer", "/"))
+    sep = "&" if "?" in origin else "?"
+    return RedirectResponse(f"{origin}{sep}subscribed=1", status_code=303)
 
 
 # ── Admin: list + export ──────────────────────────────────────────────────────

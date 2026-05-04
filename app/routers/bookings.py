@@ -5,12 +5,15 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 
+from typing import Optional
+
 from app import models, email as mailer
 from app.config import get_settings
 from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
 from app.limiter import rate_limit
-from app.routers.payments import calc_fees
+from app.routers.payments import calc_fees, _issue_rapyd_refund
+from app.utils import canonical_city, build_route_graph, route_km, prorate_segment_price
 
 settings = get_settings()
 templates = Jinja2Templates(directory="templates")
@@ -47,6 +50,8 @@ def book_trip_page(
     ctx: dict = Depends(get_template_context),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    pickup:  Optional[str] = None,   # segment: passenger's boarding city
+    dropoff: Optional[str] = None,   # segment: passenger's exit city
 ):
     if not current_user.email_verified and not get_settings().beta_mode:
         return RedirectResponse("/check-your-email", status_code=303)
@@ -61,9 +66,26 @@ def book_trip_page(
     if trip.status != models.TripStatus.active or trip.seats_available < 1:
         return RedirectResponse(f"/trips/{trip_id}", status_code=303)
 
+    # Compute segment price if this is a partial-route booking
+    segment_pickup  = canonical_city(pickup)  if pickup  else None
+    segment_dropoff = canonical_city(dropoff) if dropoff else None
+    segment_price   = None
+    if (segment_pickup and segment_dropoff
+            and (segment_pickup != trip.origin or segment_dropoff != trip.destination)):
+        graph    = build_route_graph(db)
+        seg_km   = route_km(graph, segment_pickup, segment_dropoff)
+        total_km = route_km(graph, trip.origin, trip.destination)
+        if seg_km and total_km:
+            segment_price = prorate_segment_price(trip.price_per_seat, seg_km, total_km)
+        else:
+            segment_pickup  = None
+            segment_dropoff = None
+
     has_discount = _newsletter_discount(db, current_user) is not None
     return templates.TemplateResponse("bookings/create.html", {
         **ctx, "trip": trip, "error": None, "has_discount": has_discount,
+        "segment_pickup": segment_pickup, "segment_dropoff": segment_dropoff,
+        "segment_price": segment_price,
     })
 
 
@@ -76,11 +98,36 @@ def create_booking(
     db: Session = Depends(get_db),
     seats_booked: int = Form(1),
     message: str = Form(""),
+    pickup_city:  str = Form(""),   # segment booking — empty means trip.origin
+    dropoff_city: str = Form(""),   # segment booking — empty means trip.destination
     _rl=rate_limit(10, 60),
 ):
-    trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
+    if not current_user.email_verified and not settings.beta_mode:
+        return RedirectResponse("/check-your-email", status_code=303)
+    if current_user.id_verification != models.VerificationStatus.approved:
+        return RedirectResponse(f"/verify?next=book&trip={trip_id}", status_code=303)
+
+    # Lock the trip row for the duration of this transaction so that concurrent
+    # booking requests serialise here rather than racing on seats_available.
+    trip = (
+        db.query(models.Trip)
+        .filter(models.Trip.id == trip_id)
+        .with_for_update()
+        .first()
+    )
     if not trip:
         return templates.TemplateResponse("errors/404.html", {**ctx}, status_code=404)
+
+    # Reject inactive or full trips — mirrors the GET guard so a direct POST
+    # cannot bypass the availability check.
+    if trip.status != models.TripStatus.active or trip.seats_available < 1:
+        return RedirectResponse(f"/trips/{trip_id}", status_code=303)
+
+    # Reject bookings on trips that have already departed.
+    # Auto-complete intentionally leaves trips active for 2 hours after
+    # departure, so we must check departure_datetime explicitly.
+    if trip.departure_datetime <= datetime.utcnow():
+        return RedirectResponse(f"/trips/{trip_id}", status_code=303)
 
     has_discount = _newsletter_discount(db, current_user) is not None
     err_ctx = {**ctx, "trip": trip, "has_discount": has_discount}
@@ -89,21 +136,61 @@ def create_booking(
         return templates.TemplateResponse("bookings/create.html",
             {**err_ctx, "error": "You cannot book your own trip."}, status_code=400)
 
+    if seats_booked < 1:
+        return templates.TemplateResponse("bookings/create.html",
+            {**err_ctx, "error": "Please select at least 1 seat."}, status_code=400)
+
     if seats_booked > trip.seats_available:
         return templates.TemplateResponse("bookings/create.html",
             {**err_ctx, "error": f"Only {trip.seats_available} seat(s) available."}, status_code=400)
 
-    # Check if passenger already has an active booking on this trip
+    # Check if passenger already has an active booking on this trip.
+    # card_saved is included: the passenger has a Case B booking with seats
+    # held and a MIT scheduled — it is just as active as a confirmed booking.
     existing = db.query(models.Booking).filter(
         models.Booking.trip_id == trip_id,
         models.Booking.passenger_id == current_user.id,
-        models.Booking.status.in_([models.BookingStatus.pending, models.BookingStatus.confirmed]),
+        models.Booking.status.in_([
+            models.BookingStatus.pending,
+            models.BookingStatus.awaiting_payment,
+            models.BookingStatus.card_saved,
+            models.BookingStatus.confirmed,
+        ]),
     ).first()
     if existing:
+        if existing.status == models.BookingStatus.awaiting_payment:
+            return RedirectResponse(
+                f"/payments/checkout/{existing.id}", status_code=303
+            )
+        if existing.status == models.BookingStatus.card_saved:
+            return RedirectResponse(
+                f"/payments/card-saved/{existing.id}", status_code=303
+            )
         return templates.TemplateResponse("bookings/create.html",
             {**err_ctx, "error": "You already have a booking on this trip."}, status_code=400)
 
-    contribution = trip.price_per_seat * seats_booked
+    # Validate and apply segment (partial-route) pricing
+    pickup_city  = canonical_city(pickup_city.strip())  if pickup_city.strip()  else None
+    dropoff_city = canonical_city(dropoff_city.strip()) if dropoff_city.strip() else None
+    price_per_seat = trip.price_per_seat
+    if (pickup_city and dropoff_city
+            and (pickup_city != trip.origin or dropoff_city != trip.destination)):
+        graph    = build_route_graph(db)
+        seg_km   = route_km(graph, pickup_city, dropoff_city)
+        total_km = route_km(graph, trip.origin, trip.destination)
+        if seg_km and total_km:
+            price_per_seat = prorate_segment_price(trip.price_per_seat, seg_km, total_km)
+        else:
+            # Segment not in graph — reject rather than silently charging full price
+            has_discount = _newsletter_discount(db, current_user) is not None
+            return templates.TemplateResponse("bookings/create.html", {
+                **ctx, "trip": trip, "has_discount": has_discount,
+                "segment_pickup": pickup_city, "segment_dropoff": dropoff_city,
+                "segment_price": None,
+                "error": "We don't have distance data for that segment. Please book the full route.",
+            }, status_code=400)
+
+    contribution = price_per_seat * seats_booked
     subscriber   = _newsletter_discount(db, current_user)
     if subscriber:
         service_fee = 0
@@ -112,12 +199,19 @@ def create_booking(
         service_fee, total, _ = calc_fees(contribution)
 
     if trip.instant_book:
-        # Instant: hold seats now, go straight to payment
-        initial_status = models.BookingStatus.awaiting_payment
+        # Instant: hold seats now, go straight to payment.
+        # Cap the deadline at departure so a passenger can never sit on an
+        # unpaid hold past the point the trip has left.
+        payment_deadline = min(
+            datetime.utcnow() + timedelta(hours=24),
+            trip.departure_datetime,
+        )
+        initial_status   = models.BookingStatus.awaiting_payment
         trip.seats_available = max(0, trip.seats_available - seats_booked)
     else:
         # Requires approval: don't hold seats yet, wait for driver
-        initial_status = models.BookingStatus.pending
+        initial_status   = models.BookingStatus.pending
+        payment_deadline = None
 
     booking = models.Booking(
         trip_id=trip_id,
@@ -126,11 +220,14 @@ def create_booking(
         total_price=total,
         service_fee=service_fee,
         message=message or None,
+        pickup_city=pickup_city,
+        dropoff_city=dropoff_city,
         status=initial_status,
+        payment_deadline=payment_deadline,
     )
     db.add(booking)
-    if subscriber:
-        subscriber.discount_used = True
+    # Do NOT mark discount_used here — do it only on successful payment so an
+    # abandoned checkout doesn't permanently burn the user's first-ride discount.
     db.commit()
     db.refresh(booking)
 
@@ -151,6 +248,14 @@ def _refund_preview(booking) -> dict:
     now = datetime.utcnow()
     if not booking.payment:
         return {"amount": 0, "label": "No charge yet", "policy": "free"}
+
+    # Case B card_saved: card tokenized for MIT but nothing charged yet
+    if booking.status == models.BookingStatus.card_saved:
+        return {
+            "amount": 0,
+            "label":  "No charge — card not billed yet",
+            "policy": "card_not_charged",
+        }
 
     departure    = booking.trip.departure_datetime
     hours_left   = (departure - now).total_seconds() / 3600
@@ -201,7 +306,8 @@ def cancel_booking_page(
     )
     cancellable = (models.BookingStatus.awaiting_payment,
                    models.BookingStatus.pending,
-                   models.BookingStatus.confirmed)
+                   models.BookingStatus.confirmed,
+                   models.BookingStatus.card_saved)
     if not booking or booking.passenger_id != current_user.id or booking.status not in cancellable:
         return RedirectResponse("/bookings", status_code=303)
 
@@ -229,27 +335,42 @@ def cancel_booking(
 
     cancellable = (models.BookingStatus.awaiting_payment,
                    models.BookingStatus.pending,
-                   models.BookingStatus.confirmed)
+                   models.BookingStatus.confirmed,
+                   models.BookingStatus.card_saved)
     if booking.status not in cancellable:
         return RedirectResponse("/bookings", status_code=303)
 
+    # Capture the pre-cancellation status before mutating it so the payment
+    # block below can distinguish card_saved (no MIT yet) from charged states.
+    original_status = booking.status
+
     seats_were_held = booking.status != models.BookingStatus.pending
     if seats_were_held:
-        booking.trip.seats_available = min(
-            booking.trip.seats_total,
-            booking.trip.seats_available + booking.seats_booked,
+        # Lock the trip row before releasing seats so that concurrent
+        # cancellations serialise here rather than racing on seats_available.
+        trip = (
+            db.query(models.Trip)
+            .filter(models.Trip.id == booking.trip_id)
+            .with_for_update()
+            .first()
         )
+        if trip:
+            trip.seats_available = min(
+                trip.seats_total,
+                trip.seats_available + booking.seats_booked,
+            )
     booking.status = models.BookingStatus.cancelled
 
     if booking.payment:
-        preview = _refund_preview(booking)
-        refund  = preview["amount"]
-        booking.payment.refund_amount = refund
-        booking.payment.status = (
-            models.PaymentStatus.refunded       if refund == booking.payment.passenger_total else
-            models.PaymentStatus.partial_refund if refund > 0 else
-            models.PaymentStatus.partial_refund
-        )
+        if original_status == models.BookingStatus.card_saved:
+            # Card was tokenized for a future MIT but never charged.
+            # Mark the payment failed (no charge to refund, no Rapyd call needed).
+            booking.payment.status = models.PaymentStatus.failed
+        else:
+            refund = _refund_preview(booking)["amount"]
+            # _issue_rapyd_refund owns refund_amount and status — do not pre-set them.
+            _issue_rapyd_refund(db, booking, refund,
+                                reason="requested_by_customer")
 
     db.commit()
     db.refresh(booking)
@@ -265,24 +386,36 @@ def confirm_booking(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    booking = (
-        db.query(models.Booking)
-        .options(joinedload(models.Booking.trip))
-        .filter(models.Booking.id == booking_id)
-        .first()
-    )
+    booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
     if booking and booking.trip.driver_id == current_user.id:
         if booking.status == models.BookingStatus.pending:
-            # Check there are still enough seats (no seats held yet for manual-approval trips)
-            if booking.trip.seats_available >= booking.seats_booked:
-                booking.trip.seats_available = max(
-                    0, booking.trip.seats_available - booking.seats_booked
+            # Lock the trip row before reading/writing seats_available so that
+            # concurrent approvals on the same trip serialise here.
+            trip = (
+                db.query(models.Trip)
+                .filter(models.Trip.id == booking.trip_id)
+                .with_for_update()
+                .first()
+            )
+            if (
+                trip
+                and trip.status == models.TripStatus.active
+                and trip.departure_datetime > datetime.utcnow()
+                and trip.seats_available >= booking.seats_booked
+            ):
+                trip.seats_available     = trip.seats_available - booking.seats_booked
+                booking.status           = models.BookingStatus.awaiting_payment
+                # Cap at departure so the passenger can never hold an unpaid
+                # seat past the point the trip has left.
+                booking.payment_deadline = min(
+                    datetime.utcnow() + timedelta(hours=24),
+                    trip.departure_datetime,
                 )
-                booking.status = models.BookingStatus.awaiting_payment
                 db.commit()
                 db.refresh(booking)
                 mailer.booking_approved_to_passenger(booking)
-            # If not enough seats, silently do nothing (driver sees it's still pending)
+            # If trip is not active, in the past, or has insufficient seats,
+            # do nothing — driver sees the booking still pending
     return RedirectResponse("/my-trips?tab=rides", status_code=303)
 
 
@@ -334,11 +467,14 @@ def report_driver_no_show(
 
     # Flag the trip so the driver can be penalised by auto-ratings
     booking.trip.driver_no_show = True
-    # Cancel the booking and issue a full refund
+    # Cancel the booking and issue a full refund via Rapyd.
+    # _issue_rapyd_refund owns refund_amount and status — do not pre-set them.
     booking.status = models.BookingStatus.cancelled
     if booking.payment:
-        booking.payment.refund_amount = booking.payment.passenger_total
-        booking.payment.status = models.PaymentStatus.refunded
+        _issue_rapyd_refund(
+            db, booking, booking.payment.passenger_total,
+            reason="driver_no_show",
+        )
 
     # Issue an immediate 1-star auto-review for the driver (no grace period for no-shows)
     existing_review = (

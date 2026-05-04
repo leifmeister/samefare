@@ -5,8 +5,10 @@ All public functions are fire-and-forget: they catch every exception so a
 mail failure never breaks the booking/payment flow.
 """
 
+import html
 import json
 import logging
+import urllib.parse
 import urllib.request
 import urllib.error
 
@@ -114,8 +116,9 @@ def _btn(label: str, url: str) -> str:
 
 def _route_line(origin: str, destination: str, dt) -> str:
     date_str = dt.strftime("%-d %B %Y, %H:%M")
+    o, d = html.escape(origin), html.escape(destination)
     return (f'<p style="margin:0 0 4px;font-size:1.1rem;font-weight:700;color:#1A2B3C;">'
-            f'{origin} → {destination}</p>'
+            f'{o} → {d}</p>'
             f'<p style="margin:0;font-size:.875rem;color:#64748B;">{date_str}</p>')
 
 
@@ -229,12 +232,24 @@ def booking_cancelled_to_driver(booking) -> None:
 def booking_cancelled_to_passenger(booking) -> None:
     s    = get_settings()
     trip = booking.trip
-    refund = booking.payment.refund_amount if booking.payment else 0
-    if refund > 0:
-        refund_line = _p(f"Refund of <strong>{refund:,} ISK</strong> will be returned to your "
-                         f"original payment method within 5–10 business days.")
+    # card_saved cancellation: card was tokenized for MIT but nothing was charged.
+    # rapyd_payment_id is only set once an actual charge (auth or MIT) is created.
+    card_not_charged = (
+        booking.payment is not None
+        and not booking.payment.rapyd_payment_id
+    )
+    if card_not_charged:
+        refund_line = _p(
+            "Your card was <strong>not charged</strong>. "
+            "Your seat reservation has been released and your saved card details discarded."
+        )
     else:
-        refund_line = _p("No refund applies for this cancellation.")
+        refund = booking.payment.refund_amount if booking.payment else 0
+        if refund > 0:
+            refund_line = _p(f"Refund of <strong>{refund:,} ISK</strong> will be returned to your "
+                             f"original payment method within 5–10 business days.")
+        else:
+            refund_line = _p("No refund applies for this cancellation.")
 
     body = (
         _h1("Booking cancelled") +
@@ -244,7 +259,7 @@ def booking_cancelled_to_passenger(booking) -> None:
         f'{_route_line(trip.origin, trip.destination, trip.departure_datetime)}</div>' +
         _divider() +
         refund_line +
-        _btn("Find another ride", f"{s.base_url}/trips?origin={trip.origin}&destination={trip.destination}")
+        _btn("Find another ride", f"{s.base_url}/trips?" + urllib.parse.urlencode({"origin": trip.origin, "destination": trip.destination}))
     )
     _send(booking.passenger.email, f"Booking cancelled — {trip.origin} → {trip.destination}", _wrap(body))
 
@@ -261,7 +276,7 @@ def trip_cancelled_to_passenger(booking) -> None:
         _divider() +
         _p("A <strong>full refund</strong> (including service fee) will be returned to your "
            "original payment method within 5–10 business days.") +
-        _btn("Find another ride", f"{s.base_url}/trips?origin={trip.origin}&destination={trip.destination}")
+        _btn("Find another ride", f"{s.base_url}/trips?" + urllib.parse.urlencode({"origin": trip.origin, "destination": trip.destination}))
     )
     _send(booking.passenger.email, f"Trip cancelled — {trip.origin} → {trip.destination}", _wrap(body))
 
@@ -296,6 +311,124 @@ def email_verification(user, token: str) -> None:
            "If you didn't create a SameFare account, you can safely ignore this email.")
     )
     _send(user.email, "Verify your SameFare email address", _wrap(body))
+
+
+def ride_alert_notification(alert, trips: list) -> None:
+    """
+    Notify a user (or guest) that one or more rides matching their alert
+    have just been posted.
+
+    *alert* is a RideAlert model instance.
+    *trips* is a list of Trip instances.
+    """
+    s = get_settings()
+    if not trips:
+        return
+
+    route_label = f"{html.escape(alert.origin)} → {html.escape(alert.destination)}"
+
+    # Build a card for each matching trip
+    trip_cards = ""
+    for trip in trips[:5]:          # cap at 5 so the email doesn't become a wall
+        date_str = trip.departure_datetime.strftime("%-d %B %Y, %H:%M")
+        t_origin = html.escape(trip.origin)
+        t_dest   = html.escape(trip.destination)
+        trip_cards += (
+            f'<div style="background:#F7FAF9;border:1px solid #DDE8E5;border-radius:8px;'
+            f'padding:16px;margin:0 0 12px;">'
+            f'<p style="margin:0 0 4px;font-size:1rem;font-weight:700;color:#1A2B3C;">'
+            f'{t_origin} → {t_dest}</p>'
+            f'<p style="margin:0 0 8px;font-size:.875rem;color:#64748B;">{date_str}</p>'
+            f'<p style="margin:0;font-size:.875rem;color:#475569;">'
+            f'<strong>{trip.price_per_seat:,} ISK</strong> per seat &nbsp;·&nbsp; '
+            f'{trip.seats_available} seat{"s" if trip.seats_available != 1 else ""} available</p>'
+            f'</div>'
+            f'{_btn("View ride", f"{s.base_url}/trips/{trip.id}")}<br/><br/>'
+        )
+
+    unsubscribe_url = f"{s.base_url}/alerts/unsubscribe/{alert.token}"
+
+    body = (
+        _h1(f"A ride is available: {route_label} 🎉") +
+        _p(f"Good news — {'a new ride' if len(trips) == 1 else str(len(trips)) + ' new rides'} "
+           f"matching your alert just {'was' if len(trips) == 1 else 'were'} posted:") +
+        trip_cards +
+        _divider() +
+        f'<p style="margin:0;font-size:.8125rem;color:#94A3B8;line-height:1.6;">'
+        f'You set up a ride alert for <strong>{route_label}</strong>. '
+        f'<a href="{unsubscribe_url}" style="color:#94A3B8;">Unsubscribe from this alert</a>.'
+        f'</p>'
+    )
+    _send(alert.email,
+          f"Ride available: {route_label} — SameFare",
+          _wrap(body))
+
+
+def card_saved_to_passenger(booking) -> None:
+    """
+    Case B: card tokenised successfully, MIT scheduled 24 h before departure.
+    """
+    s    = get_settings()
+    trip = booking.trip
+    from datetime import timedelta as _td
+    auth_time = trip.departure_datetime - _td(hours=24)
+    body = (
+        _h1("Card saved — you're all set ✓") +
+        _p("Your card has been securely saved. We'll authorise the payment "
+           "24 hours before your trip — no action needed from you.") +
+        f'<div style="background:#F7FAF9;border:1px solid #DDE8E5;border-radius:8px;'
+        f'padding:16px;margin:8px 0;">'
+        f'{_route_line(trip.origin, trip.destination, trip.departure_datetime)}'
+        f'<p style="margin:12px 0 0;font-size:.875rem;color:#475569;">'
+        f'Card will be charged: <strong>{auth_time.strftime("%-d %B %Y at %H:%M")}</strong>'
+        f'</p></div>' +
+        _divider() +
+        _p(f"Amount to be charged: <strong>{booking.total_price:,} ISK</strong>") +
+        _p("You may cancel for free any time more than 24 hours before departure.") +
+        _btn("View my booking", f"{s.base_url}/my-trips?tab=bookings")
+    )
+    _send(
+        booking.passenger.email,
+        f"Card saved — {trip.origin} → {trip.destination}",
+        _wrap(body),
+    )
+
+
+def mit_auth_failed_to_passenger(booking, retry_deadline) -> None:
+    """
+    Case B: MIT authorisation declined 24 h before departure.
+    Passenger has 2 hours to update card.  +5 % surcharge notice included.
+    """
+    import html as _html
+    s    = get_settings()
+    trip = booking.trip
+    deadline_str = retry_deadline.strftime("%-d %B %Y at %H:%M") if retry_deadline else "soon"
+    body = (
+        _h1("Action required: payment authorisation failed ⚠") +
+        _p(f"We were unable to authorise your card for the trip "
+           f"<strong>{_html.escape(trip.origin)} → {_html.escape(trip.destination)}</strong> "
+           f"on <strong>{trip.departure_datetime.strftime('%-d %B %Y')}</strong>.") +
+        f'<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;'
+        f'padding:16px;margin:8px 0 16px;">'
+        f'<p style="margin:0;font-size:.9375rem;font-weight:600;color:#92400E;">'
+        f'Please update your payment card by <strong>{deadline_str}</strong> '
+        f'to keep your seat.</p>'
+        f'<p style="margin:8px 0 0;font-size:.875rem;color:#78350F;">'
+        f'A 5% late-authorisation fee now applies. New total: '
+        f'<strong>{booking.total_price:,} ISK</strong>.</p>'
+        f'</div>' +
+        _p("If you don't update your card within 2 hours, your booking will be "
+           "cancelled and your seat released to other passengers.") +
+        _btn("Update my card now", f"{s.base_url}/payments/auth-failed/{booking.id}") +
+        _divider() +
+        _p("If you no longer need this seat, no action is needed — your booking "
+           "will be cancelled automatically when the window expires.")
+    )
+    _send(
+        booking.passenger.email,
+        f"Action required: payment failed — {trip.origin} → {trip.destination}",
+        _wrap(body),
+    )
 
 
 def password_reset(user, token: str) -> None:

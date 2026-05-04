@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block title %}Card saved — {{ booking.trip.origin }} → {{ booking.trip.destination }}{% endblock %}
+
+{% block content %}
+<div class="container container--narrow" style="margin-top:2rem; margin-bottom:4rem;">
+  <div class="form-page">
+
+    <div class="success-hero">
+      <div class="success-hero__icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+             stroke-linejoin="round" width="40" height="40" aria-hidden="true">
+          <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+          <line x1="1" y1="10" x2="23" y2="10"/>
+        </svg>
+      </div>
+      <h1 class="success-hero__title">Card saved — you're all set</h1>
+      <p class="success-hero__sub">
+        Your seat is reserved. We'll charge your card automatically
+        24 hours before departure — no further action needed.
+      </p>
+    </div>
+
+    <!-- Timeline -->
+    <div class="policy-box" style="margin-top:2rem;">
+      <p class="policy-box__title">What happens next</p>
+      <ul class="policy-box__list">
+        <li>
+          <strong>Now</strong> — your seat is reserved and your card is securely saved.
+          Nothing is charged today.
+        </li>
+        <li>
+          <strong>24 hours before departure</strong> — we'll authorise
+          {% if booking.payment %}
+            <strong>{{ "{:,}".format(booking.payment.passenger_total) }} ISK</strong>
+          {% else %}
+            your trip amount
+          {% endif %}
+          on your card. If the authorisation fails, you'll receive an SMS with a
+          2-hour window to update your card.
+        </li>
+        <li>
+          <strong>At departure</strong> — the authorised amount is captured and
+          the driver receives their payout.
+        </li>
+      </ul>
+    </div>
+
+    <!-- Trip summary -->
+    <div class="booking-summary" style="margin-top:1.5rem;">
+      <h3 class="booking-summary__title">Booking summary</h3>
+
+      <div class="price-row">
+        <span>Route</span>
+        <span><strong>{{ booking.trip.origin }} → {{ booking.trip.destination }}</strong></span>
+      </div>
+      <div class="price-row">
+        <span>Departure</span>
+        <span>{{ booking.trip.departure_datetime.strftime("%A %-d %B %Y, %H:%M") }}</span>
+      </div>
+      <div class="price-row">
+        <span>Driver</span>
+        <span>{{ booking.trip.driver.full_name }}</span>
+      </div>
+      <div class="price-row">
+        <span>Seats</span>
+        <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }}</span>
+      </div>
+
+      {% if booking.payment %}
+      <div class="price-row" style="margin-top:.75rem; padding-top:.75rem; border-top:1px solid var(--color-border);">
+        <span>Amount to be authorised</span>
+        <span>{{ "{:,}".format(booking.payment.passenger_total) }} ISK</span>
+      </div>
+      {% if booking.payment.card_last4 %}
+      <p class="price-note">
+        Card: {{ booking.payment.card_brand or '' }} ending ····{{ booking.payment.card_last4 }}
+      </p>
+      {% endif %}
+      {% endif %}
+    </div>
+
+    <!-- Cancellation reminder -->
+    <div class="policy-box" style="margin-top:1.5rem;">
+      <p class="policy-box__title">Cancellation policy</p>
+      <ul class="policy-box__list">
+        <li><strong>More than 24 h before departure</strong> — cancel for free; your cost contribution is fully refunded.</li>
+        <li><strong>Less than 24 h before departure</strong> — 50% of your cost contribution is refunded.</li>
+        <li>The service fee is non-refundable (unless the driver cancels).</li>
+      </ul>
+    </div>
+
+    <div class="form-actions" style="margin-top:2rem; justify-content:center; gap:1rem;">
+      <a href="/my-trips?tab=bookings" class="btn btn-primary">View my trips</a>
+      <a href="/trips/{{ booking.trip_id }}" class="btn btn-outline">View trip details</a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

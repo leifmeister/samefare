@@ -21,7 +21,7 @@
       <li><a href="#s5">Posting a Ride</a></li>
       <li><a href="#s6">Booking a Seat</a></li>
       <li><a href="#s7">Cost Contributions &amp; Fees</a></li>
-      <li><a href="#s8">Cancellation &amp; Refund Policy</a></li>
+      <li><a href="#s8">Payment Authorisation, Cancellation &amp; Refund Policy</a></li>
       <li><a href="#s9">No-Show Policy</a></li>
       <li><a href="#s10">Conduct &amp; Obligations</a></li>
       <li><a href="#s11">Reviews &amp; Ratings</a></li>
@@ -107,8 +107,8 @@
       <h2>6. Booking a Seat</h2>
       <p>When you complete a booking as a passenger:</p>
       <ul>
-        <li>Payment of the full amount (cost contribution + service fee) is taken immediately.</li>
-        <li>Your booking is <strong>confirmed instantly</strong>; the driver is notified.</li>
+        <li>Your card is <strong>authorised</strong> for the full amount (cost contribution + service fee). The actual charge is collected at departure — see section 8 for the payment authorisation model.</li>
+        <li>Your booking is <strong>confirmed</strong> once authorisation succeeds; the driver is notified.</li>
         <li>The driver's contact details are shared with you, and your first name is shared with the driver.</li>
         <li>You agree to arrive at the pickup point and <strong>wait at least 15 minutes</strong> past the agreed departure time.</li>
         <li>You must carry valid photo ID for the journey.</li>
@@ -134,7 +134,8 @@
       </table>
 
       <h3>7.2 Service Fee</h3>
-      <p>SameFare charges a flat <strong>18% service fee</strong> on the cost contribution, payable by the passenger at the time of booking. This fee is <strong>non-refundable</strong> unless the driver cancels the trip or fails to appear (see sections 8 and 9).</p>
+      <p>SameFare charges a <strong>18% service fee</strong> on the cost contribution, payable by the passenger at the time of booking. This fee is <strong>non-refundable</strong> unless the driver cancels the trip or fails to appear (see sections 8 and 9).</p>
+      <p><strong>Late-authorisation surcharge.</strong> For trips booked more than 7 days in advance, your card is saved today and charged 24 hours before departure (see section 8.1). If that authorisation fails and you choose to update your card within the 2-hour retry window, a <strong>5% surcharge</strong> is added to the service fee, bringing the total service fee to <strong>23%</strong>. This surcharge is non-refundable once the updated card is saved.</p>
 
       <h3>7.3 Driver Payouts</h3>
       <p>Cost contributions are transferred to drivers after the trip departure date. Payouts may be withheld pending investigation of disputes or policy violations.</p>
@@ -142,7 +143,21 @@
 
     <!-- 8 -->
     <section id="s8" class="legal-section">
-      <h2>8. Cancellation &amp; Refund Policy</h2>
+      <h2>8. Payment Authorisation, Cancellation &amp; Refund Policy</h2>
+
+      <h3>8.1 How Payment Works</h3>
+      <p>SameFare uses an <strong>authorise-then-capture</strong> model. Your card is never charged at the moment of booking — it is <em>authorised</em> (a hold is placed) and the funds are only <em>captured</em> (collected) when your trip departs.</p>
+
+      <p><strong>Trips departing within 7 days (Case A)</strong><br>
+      When you complete checkout, your card is authorised for the full amount. You will see a pending reservation on your statement. The actual charge is collected at departure. If the trip is cancelled before departure, the authorisation is released in full.</p>
+
+      <p><strong>Trips departing more than 7 days away (Case B)</strong><br>
+      Your card details are saved securely today (no charge). We will authorise the full amount <strong>24 hours before your departure date</strong>. By saving your card you consent to this merchant-initiated authorisation in accordance with PSD2 strong customer authentication rules.</p>
+
+      <p><strong>Case B authorisation failure &amp; retry window</strong><br>
+      If the 24-hour-before-departure authorisation fails (e.g. insufficient funds, expired card), you will immediately receive an SMS and email notification. You have <strong>2 hours</strong> to update your payment card via <a href="/my-trips">My Trips</a>. If you update your card within this window, a <strong>5% late-authorisation surcharge</strong> is added (total service fee becomes 23% — see section 7.2). If you do not update your card within 2 hours, your booking is automatically cancelled and your seat is released to other passengers. No charge is made on cancellation.</p>
+
+      <h3>8.2 Cancellation &amp; Refund Schedule</h3>
 
       <div class="legal-policy-grid">
         <div class="legal-policy-card legal-policy-card--driver">
@@ -184,10 +199,16 @@
             <strong>Full refund</strong> — cost contribution <em>and</em> service fee returned to affected passengers.
           </div>
         </div>
+        <div class="legal-policy-card legal-policy-card--noshow">
+          <div class="legal-policy-card__label">Case B — authorisation failed, retry window expired</div>
+          <div class="legal-policy-card__result">
+            Booking automatically cancelled. <strong>No charge made.</strong> Seat released.
+          </div>
+        </div>
       </div>
 
       <p style="margin-top:1.25rem;">The grace period only applies when the departure is still more than 24 hours away — if the trip is imminent, the standard departure-based rules apply regardless of when the booking was made.</p>
-      <p>Refunds are processed within <strong>5–10 business days</strong> via the original payment method. To cancel a booking, go to <a href="/my-trips">My Trips</a> and select the relevant booking.</p>
+      <p>Refunds are processed within <strong>5–10 business days</strong> via the original payment method. Card payments are processed securely by Rapyd — SameFare never stores your card number. To cancel a booking, go to <a href="/my-trips">My Trips</a> and select the relevant booking.</p>
     </section>
 
     <!-- 9 — NEW: No-Show Policy -->

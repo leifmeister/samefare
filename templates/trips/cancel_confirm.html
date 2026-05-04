@@ -38,9 +38,15 @@
           <div style="margin-top:.5rem; font-size:.875rem;">
             {{ b.passenger.full_name }} — {{ b.seats_booked }} seat{{ 's' if b.seats_booked != 1 }}
             {% if b.payment %}
-              <span style="color:#065F46; font-weight:600;">
-                · full refund of {{ "{:,}".format(b.payment.passenger_total) }} ISK
-              </span>
+              {% if b.status.value == 'card_saved' %}
+                <span style="color:#6B7280; font-weight:600;">
+                  · card not charged
+                </span>
+              {% else %}
+                <span style="color:#065F46; font-weight:600;">
+                  · full refund of {{ "{:,}".format(b.payment.passenger_total) }} ISK
+                </span>
+              {% endif %}
             {% endif %}
           </div>
         {% endfor %}
@@ -56,8 +62,9 @@
     <div class="policy-box" style="margin-top:1.5rem;">
       <p class="policy-box__title">Cancellation policy</p>
       <ul class="policy-box__list">
-        <li>All confirmed passengers receive a <strong>full refund</strong> including the service fee.</li>
-        <li>Passengers will be notified by email immediately.</li>
+        <li>Passengers with a confirmed or pending-payment seat receive a <strong>full refund</strong> including the service fee.</li>
+        <li>Passengers whose card was saved but not yet charged will have their reservation cancelled — <strong>no charge will be made</strong>.</li>
+        <li>All affected passengers will be notified by email immediately.</li>
         <li>Frequent cancellations may affect your standing on SameFare.</li>
       </ul>
     </div>

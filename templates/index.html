@@ -22,7 +22,16 @@
 
     <!-- Search box -->
     <form class="search-box" action="/trips" method="get"
-          x-data="dateShortcuts('')">
+          x-data="Object.assign(dateShortcuts('', ''), {sameCityErr: false})"
+          @submit="
+            const o = $el.querySelector('[name=origin]').value.trim().toLowerCase();
+            const d = $el.querySelector('[name=destination]').value.trim().toLowerCase();
+            if (o && d && o === d) { $event.preventDefault(); sameCityErr = true; return; }
+            sameCityErr = false;
+          ">
+      <div x-show="sameCityErr" x-cloak class="search-bar__same-city-error" role="alert">
+        Origin and destination can't be the same city.
+      </div>
       <div class="search-box__fields">
         <div class="search-field">
           <label for="hero-origin" class="search-field__label">
@@ -50,19 +59,56 @@
         </div>
 
         <div class="search-field search-field--date">
-          <label for="hero-date" class="search-field__label">
+          <label class="search-field__label">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
             Date
           </label>
           <div class="search-bar__date-wrap">
-            <input id="hero-date" name="travel_date" type="date" class="search-field__input"
-                   x-model="date" />
+            <!-- Trigger button -->
+            <button type="button" class="search-field__input date-trigger"
+                    :class="{'date-trigger--has-value': dateLabel}"
+                    @click="open = !open"
+                    aria-haspopup="true" :aria-expanded="open">
+              <span x-text="dateLabel || 'Any date'"
+                    :class="{'date-trigger__placeholder': !dateLabel}"></span>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                   width="14" height="14" class="date-trigger__caret" aria-hidden="true">
+                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/>
+              </svg>
+            </button>
+
+            <!-- Clear button -->
             <button type="button" class="search-bar__date-clear"
-                    x-show="date" x-cloak
-                    @click="date=''"
+                    x-show="dateLabel" x-cloak
+                    @click="clearDate()"
                     title="Clear date" aria-label="Clear date">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"/></svg>
             </button>
+
+            <!-- Date flex popover -->
+            <div class="date-popover" x-show="open" x-cloak
+                 @click.outside="open = false">
+              <div class="date-flex-seg" role="group" aria-label="Date flexibility">
+                <button type="button" class="date-flex-seg__btn"
+                        :class="{'date-flex-seg__btn--active': flex === 'exact'}"
+                        @click="setFlex('exact')">Exact</button>
+                <button type="button" class="date-flex-seg__btn"
+                        :class="{'date-flex-seg__btn--active': flex === 'plus_minus_1'}"
+                        @click="setFlex('plus_minus_1')">±1 day</button>
+                <button type="button" class="date-flex-seg__btn"
+                        :class="{'date-flex-seg__btn--active': flex === 'this_week'}"
+                        @click="setFlex('this_week')">This week</button>
+              </div>
+              <div x-show="flex !== 'this_week' && flex !== 'weekend'"
+                   style="margin-top:.6rem;">
+                <input type="date" class="search-field__input" x-model="date"
+                       @change="pickDate()" style="width:100%;" aria-label="Select date" />
+              </div>
+            </div>
+
+            <!-- Hidden fields -->
+            <input type="hidden" name="travel_date" :value="date" />
+            <input type="hidden" name="date_flex"   :value="flex" />
           </div>
         </div>
 
@@ -82,12 +128,15 @@
       <!-- Date quick-picks — separate row, doesn't affect grid alignment -->
       <div class="search-box__chips">
         <span class="search-box__chips-label">Quick pick:</span>
-        <button type="button" class="date-chip" :class="{'date-chip--active': date === today}"
-                @click="date = (date === today) ? '' : today">Today</button>
-        <button type="button" class="date-chip" :class="{'date-chip--active': date === tomorrow}"
-                @click="date = (date === tomorrow) ? '' : tomorrow">Tomorrow</button>
-        <button type="button" class="date-chip" :class="{'date-chip--active': date === weekend}"
-                @click="date = (date === weekend) ? '' : weekend">Weekend</button>
+        <button type="button" class="date-chip"
+                :class="{'date-chip--active': date === today && flex === 'exact'}"
+                @click="setDate(today)">Today</button>
+        <button type="button" class="date-chip"
+                :class="{'date-chip--active': date === tomorrow && flex === 'exact'}"
+                @click="setDate(tomorrow)">Tomorrow</button>
+        <button type="button" class="date-chip"
+                :class="{'date-chip--active': flex === 'weekend'}"
+                @click="flex === 'weekend' ? clearDate() : setFlex('weekend')">Weekend</button>
       </div>
 
       <button type="submit" class="btn btn-primary btn-search">

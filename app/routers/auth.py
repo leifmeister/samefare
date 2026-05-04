@@ -78,7 +78,8 @@ def login(
     token = create_access_token(user.id)
     response = RedirectResponse("/", status_code=303)
     response.set_cookie(key="access_token", value=token, httponly=True,
-                        max_age=settings.access_token_expire_minutes * 60, samesite="lax")
+                        max_age=settings.access_token_expire_minutes * 60, samesite="lax",
+                        secure=settings.secure_cookies)
     return response
 
 
@@ -150,7 +151,8 @@ def register(
         token = create_access_token(user.id)
         response = RedirectResponse("/", status_code=303)
         response.set_cookie(key="access_token", value=token, httponly=True,
-                            max_age=settings.access_token_expire_minutes * 60, samesite="lax")
+                            max_age=settings.access_token_expire_minutes * 60, samesite="lax",
+                            secure=settings.secure_cookies)
         return response
 
     verify_token = secrets.token_urlsafe(32)
@@ -173,7 +175,8 @@ def register(
     token = create_access_token(user.id)
     response = RedirectResponse("/check-your-email", status_code=303)
     response.set_cookie(key="access_token", value=token, httponly=True,
-                        max_age=settings.access_token_expire_minutes * 60, samesite="lax")
+                        max_age=settings.access_token_expire_minutes * 60, samesite="lax",
+                        secure=settings.secure_cookies)
     return response
 
 

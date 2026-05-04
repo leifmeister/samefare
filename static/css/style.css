@@ -585,18 +585,27 @@ button, input, select, textarea { font: inherit; }
 }
 .page-header--compact { padding: var(--space-5) 0; }
 .page-header__title { font-size: 1.5rem; font-weight: 800; margin-bottom: var(--space-4); }
-.search-bar { display: flex; gap: var(--space-3); }
+.search-bar { display: flex; flex-direction: column; gap: var(--space-3); }
 .search-bar__fields {
-  display: flex;
+  display: grid;
+  /* From | arrow | To | Date | Seats | Search */
+  grid-template-columns: 1fr auto 1fr minmax(140px, 1.4fr) 90px auto;
   gap: var(--space-3);
-  flex: 1;
-  flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: end;
 }
-.search-bar__field        { flex: 1; min-width: 130px; display: flex; flex-direction: column; gap: .3rem; }
-.search-bar__field--date  { flex: 1.4; min-width: 160px; }
-.search-bar__field--xs    { flex: 0 1 110px; min-width: 90px; }
-.search-bar__submit       { flex: 0 0 auto; display: flex; flex-direction: column; gap: .3rem; }
+/* Field cells — column/gap stacking for label + input */
+.search-bar__field        { display: flex; flex-direction: column; gap: .3rem; }
+.search-bar__field--date  { /* width controlled by grid column */ }
+.search-bar__field--xs    { /* width controlled by grid column */ }
+/* Arrow divider between From and To — mirrors .search-box__divider */
+.search-bar__divider {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: .625rem;
+  color: var(--c-text-muted);
+}
+/* Submit cell — button sits flush with the bottom of the row */
+.search-bar__submit       { display: flex; align-items: flex-end; }
 
 .search-bar__label {
   display: flex;
@@ -1137,12 +1146,13 @@ button, input, select, textarea { font: inherit; }
   display: flex; align-items: center; gap: var(--space-2);
   font-size: .875rem; padding: .375rem .875rem; border-radius: var(--r-full); font-weight: 500;
 }
-.pref-item--yes { background: var(--c-success-light); color: #065F46; }
-.pref-item--no  { background: #F3F4F6; color: var(--c-text-muted); }
+.pref-item--yes { background: var(--c-border-light); color: var(--c-text-muted); border: 1px solid var(--c-border); }
 
 .passenger-list { display: flex; flex-direction: column; gap: var(--space-3); }
 .passenger-item { display: flex; align-items: center; gap: var(--space-3); font-size: .9375rem; }
 .passenger-seats { margin-left: auto; font-size: .8125rem; color: var(--c-text-muted); }
+.booking-status-badge { font-size: .75rem; font-weight: 600; padding: .125rem .5rem; border-radius: 999px; }
+.booking-status-badge--pending { background: var(--c-warning-bg, #fff8e1); color: var(--c-warning-text, #7a5c00); border: 1px solid var(--c-warning-border, #f5d060); }
 
 /* Driver card */
 .driver-card {
@@ -1165,6 +1175,11 @@ button, input, select, textarea { font: inherit; }
 .price-breakdown {
   background: var(--c-bg); border-radius: var(--r-lg); padding: var(--space-5);
   border: 1px solid var(--c-border-light);
+}
+.price-breakdown__label {
+  font-size: .75rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--c-text-muted);
+  margin-bottom: var(--space-3);
 }
 .price-row { display: flex; justify-content: space-between; font-size: .9375rem; padding: var(--space-2) 0; }
 .price-row--muted { color: var(--c-text-muted); font-size: .875rem; }
@@ -1216,6 +1231,52 @@ button, input, select, textarea { font: inherit; }
 }
 .trip-mini-detail__row:last-child { border-bottom: none; }
 .trip-mini-detail__label { color: var(--c-text-muted); flex-shrink: 0; }
+
+/* ── Price cap breakdown card (trip create/edit) ─────────────── */
+.price-cap-card {
+  margin-top: var(--space-5);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-light);
+  border-radius: var(--r-md);
+  padding: var(--space-4) var(--space-5);
+}
+.price-cap-card__title {
+  font-weight: 700;
+  font-size: .9375rem;
+  margin-bottom: var(--space-3);
+}
+.price-cap-card__route {
+  font-weight: 400;
+  font-size: .8125rem;
+  color: var(--c-text-muted);
+  margin-left: var(--space-2);
+}
+.price-cap-card__rows { display: flex; flex-direction: column; gap: 0; }
+.price-cap-card__row {
+  display: flex;
+  justify-content: space-between;
+  font-size: .875rem;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--c-border-light);
+  color: var(--c-text-muted);
+}
+.price-cap-card__row:last-child { border-bottom: none; }
+.price-cap-card__row--divider {
+  margin-top: var(--space-1);
+  color: var(--c-text);
+  font-weight: 600;
+}
+.price-cap-card__row--cap {
+  color: var(--c-primary);
+  font-weight: 700;
+  font-size: .9375rem;
+}
+.price-cap-card__note {
+  margin-top: var(--space-3);
+  font-size: .8125rem;
+  color: var(--c-text-muted);
+}
+.price-cap-card__note a { color: var(--c-primary); text-decoration: underline; }
 
 /* ── Bookings list ───────────────────────────────────────────── */
 .page-section-header {
@@ -1849,6 +1910,18 @@ button, input, select, textarea { font: inherit; }
   font-size: .8125rem;
   font-weight: 600;
 }
+.refund-badge--confirmed {
+  background: #dcfce7;
+  color: #166534;
+}
+.refund-badge--pending {
+  background: #fff8e1;
+  color: #7a5c00;
+}
+.refund-badge--failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
 
 /* ── Verification ────────────────────────────────────────────── */
 
@@ -2122,11 +2195,10 @@ button, input, select, textarea { font: inherit; }
   .container { padding-inline: var(--space-4); }
   .hero__title { font-size: 2rem; }
   .section-title { font-size: 1.5rem; }
-  .search-bar { flex-direction: column; }
-  .search-bar__field,
-  .search-bar__field--date,
-  .search-bar__field--xs,
-  .search-bar__submit { flex: 1 1 100%; max-width: 100%; }
+  .search-bar__fields { grid-template-columns: 1fr 1fr; }
+  .search-bar__divider { display: none; }
+  .search-bar__submit  { grid-column: 1 / -1; }
+  .search-bar__submit .btn { width: 100%; }
   .date-chips { display: none; } /* hidden on mobile — date wheel is fine */
 }
 
@@ -3155,3 +3227,560 @@ button, input, select, textarea { font: inherit; }
   line-height: 1.4;
 }
 .tab-badge--alert { background: #EF4444; }
+
+/* ── Ride alert signup card (empty search state) ─────────────────────────── */
+.alert-signup-card {
+  background: var(--c-primary-light, #E8F5F2);
+  border: 1px solid var(--c-border, #DDE8E5);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--space-6, 1.5rem);
+  max-width: 420px;
+  margin: var(--space-6, 1.5rem) auto 0;
+  text-align: left;
+}
+.alert-signup-card__headline {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--c-primary-dark, #004D40);
+  margin: 0 0 .5rem;
+}
+.alert-signup-card__sub {
+  font-size: .875rem;
+  color: var(--c-text-muted, #64748B);
+  line-height: 1.6;
+  margin: 0 0 1rem;
+}
+.alert-signup-card__form {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+.alert-signup-card__email-row {
+  display: flex;
+  gap: .5rem;
+}
+.alert-signup-card__email-row .input {
+  flex: 1;
+  min-width: 0;
+}
+.alert-signup-card__login-hint {
+  font-size: .8125rem;
+  color: var(--c-text-muted, #64748B);
+  margin: 0;
+}
+@media (max-width: 480px) {
+  .alert-signup-card__email-row { flex-direction: column; }
+}
+
+/* ── Generic page banners ────────────────────────────────────────────────── */
+.banner {
+  padding: .875rem 1rem;
+  border-radius: var(--radius, 8px);
+  font-size: .9375rem;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+.banner--success {
+  background: #DCFCE7;
+  color: #166534;
+  border: 1px solid #BBF7D0;
+}
+.banner--error {
+  background: #FEE2E2;
+  color: #991B1B;
+  border: 1px solid #FCA5A5;
+}
+.banner__link {
+  color: inherit;
+  font-weight: 600;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* ── My-alerts list ──────────────────────────────────────────────────────── */
+.card-stack { display: flex; flex-direction: column; gap: 1px; }
+.alert-row {
+  background: #fff;
+  border: 1px solid var(--c-border, #DDE8E5);
+  border-radius: var(--radius, 8px);
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.alert-row + .alert-row { margin-top: .5rem; }
+.alert-row__info { flex: 1; min-width: 0; }
+.alert-row__route {
+  font-size: 1rem;
+  margin: 0 0 .25rem;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  flex-wrap: wrap;
+}
+.alert-row__meta {
+  font-size: .8125rem;
+  color: var(--c-text-muted, #64748B);
+  margin: 0;
+}
+.alert-row__actions {
+  display: flex;
+  gap: .5rem;
+  flex-shrink: 0;
+}
+.btn--danger { color: #DC2626; }
+.btn--danger:hover { background: #FEE2E2; color: #991B1B; }
+
+/* ── Booking status pills (bk-pill) ─────────────────────────────────────── */
+.bk-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .25rem .65rem;
+  border-radius: var(--r-full, 999px);
+  font-size: .8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.bk-pill--waiting   { background: #FEF3C7; color: #78350F; }
+.bk-pill--urgent    { background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
+.bk-pill--confirmed { background: #DCFCE7; color: #166534; }
+.bk-pill--done      { background: #F0F9FF; color: #0369A1; }
+.bk-pill--muted     { background: #F3F4F6; color: #6B7280; }
+.bk-pill--declined  { background: #FEE2E2; color: #991B1B; }
+.bk-pill--card-saved { background: #EEF2FF; color: #3730A3; }
+
+/* ── Booking row header (route + pill on same line) ─────────────────────── */
+.booking-row__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.booking-row__route {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  flex-wrap: wrap;
+}
+
+/* ── Status strips (bk-strip) ───────────────────────────────────────────── */
+.bk-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: .65rem;
+  padding: .75rem 1rem;
+  border-radius: 8px;
+  font-size: .875rem;
+  line-height: 1.55;
+}
+.bk-strip__icon { flex-shrink: 0; margin-top: 2px; }
+.bk-strip strong { display: block; margin-bottom: 1px; }
+
+.bk-strip--waiting    { background: #FFFBEB; color: #78350F; }
+.bk-strip--urgent     { background: #FEF3C7; color: #78350F; border: 1px solid #FCD34D; }
+.bk-strip--urgent-high{ background: #FEF08A; color: #713F12; border: 1px solid #EAB308; }
+.bk-strip--confirmed  { background: #F0FDF4; color: #166534; }
+.bk-strip--review     { background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0; }
+.bk-strip--done       { background: #F8FAFC; color: #475569; }
+.bk-strip--muted      { background: #F8FAFC; color: #64748B; }
+.bk-strip--declined   { background: #FFF1F2; color: #9F1239; }
+.bk-strip--card-saved { background: #EEF2FF; color: #312E81; border: 1px solid #C7D2FE; }
+
+/* ── Action-needed banner above booking list ────────────────────────────── */
+.bk-action-banner {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  background: #FEF3C7;
+  color: #78350F;
+  border: 1px solid #FCD34D;
+  border-radius: 8px;
+  padding: .75rem 1rem;
+  font-size: .9rem;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+}
+
+/* ── Trip row layout (driver view) ─────────────────────────────────────── */
+.trip-table__row {
+  background: var(--c-surface);
+  border-radius: var(--r-lg);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--c-border-light);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.trip-table__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.trip-table__row--cancelled { opacity: .65; }
+
+/* ── Passenger summary chips on driver trip rows ────────────────────────── */
+.trip-pax-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-top: .15rem;
+}
+.trip-pax-summary__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .2rem .6rem;
+  border-radius: var(--r-full, 999px);
+  font-size: .78rem;
+  font-weight: 600;
+}
+.trip-pax-summary__chip--confirmed { background: #DCFCE7; color: #166534; }
+.trip-pax-summary__chip--awaiting  { background: #FEF3C7; color: #78350F; }
+.trip-pax-summary__chip--pending   { background: #FFF7ED; color: #92400E; }
+.trip-pax-summary__chip--done       { background: #F0F9FF; color: #0369A1; }
+.trip-pax-summary__chip--empty      { background: #F3F4F6; color: #9CA3AF; }
+.trip-pax-summary__chip--card-saved { background: #EEF2FF; color: #4338CA; }
+
+/* ── Inbox card subtitle ────────────────────────────────────────────────── */
+.inbox-card__hint {
+  font-size: .8125rem;
+  color: var(--c-text-muted, #64748B);
+  margin: -.25rem 0 .75rem;
+  line-height: 1.5;
+}
+.inbox-card__title {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+/* ── Request card: price shown on the right ─────────────────────────────── */
+.request-card__price-aside {
+  margin-left: auto;
+  text-align: right;
+  font-weight: 700;
+  font-size: .9rem;
+  color: var(--c-primary, #006C5B);
+  flex-shrink: 0;
+}
+
+/* ── Visual preference checkboxes (form) ─────────────────────────────────── */
+.pref-check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: .625rem;
+}
+.pref-check {
+  display: flex;
+  cursor: pointer;
+  border: 1.5px solid var(--c-border);
+  border-radius: 10px;
+  padding: .75rem 1rem;
+  transition: border-color .15s, background .15s;
+  user-select: none;
+  position: relative;
+}
+/* Hide the native checkbox visually but keep it accessible */
+.pref-check input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+}
+.pref-check__body {
+  display: flex;
+  align-items: flex-start;
+  gap: .625rem;
+  width: 100%;
+}
+.pref-check__icon {
+  font-size: 1.375rem;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+.pref-check__label {
+  display: block;
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--c-text);
+  line-height: 1.3;
+}
+.pref-check__desc {
+  display: block;
+  font-size: .75rem;
+  color: var(--c-text-muted);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+/* Checked state — CSS :has() is well-supported in all modern browsers */
+.pref-check:has(input:checked) {
+  border-color: var(--c-primary, #006C5B);
+  background: #F0FAF7;
+}
+.pref-check:has(input:checked) .pref-check__label {
+  color: var(--c-primary-dark, #004D40);
+}
+.pref-check:has(input:checked) .pref-check__desc {
+  color: #2D6A5E;
+}
+.pref-check:hover:not(:has(input:checked)) {
+  border-color: #A7C8C0;
+  background: #FAFFFE;
+}
+@media (max-width: 480px) {
+  .pref-check-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Preference grid (detail page) ──────────────────────────────────────── */
+.pref-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: .625rem;
+}
+.pref-grid .pref-item {
+  display: flex;
+  align-items: flex-start;
+  gap: .625rem;
+  padding: .625rem .875rem;
+  background: var(--c-border-light, #F1F5F3);
+  border: 1px solid var(--c-border, #DDE8E5);
+  border-radius: 8px;
+  font-size: .875rem;
+  font-weight: 400;
+}
+.pref-grid .pref-item > span {
+  display: flex;
+  flex-direction: column;
+}
+.pref-grid .pref-item strong {
+  font-weight: 600;
+  color: var(--c-text);
+  font-size: .875rem;
+  line-height: 1.3;
+}
+.pref-grid .pref-item em {
+  font-style: normal;
+  font-size: .75rem;
+  color: var(--c-text-muted);
+  line-height: 1.4;
+  margin-top: 1px;
+}
+@media (max-width: 480px) {
+  .pref-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Booking page: preference summary ───────────────────────────────────── */
+.booking-prefs {
+  margin-top: 1rem;
+  padding: .875rem 1rem;
+  background: var(--c-border-light, #F1F5F3);
+  border-radius: 8px;
+  border: 1px solid var(--c-border, #DDE8E5);
+}
+.booking-prefs__title {
+  font-size: .75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--c-text-muted);
+  margin: 0 0 .5rem;
+}
+.booking-prefs__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.booking-prefs__list span {
+  cursor: default;
+}
+
+/* date-chips as a standalone row below the search-bar fields */
+.date-chips--bar {
+  margin-top: .25rem;
+}
+@media (max-width: 600px) {
+  .date-chips--bar { display: none; }  /* date wheel is sufficient on small screens */
+}
+
+/* ── Segment (intermediate-stop) badges ─────────────────────── */
+
+/* Inline badge inside a trip card showing the passenger's sub-route */
+.trip-card__segment {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .35rem .875rem .5rem;
+  font-size: .78rem;
+  font-weight: 500;
+  color: var(--c-primary-dark);
+  background: var(--c-primary-light);
+  border-top: 1px solid rgba(0,108,91,.12);
+}
+.trip-card__segment svg { flex-shrink: 0; color: var(--c-primary); }
+.trip-card--partial .trip-card__price-amount { color: var(--c-primary-dark); }
+
+/* Segment notice pill shown on trip detail page and booking form */
+.segment-notice {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .85rem;
+  color: var(--c-primary-dark);
+  background: var(--c-primary-light);
+  border: 1px solid rgba(0,108,91,.2);
+  border-radius: var(--r-md);
+  padding: .5rem .75rem;
+  margin-bottom: .75rem;
+}
+.segment-notice svg { flex-shrink: 0; color: var(--c-primary); }
+.segment-notice--sub {
+  font-size: .8rem;
+  color: var(--c-text-muted);
+  background: transparent;
+  border: none;
+  padding: .25rem 0 0;
+  margin-bottom: 0;
+}
+
+/* ── Date flex popover & segmented control ───────────────────── */
+
+/* The custom trigger button replaces the raw <input type="date"> */
+.date-trigger {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .4rem;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  /* inherit all .input / .search-field__input visual styles via those classes */
+}
+.date-trigger__placeholder { color: var(--c-text-muted); }
+.date-trigger__caret {
+  flex-shrink: 0;
+  color: var(--c-text-muted);
+  transition: transform var(--t-fast);
+}
+[aria-expanded="true"] .date-trigger__caret { transform: rotate(180deg); }
+.date-trigger--has-value { border-color: var(--c-primary); }
+
+/* Popover panel */
+.search-bar__date-wrap { position: relative; }
+.date-popover {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  min-width: 228px;
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  padding: .75rem;
+  z-index: 300;
+}
+
+/* Segmented flex control */
+.date-flex-seg {
+  display: flex;
+  background: var(--c-bg);
+  border-radius: var(--r-md);
+  padding: 3px;
+  gap: 2px;
+}
+.date-flex-seg__btn {
+  flex: 1;
+  padding: .3rem .4rem;
+  border: none;
+  background: transparent;
+  border-radius: calc(var(--r-md) - 3px);
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast), box-shadow var(--t-fast);
+  white-space: nowrap;
+  line-height: 1.3;
+}
+.date-flex-seg__btn:hover {
+  background: var(--c-surface);
+  color: var(--c-text);
+}
+.date-flex-seg__btn--active {
+  background: var(--c-surface);
+  color: var(--c-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+
+/* Date range label shown above results */
+.date-range-banner {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  font-size: .84rem;
+  color: var(--c-text-muted);
+  padding: .45rem .75rem;
+  background: var(--c-primary-light);
+  border-radius: var(--r-md);
+  margin-bottom: 1rem;
+  border: 1px solid rgba(0,108,91,.15);
+}
+.date-range-banner__icon { color: var(--c-primary); flex-shrink: 0; }
+
+/* Popover enter transition */
+.date-popover-enter         { transition: opacity .12s ease, transform .12s ease; }
+.date-popover-enter-start   { opacity: 0; transform: translateY(-4px); }
+.date-popover-enter-end     { opacity: 1; transform: translateY(0); }
+.date-popover__chips        { margin-top: .6rem; padding-top: .6rem; border-top: 1px solid var(--c-border-light); }
+
+/* Same-city search error */
+.search-bar__same-city-error {
+  background: var(--c-error-light, #fff0f0);
+  color: var(--c-error, #c0392b);
+  border: 1px solid var(--c-error, #c0392b);
+  border-radius: var(--radius);
+  padding: .5rem .875rem;
+  font-size: .875rem;
+  font-weight: 500;
+  margin-bottom: .75rem;
+}
+
+/* Processing page — spinning icon */
+.success-hero__icon--spinning {
+  animation: spin 1.2s linear infinite;
+  background: var(--c-primary-light, #E8F4F1);
+  color: var(--c-primary, #006C5B);
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Auth-failed alert warning variant */
+.alert--warning {
+  background: #FFFBEB;
+  border: 1px solid #F59E0B;
+  color: #92400E;
+  display: flex;
+  gap: .75rem;
+  align-items: flex-start;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius);
+  font-size: .9375rem;
+  line-height: 1.6;
+}

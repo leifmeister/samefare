@@ -19,7 +19,8 @@
       <div class="alert alert--error" role="alert">{{ error }}</div>
     {% endif %}
 
-    <form method="post" action="/trips/new" class="form-card">
+    <form method="post" action="/trips/new" class="form-card"
+          x-data="tripPricing({{ routes_js }}, {{ policy_js }}, {{ fuel_price }})">
 
       <fieldset class="form-section">
         <legend class="form-section__title">Route</legend>
@@ -28,13 +29,15 @@
             <label for="origin" class="label">Departing from <span class="required">*</span></label>
             <input id="origin" name="origin" type="text" class="input" required
                    placeholder="e.g. Reykjavík" list="cities-list" autocomplete="off"
-                   value="{{ vals.origin }}" />
+                   value="{{ vals.origin }}"
+                   x-model="origin" />
           </div>
           <div class="form-group">
             <label for="destination" class="label">Going to <span class="required">*</span></label>
             <input id="destination" name="destination" type="text" class="input" required
                    placeholder="e.g. Akureyri" list="cities-list" autocomplete="off"
-                   value="{{ vals.destination }}" />
+                   value="{{ vals.destination }}"
+                   x-model="destination" />
           </div>
         </div>
         <datalist id="cities-list">
@@ -79,7 +82,8 @@
         <div class="form-row">
           <div class="form-group">
             <label for="seats_total" class="label">Seats available <span class="required">*</span></label>
-            <select id="seats_total" name="seats_total" class="input" required>
+            <select id="seats_total" name="seats_total" class="input" required
+                    x-model.number="seats">
               {% for n in [1,2,3,4,5] %}
               <option value="{{ n }}" {{ 'selected' if vals.seats_total == n }}>{{ n }} seat{{ 's' if n != 1 }}</option>
               {% endfor %}
@@ -88,9 +92,56 @@
           <div class="form-group">
             <label for="price_per_seat" class="label">Price per seat (ISK) <span class="required">*</span></label>
             <input id="price_per_seat" name="price_per_seat" type="number" class="input" required
-                   min="1" placeholder="e.g. 3500" value="{{ vals.price_per_seat or '' }}" />
-            <p class="input-hint">Cover your fuel costs — not a profit. Typical range: 800–6,000 ISK.</p>
+                   min="1" value="{{ vals.price_per_seat or '' }}"
+                   x-ref="priceInput"
+                   :max="capPerSeat || ''"
+                   placeholder="e.g. 3500" />
+            <p class="input-hint" x-show="!distanceKm">
+              Cover your fuel costs — not a profit. Typical range: 800–6,000 ISK.
+            </p>
+            <p class="input-hint" x-show="distanceKm" x-cloak>
+              Maximum <strong x-text="fmt(capPerSeat) + ' ISK'"></strong> for this route
+              — you can set a lower price but not higher.
+            </p>
           </div>
+        </div>
+
+        <!-- Price breakdown — shown only when route is recognised -->
+        <div class="price-cap-card" x-show="distanceKm" x-cloak>
+          <p class="price-cap-card__title">
+            Cost breakdown
+            <span class="price-cap-card__route" x-text="origin + ' → ' + destination + ' · ' + distanceKm + ' km'"></span>
+          </p>
+          <div class="price-cap-card__rows">
+            <div class="price-cap-card__row">
+              <span>Fuel</span>
+              <span x-text="fmtPerKm(fuelCostPerKm) + ' ISK/km → ' + fmtTotal(fuelCostPerKm) + ' ISK'"></span>
+            </div>
+            <div class="price-cap-card__row">
+              <span>Kílómetragjald</span>
+              <span x-text="fmtPerKm(policy.kilometragjald) + ' ISK/km → ' + fmtTotal(policy.kilometragjald) + ' ISK'"></span>
+            </div>
+            <div class="price-cap-card__row">
+              <span>Wear &amp; tear</span>
+              <span x-text="fmtPerKm(policy.wear_tear) + ' ISK/km → ' + fmtTotal(policy.wear_tear) + ' ISK'"></span>
+            </div>
+            <div class="price-cap-card__row">
+              <span>Depreciation (partial)</span>
+              <span x-text="fmtPerKm(policy.real_depr * policy.depr_factor) + ' ISK/km → ' + fmtTotal(policy.real_depr * policy.depr_factor) + ' ISK'"></span>
+            </div>
+            <div class="price-cap-card__row price-cap-card__row--divider">
+              <span>Your share (1 of <span x-text="seats + 1"></span>)</span>
+              <span x-text="fmt(totalTripCost / (seats + 1)) + ' ISK'"></span>
+            </div>
+            <div class="price-cap-card__row price-cap-card__row--cap">
+              <span>Maximum per seat</span>
+              <span x-text="fmt(capPerSeat) + ' ISK'"></span>
+            </div>
+          </div>
+          <p class="price-cap-card__note">
+            Prices are capped so passengers only cover their share of actual trip costs.
+            <a href="/pricing/how-it-works" target="_blank">How is this calculated?</a>
+          </p>
         </div>
       </fieldset>
 
@@ -113,13 +164,27 @@
                    min="1970" max="2030" value="{{ defaults.car_year }}" />
           </div>
         </div>
-        <div class="form-group" style="margin-top:1rem;">
-          <label for="car_type" class="label">Vehicle type</label>
-          <select id="car_type" name="car_type" class="input">
-            {% for ct in car_types %}
-              <option value="{{ ct }}" {{ 'selected' if ct == defaults.car_type }}>{{ ct|capitalize }}</option>
-            {% endfor %}
-          </select>
+        <div class="form-row" style="margin-top:1rem;">
+          <div class="form-group">
+            <label for="car_type" class="label">Vehicle type</label>
+            <select id="car_type" name="car_type" class="input"
+                    x-model="carType">
+              {% for ct in car_types %}
+                <option value="{{ ct }}" {{ 'selected' if ct == defaults.car_type }}>{{ ct|capitalize }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="fuel_type_raw" class="label">Fuel type</label>
+            <select id="fuel_type_raw" name="fuel_type_raw" class="input"
+                    x-model="fuelType">
+              <option value="">Auto-detect from vehicle type</option>
+              {% for ft in fuel_types %}
+                <option value="{{ ft }}" {{ 'selected' if ft == vals.fuel_type }}>{{ ft|capitalize }}</option>
+              {% endfor %}
+            </select>
+            <p class="field-hint">Used to calculate the cost cap. Defaults to petrol unless vehicle type is Electric.</p>
+          </div>
         </div>
       </fieldset>
 
@@ -139,22 +204,119 @@
 
       <fieldset class="form-section">
         <legend class="form-section__title">Preferences</legend>
-        <div class="check-list">
-          <label class="check-option">
+        <p class="form-hint" style="margin-bottom:1rem;">Only tick what applies — passengers use these to choose the right ride.</p>
+        <div class="pref-check-grid">
+
+          <label class="pref-check">
             <input type="checkbox" name="allows_luggage_raw" value="true" {{ 'checked' if vals.allows_luggage }} />
-            <span class="check-option__box"></span>
-            <span>🧳 Luggage allowed</span>
+            <span class="pref-check__body">
+              <span class="pref-check__icon">🧳</span>
+              <span>
+                <span class="pref-check__label">Luggage allowed</span>
+                <span class="pref-check__desc">Carry-on bags, backpacks</span>
+              </span>
+            </span>
           </label>
-          <label class="check-option">
+
+          <label class="pref-check">
+            <input type="checkbox" name="large_luggage_raw" value="true" {{ 'checked' if vals.large_luggage }} />
+            <span class="pref-check__body">
+              <span class="pref-check__icon">🎿</span>
+              <span>
+                <span class="pref-check__label">Large luggage OK</span>
+                <span class="pref-check__desc">Suitcases, skis, bikes</span>
+              </span>
+            </span>
+          </label>
+
+          <label class="pref-check">
             <input type="checkbox" name="allows_pets_raw" value="true" {{ 'checked' if vals.allows_pets }} />
-            <span class="check-option__box"></span>
-            <span>🐾 Pets welcome</span>
+            <span class="pref-check__body">
+              <span class="pref-check__icon">🐾</span>
+              <span>
+                <span class="pref-check__label">Pets welcome</span>
+                <span class="pref-check__desc">Dogs, cats in carriers</span>
+              </span>
+            </span>
           </label>
-          <label class="check-option">
+
+          <label class="pref-check">
+            <input type="checkbox" name="child_seat_raw" value="true" {{ 'checked' if vals.child_seat }} />
+            <span class="pref-check__body">
+              <span class="pref-check__icon">🧒</span>
+              <span>
+                <span class="pref-check__label">Child seat available</span>
+                <span class="pref-check__desc">Booster or infant seat</span>
+              </span>
+            </span>
+          </label>
+
+          <label class="pref-check">
+            <input type="checkbox" name="winter_ready_raw" value="true" {{ 'checked' if vals.winter_ready }} />
+            <span class="pref-check__body">
+              <span class="pref-check__icon">❄️</span>
+              <span>
+                <span class="pref-check__label">Winter-ready</span>
+                <span class="pref-check__desc">4WD, studded or winter tyres</span>
+              </span>
+            </span>
+          </label>
+
+          <label class="pref-check">
+            <input type="radio" name="chattiness" value="quiet" {{ 'checked' if vals.chattiness == 'quiet' }} />
+            <span class="pref-check__body">
+              <span class="pref-check__icon">🤫</span>
+              <span>
+                <span class="pref-check__label">Quiet ride</span>
+                <span class="pref-check__desc">Low conversation preferred</span>
+              </span>
+            </span>
+          </label>
+
+          <label class="pref-check">
+            <input type="radio" name="chattiness" value="" {{ 'checked' if not vals.chattiness }} />
+            <span class="pref-check__body">
+              <span class="pref-check__icon">🗣️</span>
+              <span>
+                <span class="pref-check__label">No preference</span>
+                <span class="pref-check__desc">Happy either way</span>
+              </span>
+            </span>
+          </label>
+
+          <label class="pref-check">
+            <input type="radio" name="chattiness" value="chatty" {{ 'checked' if vals.chattiness == 'chatty' }} />
+            <span class="pref-check__body">
+              <span class="pref-check__icon">💬</span>
+              <span>
+                <span class="pref-check__label">Chatty driver</span>
+                <span class="pref-check__desc">Music and conversation welcome</span>
+              </span>
+            </span>
+          </label>
+
+          <label class="pref-check">
+            <input type="checkbox" name="flexible_pickup_raw" value="true" {{ 'checked' if vals.flexible_pickup }} />
+            <span class="pref-check__body">
+              <span class="pref-check__icon">📍</span>
+              <span>
+                <span class="pref-check__label">Flexible pickup</span>
+                <span class="pref-check__desc">Can adjust the meeting point</span>
+              </span>
+            </span>
+          </label>
+
+          <label class="pref-check">
             <input type="checkbox" name="smoking_raw" value="true" {{ 'checked' if vals.smoking }} />
-            <span class="check-option__box"></span>
-            <span>🚬 Smoking permitted</span>
+            <span class="pref-check__body">
+              <span class="pref-check__icon">🚬</span>
+              <span>
+                <span class="pref-check__label">Smoking OK</span>
+                <span class="pref-check__desc">Smoking is permitted in the car</span>
+              </span>
+            </span>
           </label>
+
         </div>
       </fieldset>
 
@@ -174,4 +336,67 @@
     </form>
   </div>
 </div>
+
+{% block scripts %}
+<script>
+function tripPricing(routes, policy, fuelPrice) {
+  const vehicleClassMap = {sedan:'standard', suv:'suv', van:'van', electric:'standard', '4x4':'suv', camper:'van'};
+  return {
+    origin:      '{{ vals.origin | e }}',
+    destination: '{{ vals.destination | e }}',
+    seats:       {{ vals.seats_total | default(3) }},
+    carType:     '{{ defaults.car_type | default("sedan") | e }}',
+    fuelType:    '{{ vals.fuel_type | default("") | e }}',
+
+    get routeKey()  { return this.origin + '|' + this.destination; },
+    get distanceKm(){ return routes[this.routeKey] || null; },
+    get vClass()    { return vehicleClassMap[this.carType] || 'standard'; },
+    get resolvedFuelType() {
+      if (this.fuelType) return this.fuelType;
+      return this.carType === 'electric' ? 'electric' : 'petrol';
+    },
+    get fuelCostPerKm() {
+      if (!policy) return 0;
+      if (this.resolvedFuelType === 'electric') {
+        const kw = this.vClass === 'suv' ? policy.ev_suv : policy.ev_standard;
+        return kw * policy.elec_price / 100;
+      }
+      const c = {small: policy.c_small, standard: policy.c_standard, suv: policy.c_suv, van: policy.c_van}[this.vClass] || policy.c_standard;
+      return c * fuelPrice / 100;
+    },
+    get rawPerKm() {
+      if (!policy) return 0;
+      return this.fuelCostPerKm + policy.kilometragjald + policy.wear_tear + policy.real_depr * policy.depr_factor;
+    },
+    get allowedPerKm() {
+      if (!policy) return 0;
+      return Math.min(this.rawPerKm, policy.cap);
+    },
+    get totalTripCost() {
+      if (!this.distanceKm) return 0;
+      return this.distanceKm * this.allowedPerKm;
+    },
+    get capPerSeat() {
+      if (!this.distanceKm || !policy) return null;
+      const raw = this.totalTripCost / (this.seats + 1);
+      return Math.floor(raw / policy.rounding) * policy.rounding;
+    },
+    fmt(v)      { return Math.round(v).toLocaleString('is-IS'); },
+    fmtPerKm(v) { return v.toFixed(2); },
+    fmtTotal(v) { return Math.round(this.distanceKm * v).toLocaleString('is-IS'); },
+
+    init() {
+      this.$watch('capPerSeat', cap => {
+        if (cap === null) return;
+        const el = this.$refs.priceInput;
+        if (!el) return;
+        const cur = parseInt(el.value) || 0;
+        if (!cur || cur > cap) el.value = cap;
+        el.max = cap;
+      });
+    }
+  };
+}
+</script>
+{% endblock %}
 {% endblock %}

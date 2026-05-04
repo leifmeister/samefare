@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Unsubscribe from ride alert — SameFare{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:480px; margin-top:4rem; margin-bottom:4rem; text-align:center;">
+  {% if success %}
+    <div style="font-size:2.5rem; margin-bottom:1rem;">✅</div>
+    <h1 style="font-size:1.5rem; font-weight:800; color:#1A2B3C; margin:0 0 .75rem;">
+      Alert removed
+    </h1>
+    <p style="color:#475569; line-height:1.6; margin:0 0 1.5rem;">
+      You've been unsubscribed from this ride alert. You won't receive any more emails for that route.
+    </p>
+    <a href="/trips" class="btn btn-primary">Find a ride</a>
+  {% else %}
+    <div style="font-size:2.5rem; margin-bottom:1rem;">🔗</div>
+    <h1 style="font-size:1.5rem; font-weight:800; color:#1A2B3C; margin:0 0 .75rem;">
+      Link not found
+    </h1>
+    <p style="color:#475569; line-height:1.6; margin:0 0 1.5rem;">
+      This unsubscribe link is invalid or has already been used.
+    </p>
+    <a href="/trips" class="btn btn-ghost">Back to rides</a>
+  {% endif %}
+</div>
+{% endblock %}

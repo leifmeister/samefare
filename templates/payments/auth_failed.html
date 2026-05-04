@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block title %}Payment authorisation failed — {{ booking.trip.origin }} → {{ booking.trip.destination }}{% endblock %}
+
+{% block content %}
+<div class="container container--narrow" style="margin-top:2rem; margin-bottom:4rem;">
+  <div class="form-page">
+
+    <div class="form-page__header">
+      <h1 class="form-page__title" style="color:var(--c-danger, #DC2626);">
+        Payment authorisation failed
+      </h1>
+      <p class="form-page__sub">
+        {{ booking.trip.origin }} → {{ booking.trip.destination }} &nbsp;·&nbsp;
+        {{ booking.trip.departure_datetime.strftime("%a %-d %b, %H:%M") }}
+      </p>
+    </div>
+
+    <!-- Warning banner -->
+    <div class="alert alert--warning" role="alert" style="margin-top:1rem;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+           width="20" height="20" aria-hidden="true" style="flex-shrink:0;">
+        <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+      </svg>
+      <div>
+        <strong>Action required — your seat is at risk.</strong>
+        We were unable to authorise your saved card for this trip.
+        Update your card within the window below to keep your booking.
+      </div>
+    </div>
+
+    <!-- Countdown timer -->
+    {% if retry_deadline %}
+    <div class="form-card" style="margin-top:1.5rem; text-align:center; padding:1.5rem;">
+      <p style="margin:0 0 .5rem; font-size:.875rem; color:var(--c-muted);">Time remaining to update your card</p>
+      <div id="countdown" style="font-size:2.5rem; font-weight:800; color:var(--c-danger, #DC2626); letter-spacing:.05em; line-height:1.1;">
+        --:--
+      </div>
+      <p id="countdown-expired" style="display:none; font-size:.9375rem; color:var(--c-danger, #DC2626); font-weight:600; margin:.5rem 0 0;">
+        Your window has expired. Your booking has been cancelled.
+      </p>
+    </div>
+    {% endif %}
+
+    <!-- Surcharge notice -->
+    <div class="form-card" style="margin-top:1rem; background:var(--c-warning-bg, #FEF9EC); border-color:var(--c-warning-border, #F59E0B);">
+      <p style="margin:0 0 .5rem; font-size:.9375rem; font-weight:600; color:#92400E;">
+        Late-authorisation fee applied
+      </p>
+      <p style="margin:0; font-size:.875rem; color:#78350F; line-height:1.6;">
+        Because your initial authorisation failed, a <strong>5% late-authorisation surcharge</strong>
+        now applies (total service fee: {{ new_fee_pct }}%).
+        Your updated total is <strong>{{ "{:,}".format(new_total) }} ISK</strong>.
+        This fee is non-refundable once the card is saved.
+      </p>
+    </div>
+
+    <!-- Trip summary -->
+    <div class="booking-summary" style="margin-top:1.5rem;">
+      <h3 class="booking-summary__title">Booking details</h3>
+      <div class="price-row">
+        <span>Route</span>
+        <span><strong>{{ booking.trip.origin }} → {{ booking.trip.destination }}</strong></span>
+      </div>
+      <div class="price-row">
+        <span>Departure</span>
+        <span>{{ booking.trip.departure_datetime.strftime("%A %-d %B %Y, %H:%M") }}</span>
+      </div>
+      <div class="price-row">
+        <span>Seats</span>
+        <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }}</span>
+      </div>
+      <div class="price-row price-row--total">
+        <span>New total (incl. {{ new_fee_pct }}% fee)</span>
+        <span>{{ "{:,}".format(new_total) }} ISK</span>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div id="action-buttons">
+      <form method="post" action="/payments/retry/{{ booking.id }}" style="margin-top:1.5rem;">
+        <div class="form-actions" style="justify-content:center; gap:1rem; flex-wrap:wrap;">
+          <a href="/my-trips?tab=bookings" class="btn btn-ghost">Cancel booking</a>
+          <button type="submit" class="btn btn-primary btn-lg" id="update-card-btn">
+            Update card &amp; keep my seat
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <p style="margin-top:1rem; font-size:.8125rem; color:var(--c-muted); text-align:center;">
+      If you choose not to update your card, your booking will be cancelled automatically
+      when the window expires and any held seat will be released.
+      See our <a href="/terms#s8" style="color:inherit;">cancellation policy</a>.
+    </p>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if retry_deadline %}
+<script>
+(function () {
+  var deadline  = new Date('{{ retry_deadline.strftime("%Y-%m-%dT%H:%M:%SZ") }}').getTime();
+  var el        = document.getElementById('countdown');
+  var expiredEl = document.getElementById('countdown-expired');
+  var actionEl  = document.getElementById('action-buttons');
+
+  function tick () {
+    var remaining = Math.max(0, deadline - Date.now());
+    if (remaining === 0) {
+      el.style.display       = 'none';
+      expiredEl.style.display = 'block';
+      if (actionEl) actionEl.style.display = 'none';
+      return;
+    }
+    var mins = Math.floor(remaining / 60000);
+    var secs = Math.floor((remaining % 60000) / 1000);
+    el.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+    setTimeout(tick, 500);
+  }
+
+  tick();
+})();
+</script>
+{% endif %}
+{% endblock %}

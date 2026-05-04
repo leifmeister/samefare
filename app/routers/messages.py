@@ -92,6 +92,7 @@ def inbox(
                 models.BookingStatus.confirmed,
                 models.BookingStatus.pending,
                 models.BookingStatus.awaiting_payment,
+                models.BookingStatus.card_saved,
             ]),
             or_(
                 models.Booking.passenger_id == current_user.id,

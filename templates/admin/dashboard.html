@@ -19,6 +19,22 @@
     </div>
   </div>
 
+  {% if pricing_reminder %}
+  <!-- ── Annual kílómetragjald reminder ──────────────────────────────────── -->
+  <div class="alert alert--warning" role="alert" style="margin-bottom:1.5rem;">
+    <strong>📋 Action needed: update pricing policy for {{ next_year }}</strong><br>
+    It's December — the kílómetragjald and other cost constants may change on
+    1 January {{ next_year }}.  No <code>pricing_policy</code> row with
+    <code>effective_from ≥ {{ next_year }}-01-01</code> exists yet.<br>
+    <span style="display:block; margin-top:.5rem;">
+      Check the new rate at
+      <a href="https://island.is/kilometragjald" target="_blank" rel="noopener" class="link">island.is/kilometragjald</a>
+      and insert a row (via the DB or a migration) with <code>effective_from = '{{ next_year }}-01-01'</code>.
+      This banner disappears automatically once the row is in place.
+    </span>
+  </div>
+  {% endif %}
+
   <!-- ── Row 1: headline numbers ─────────────────────────────────────────── -->
   <div class="dash-grid">
 

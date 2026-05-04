@@ -12,15 +12,23 @@
 
   <div class="form-page" style="margin-top:1.25rem;">
     <div class="form-page__header">
-      <h1 class="form-page__title">Complete your payment</h1>
-      <p class="form-page__sub">
-        {{ booking.trip.origin }} → {{ booking.trip.destination }} &nbsp;·&nbsp;
-        {{ booking.trip.departure_datetime.strftime("%a %-d %b, %H:%M") }}
-      </p>
+      {% if payment_case == 'B' %}
+        <h1 class="form-page__title">Save your card</h1>
+        <p class="form-page__sub">
+          {{ booking.trip.origin }} → {{ booking.trip.destination }} &nbsp;·&nbsp;
+          {{ booking.trip.departure_datetime.strftime("%a %-d %b, %H:%M") }}
+        </p>
+      {% else %}
+        <h1 class="form-page__title">Complete your payment</h1>
+        <p class="form-page__sub">
+          {{ booking.trip.origin }} → {{ booking.trip.destination }} &nbsp;·&nbsp;
+          {{ booking.trip.departure_datetime.strftime("%a %-d %b, %H:%M") }}
+        </p>
+      {% endif %}
     </div>
 
-    {% if error %}
-      <div class="alert alert--error" role="alert">{{ error }}</div>
+    {% if rapyd_error is defined and rapyd_error %}
+      <div class="alert alert--error" role="alert">{{ rapyd_error }}</div>
     {% endif %}
 
     <div class="booking-layout">
@@ -38,7 +46,6 @@
           This is a test build. Click below to confirm your booking instantly — no card details needed and no money will be charged.
         </p>
 
-        <!-- Price summary (read-only) -->
         <div class="booking-summary">
           <h3 class="booking-summary__title">What would be charged in production</h3>
           <div class="price-row">
@@ -59,102 +66,106 @@
         <form method="post" action="/payments/checkout/{{ booking.id }}/beta">
           <div class="form-actions" style="margin-top:1.5rem;">
             <a href="/bookings" class="btn btn-ghost">Cancel</a>
-            <button type="submit" class="btn btn-primary btn-lg">
-              Confirm booking — no charge
-            </button>
+            <button type="submit" class="btn btn-primary btn-lg">Confirm booking — no charge</button>
           </div>
         </form>
       </div>
 
       {% else %}
-      <form method="post" action="/payments/checkout/{{ booking.id }}" class="form-card"
-            x-data="cardForm()" @submit="handleSubmit">
+      <!-- ── Rapyd.js embedded checkout ── -->
+      <div class="form-card" style="padding:0; overflow:hidden;">
 
-        <h2 class="section-label">Payment details</h2>
-
-        <div class="form-group">
-          <label for="card_name" class="label">Name on card <span class="required">*</span></label>
-          <input id="card_name" name="card_name" type="text" class="input"
-                 placeholder="Jón Jónsson" autocomplete="cc-name" required />
-        </div>
-
-        <div class="form-group">
-          <label for="card_number" class="label">Card number <span class="required">*</span></label>
-          <div class="input-icon-wrap">
-            <input id="card_number" name="card_number" type="text" class="input"
-                   placeholder="1234 5678 9012 3456"
-                   maxlength="19"
-                   autocomplete="cc-number"
-                   x-model="rawNumber"
-                   @input="formatCard"
-                   required />
-            <span class="input-icon" x-text="brand" style="font-size:.8rem;font-weight:600;color:var(--color-primary)"></span>
+        {% if payment_case == 'B' %}
+        <!-- Case B explanation -->
+        <div class="checkout-case-banner checkout-case-banner--b">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden="true"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/></svg>
+          <div>
+            <p class="checkout-case-banner__title">Your card will be saved securely</p>
+            <p class="checkout-case-banner__sub">
+              This trip is more than 7 days away. We'll save your card today and
+              authorise <strong>{{ "{:,}".format(total) }} ISK</strong> exactly
+              24 hours before your departure.
+              Your card is not charged right now.
+            </p>
           </div>
         </div>
-
-        <div class="form-row-2">
-          <div class="form-group">
-            <label for="card_expiry" class="label">Expiry <span class="required">*</span></label>
-            <input id="card_expiry" name="card_expiry" type="text" class="input"
-                   placeholder="MM / YY" maxlength="7"
-                   autocomplete="cc-exp"
-                   @input="formatExpiry"
-                   required />
+        {% else %}
+        <!-- Case A explanation -->
+        <div class="checkout-case-banner checkout-case-banner--a">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+          <div>
+            <p class="checkout-case-banner__title">Your card will be authorised now</p>
+            <p class="checkout-case-banner__sub">
+              <strong>{{ "{:,}".format(total) }} ISK</strong> will be reserved on your card today.
+              The actual charge is collected at departure — nothing is captured until your trip departs.
+            </p>
           </div>
-          <div class="form-group">
-            <label for="card_cvc" class="label">CVC <span class="required">*</span></label>
-            <input id="card_cvc" name="card_cvc" type="text" class="input"
-                   placeholder="123" maxlength="4"
-                   autocomplete="cc-csc"
-                   required />
+        </div>
+        {% endif %}
+
+        <!-- Price summary (above the Rapyd iframe) -->
+        <div style="padding:1.25rem 1.5rem 0;">
+          <div class="booking-summary">
+            <h3 class="booking-summary__title">Price breakdown</h3>
+            <div class="price-row">
+              <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }} × {{ "{:,}".format(booking.trip.price_per_seat) }} ISK</span>
+              <span>{{ "{:,}".format(contribution) }} ISK</span>
+            </div>
+            {% if service_fee > 0 %}
+            <div class="price-row price-row--muted">
+              <span>Service fee ({{ fee_pct }}%)</span>
+              <span>{{ "{:,}".format(service_fee) }} ISK</span>
+            </div>
+            {% else %}
+            <div class="price-row price-row--muted" style="color:var(--c-success);">
+              <span>Service fee</span>
+              <span>Waived — first ride free 🎉</span>
+            </div>
+            {% endif %}
+            <div class="price-row price-row--total">
+              <span>{% if payment_case == 'B' %}Amount to be authorised{% else %}Total authorised today{% endif %}</span>
+              <span>{{ "{:,}".format(total) }} ISK</span>
+            </div>
+            <p class="price-note">
+              Driver receives {{ "{:,}".format(driver_payout) }} ISK.
+              {% if service_fee > 0 %}Service fee is non-refundable.{% endif %}
+            </p>
           </div>
         </div>
 
-        <!-- Price breakdown -->
-        <div class="booking-summary" style="margin-top:1.5rem;">
-          <h3 class="booking-summary__title">Price breakdown</h3>
-          <div class="price-row">
-            <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }} × {{ "{:,}".format(booking.trip.price_per_seat) }} ISK</span>
-            <span>{{ "{:,}".format(contribution) }} ISK</span>
+        <!-- Rapyd.js card widget -->
+        <div style="padding:1rem 1.5rem 1.5rem;">
+          {% if checkout_id %}
+          <div id="rapyd-checkout-container" style="min-height:280px;"></div>
+          {% else %}
+          <div class="alert alert--error">
+            Payment system could not be initialised. Please refresh the page to try again.
           </div>
-          <div class="price-row price-row--muted">
-            <span>Service fee ({{ fee_pct }}%)</span>
-            <span>{{ "{:,}".format(service_fee) }} ISK</span>
+          {% endif %}
+        </div>
+
+        <!-- Cancellation policy -->
+        <div style="padding:0 1.5rem 1.5rem;">
+          <div class="policy-box">
+            <p class="policy-box__title">Cancellation policy</p>
+            <ul class="policy-box__list">
+              <li><strong>Within 30 min of booking, departure &gt;24 h away</strong> — full refund</li>
+              <li><strong>≥ 24 h before departure</strong> — contribution refunded (service fee kept)</li>
+              <li><strong>&lt; 24 h before departure</strong> — 50% of contribution refunded</li>
+              <li><strong>After departure</strong> — no refund</li>
+            </ul>
+            <p class="policy-box__note">
+              Driver-initiated cancellations receive a full refund including the service fee.
+              By saving your card you agree to the
+              <a href="/terms#s8" target="_blank">payment authorisation terms</a>.
+            </p>
           </div>
-          <div class="price-row price-row--total">
-            <span>Total charged</span>
-            <span>{{ "{:,}".format(total) }} ISK</span>
-          </div>
-          <p class="price-note">
-            The driver receives {{ "{:,}".format(driver_payout) }} ISK (your cost contribution).
-            The service fee covers platform costs and is non-refundable.
+          <p class="secure-note" style="margin-top:1rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+            Card details are processed securely by Rapyd. SameFare never sees your card number.
           </p>
         </div>
-
-        <!-- Refund policy summary -->
-        <div class="policy-box">
-          <p class="policy-box__title">Cancellation policy</p>
-          <ul class="policy-box__list">
-            <li><strong>≥ 24 h before departure</strong> — contribution refunded (service fee kept)</li>
-            <li><strong>&lt; 24 h before departure</strong> — 50% of contribution refunded</li>
-            <li><strong>After departure</strong> — no refund</li>
-          </ul>
-          <p class="policy-box__note">Service fee is never refunded. Driver-initiated cancellations receive a full refund including the service fee.</p>
-        </div>
-
-        <div class="form-actions">
-          <a href="/bookings" class="btn btn-ghost">Cancel</a>
-          <button type="submit" class="btn btn-primary btn-lg" :disabled="submitting">
-            <span x-show="!submitting">Pay {{ "{:,}".format(total) }} ISK</span>
-            <span x-show="submitting">Processing…</span>
-          </button>
-        </div>
-
-        <p class="secure-note">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
-          Your payment is secure. Card details are not stored.
-        </p>
-      </form>
+      </div>
       {% endif %}
 
       <!-- Trip summary sidebar -->
@@ -193,34 +204,31 @@
           {% endif %}
         </div>
       </div>
+
     </div>
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
+{% if not beta_mode and checkout_id %}
+<script src="{{ rapyd_js_url }}"></script>
 <script>
-function cardForm() {
-  return {
-    rawNumber: '',
-    brand: '',
-    submitting: false,
-    formatCard(e) {
-      let v = e.target.value.replace(/\D/g, '').slice(0, 16);
-      e.target.value = v.match(/.{1,4}/g)?.join(' ') ?? v;
-      this.rawNumber = v;
-      const d = v[0];
-      this.brand = d === '4' ? 'VISA' : (d === '5' || d === '2') ? 'MC' : d === '3' ? 'AMEX' : '';
-    },
-    formatExpiry(e) {
-      let v = e.target.value.replace(/\D/g, '').slice(0, 4);
-      if (v.length >= 3) v = v.slice(0,2) + ' / ' + v.slice(2);
-      e.target.value = v;
-    },
-    handleSubmit(e) {
-      this.submitting = true;
-    }
-  }
-}
+window.addEventListener('load', function () {
+  // RapydCheckoutToolkit docs: https://docs.rapyd.net/build-with-rapyd/reference/embedded-checkout
+  // `id` is the checkout page ID returned by POST /v1/hosted/collect/checkout
+  var checkoutGateway = new RapydCheckoutToolkit({
+    id:                '{{ checkout_id }}',
+    pay_button_color:  '#006C5B',
+    {% if payment_case == 'B' %}
+    pay_button_text:   'Save card securely',
+    {% else %}
+    pay_button_text:   'Authorise {{ "{:,}".format(total) }} ISK',
+    {% endif %}
+    close_button_text: 'Cancel',
+  });
+  checkoutGateway.displayCheckout();
+});
 </script>
+{% endif %}
 {% endblock %}

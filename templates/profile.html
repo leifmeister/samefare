@@ -92,7 +92,7 @@
                      value="{{ current_user.full_name }}" required />
             </div>
             <div class="form-group"
-                 x-data="phoneField('{{ current_user.phone or '' }}')">
+                 x-data="phoneField({{ (current_user.phone or '')|tojson }})">
               <label class="label">
                 Phone
                 {% if current_user.phone_verified %}

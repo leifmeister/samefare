@@ -13,10 +13,21 @@
   <div class="form-page" style="margin-top:1.25rem;">
     <div class="form-page__header">
       <h1 class="form-page__title">Book your seat</h1>
-      <p class="form-page__sub">
-        {{ trip.origin }} → {{ trip.destination }} &nbsp;·&nbsp;
-        {{ trip.departure_datetime.strftime("%a %-d %b, %H:%M") }}
-      </p>
+      {% if segment_pickup and segment_dropoff %}
+        <p class="form-page__sub">
+          <strong>{{ segment_pickup }} → {{ segment_dropoff }}</strong> &nbsp;·&nbsp;
+          {{ trip.departure_datetime.strftime("%a %-d %b, %H:%M") }}
+        </p>
+        <p class="segment-notice segment-notice--sub">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path fill-rule="evenodd" d="M9.69 18.933l.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 00.281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 103 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 002.273 1.765 11.842 11.842 0 00.976.544l.062.029.018.008.006.003zM10 11.25a2.25 2.25 0 100-4.5 2.25 2.25 0 000 4.5z" clip-rule="evenodd"/></svg>
+          Part of the driver's {{ trip.origin }} → {{ trip.destination }} trip
+        </p>
+      {% else %}
+        <p class="form-page__sub">
+          {{ trip.origin }} → {{ trip.destination }} &nbsp;·&nbsp;
+          {{ trip.departure_datetime.strftime("%a %-d %b, %H:%M") }}
+        </p>
+      {% endif %}
     </div>
 
     {% if error %}
@@ -24,13 +35,18 @@
     {% endif %}
 
     <div class="booking-layout">
+      {# Determine the effective price-per-seat for this booking (prorated if segment) #}
+      {% set effective_pps = segment_price if segment_price else trip.price_per_seat %}
       <form method="post" action="/bookings/trip/{{ trip.id }}" class="form-card">
+        {# Carry segment cities so the POST handler can prorate and store them #}
+        {% if segment_pickup and segment_dropoff %}
+          <input type="hidden" name="pickup_city"  value="{{ segment_pickup }}">
+          <input type="hidden" name="dropoff_city" value="{{ segment_dropoff }}">
+        {% endif %}
 
         <div class="form-group">
           <label for="seats_booked" class="label">Number of seats <span class="required">*</span></label>
-          <select id="seats_booked" name="seats_booked" class="input"
-                  x-data x-model="seats"
-                  @change="calc()">
+          <select id="seats_booked" name="seats_booked" class="input">
             {% for i in range(1, trip.seats_available + 1) %}
               <option value="{{ i }}">{{ i }} seat{{ 's' if i != 1 }}</option>
             {% endfor %}
@@ -43,17 +59,17 @@
                     placeholder="e.g. I'll be at the BSÍ bus terminal. Can you pick me up there?"></textarea>
         </div>
 
-        <!-- Price summary -->
+        <!-- Price summary — uses effective_pps which is prorated for segment bookings -->
         {% if has_discount %}
         <div class="discount-banner">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>
           Newsletter subscriber discount — service fee waived on this booking!
         </div>
-        <div class="booking-summary">
+        <div class="booking-summary" x-data="bookingCalc({{ effective_pps }})">
           <h3 class="booking-summary__title">Price summary</h3>
           <div class="price-row">
-            <span>{{ trip.seats_available }} seat{{ 's' if trip.seats_available != 1 }} × {{ "{:,}".format(trip.price_per_seat) }} ISK</span>
-            <span>{{ "{:,}".format(trip.price_per_seat) }} ISK</span>
+            <span x-text="seats + ' seat' + (seats > 1 ? 's' : '') + ' × {{ "{:,}".format(effective_pps) }} ISK'">1 seat × {{ "{:,}".format(effective_pps) }} ISK</span>
+            <span x-text="subtotal.toLocaleString() + ' ISK'">{{ "{:,}".format(effective_pps) }} ISK</span>
           </div>
           <div class="price-row price-row--muted">
             <span>Service fee</span>
@@ -61,23 +77,23 @@
           </div>
           <div class="price-row price-row--total">
             <span>Total</span>
-            <span>{{ "{:,}".format(trip.price_per_seat) }} ISK</span>
+            <span x-text="subtotal.toLocaleString() + ' ISK'">{{ "{:,}".format(effective_pps) }} ISK</span>
           </div>
         </div>
         {% else %}
-        <div class="booking-summary" x-data="bookingCalc({{ trip.price_per_seat }})">
+        <div class="booking-summary" x-data="bookingCalc({{ effective_pps }})">
           <h3 class="booking-summary__title">Price summary</h3>
           <div class="price-row">
-            <span x-text="seats + ' seat' + (seats > 1 ? 's' : '') + ' × {{ "{:,}".format(trip.price_per_seat) }} ISK'">1 seat × {{ "{:,}".format(trip.price_per_seat) }} ISK</span>
-            <span x-text="subtotal.toLocaleString() + ' ISK'">{{ "{:,}".format(trip.price_per_seat) }} ISK</span>
+            <span x-text="seats + ' seat' + (seats > 1 ? 's' : '') + ' × {{ "{:,}".format(effective_pps) }} ISK'">1 seat × {{ "{:,}".format(effective_pps) }} ISK</span>
+            <span x-text="subtotal.toLocaleString() + ' ISK'">{{ "{:,}".format(effective_pps) }} ISK</span>
           </div>
           <div class="price-row price-row--muted">
             <span>Service fee (18%)</span>
-            <span x-text="fee.toLocaleString() + ' ISK'">{{ "{:,}".format((trip.price_per_seat * 0.18)|round|int) }} ISK</span>
+            <span x-text="fee.toLocaleString() + ' ISK'">{{ "{:,}".format((effective_pps * 0.18)|round|int) }} ISK</span>
           </div>
           <div class="price-row price-row--total">
             <span>Total</span>
-            <span x-text="total.toLocaleString() + ' ISK'">{{ "{:,}".format((trip.price_per_seat * 1.18)|round|int) }} ISK</span>
+            <span x-text="total.toLocaleString() + ' ISK'">{{ "{:,}".format((effective_pps * 1.18)|round|int) }} ISK</span>
           </div>
         </div>
         {% endif %}
@@ -118,6 +134,27 @@
           </div>
           {% endif %}
         </div>
+
+        {# Preferences summary — only if driver set any #}
+        {% set has_prefs = trip.allows_luggage or trip.large_luggage or trip.allows_pets
+                        or trip.smoking or trip.chattiness
+                        or trip.winter_ready or trip.child_seat or trip.flexible_pickup %}
+        {% if has_prefs %}
+        <div class="booking-prefs">
+          <p class="booking-prefs__title">Ride preferences</p>
+          <div class="booking-prefs__list">
+            {% if trip.allows_luggage %}<span title="Luggage allowed">🧳</span>{% endif %}
+            {% if trip.large_luggage %}<span title="Large luggage OK">🎿</span>{% endif %}
+            {% if trip.allows_pets %}<span title="Pets welcome">🐾</span>{% endif %}
+            {% if trip.child_seat %}<span title="Child seat available">🧒</span>{% endif %}
+            {% if trip.winter_ready %}<span title="Winter-ready vehicle">❄️</span>{% endif %}
+            {% if trip.chattiness == 'quiet' %}<span title="Quiet ride preferred">🤫</span>{% endif %}
+            {% if trip.chattiness == 'chatty' %}<span title="Chatty driver">💬</span>{% endif %}
+            {% if trip.flexible_pickup %}<span title="Flexible pickup">📍</span>{% endif %}
+            {% if trip.smoking %}<span title="Smoking OK">🚬</span>{% endif %}
+          </div>
+        </div>
+        {% endif %}
       </div>
     </div>
   </div>

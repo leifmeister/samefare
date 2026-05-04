@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}My ride alerts — SameFare{% endblock %}
+
+{% block content %}
+<div class="page-header page-header--compact">
+  <div class="container">
+    <h1 class="page-header__title">My ride alerts</h1>
+    <p class="page-header__subtitle">
+      We'll email you as soon as a driver posts a ride matching your saved searches.
+    </p>
+  </div>
+</div>
+
+<div class="container" style="max-width:680px; margin-top:2rem; margin-bottom:3rem;">
+
+  {% if request.query_params.get('deleted') %}
+  <div class="banner banner--success" style="margin-bottom:1.5rem;" role="status">
+    Alert removed — you won't receive any more emails for that route.
+  </div>
+  {% endif %}
+  {% if request.query_params.get('updated') %}
+  <div class="banner banner--success" style="margin-bottom:1.5rem;" role="status">
+    Alert updated with your new date and seat criteria.
+  </div>
+  {% endif %}
+
+  {% if active_alerts %}
+    <div class="card-stack">
+      {% for alert in active_alerts %}
+      <div class="alert-row">
+        <div class="alert-row__info">
+          <p class="alert-row__route">
+            <strong>{{ alert.origin }}</strong>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true" style="flex-shrink:0;color:#94A3B8;"><path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+            <strong>{{ alert.destination }}</strong>
+          </p>
+          <p class="alert-row__meta">
+            {% if alert.travel_date %}
+              📅 {{ alert.travel_date.strftime('%-d %B %Y') }} &nbsp;·&nbsp;
+            {% else %}
+              📅 Any date &nbsp;·&nbsp;
+            {% endif %}
+            🪑 {{ alert.seats }} seat{{ 's' if alert.seats != 1 }}
+          </p>
+          {% if alert.last_notified_at %}
+          <p class="alert-row__meta" style="color:#22C55E;">
+            ✓ Last notified {{ alert.last_notified_at.strftime('%-d %B') }}
+          </p>
+          {% endif %}
+        </div>
+
+        <div class="alert-row__actions">
+          <a href="/trips?origin={{ alert.origin | urlencode }}&destination={{ alert.destination | urlencode }}{% if alert.travel_date %}&travel_date={{ alert.travel_date.isoformat() | urlencode }}{% endif %}&seats={{ alert.seats }}"
+             class="btn btn-ghost btn-sm">Search now</a>
+          <form method="post" action="/alerts/{{ alert.id }}/delete" style="display:inline;">
+            <button type="submit" class="btn btn-ghost btn-sm btn--danger"
+                    onclick="return confirm('Remove this alert?')">Remove</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-state__icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+        </svg>
+      </div>
+      <h3 class="empty-state__title">No alerts yet</h3>
+      <p class="empty-state__body">
+        Search for a ride — if nothing comes up, you'll be offered the option to save an alert.
+      </p>
+      <a href="/trips" class="btn btn-primary">Find a ride</a>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -127,12 +127,17 @@ def my_trips_page(
     # ── Passenger: all bookings split into upcoming / past ────────────────────
     all_bookings = (
         db.query(models.Booking)
+        .options(
+            joinedload(models.Booking.trip),
+            joinedload(models.Booking.payment),
+        )
         .filter(models.Booking.passenger_id == current_user.id)
         .order_by(models.Booking.created_at.desc())
         .all()
     )
+    # card_saved: seat held, card tokenised for MIT — counts as an upcoming active booking.
     active_statuses = {models.BookingStatus.pending, models.BookingStatus.awaiting_payment,
-                       models.BookingStatus.confirmed}
+                       models.BookingStatus.confirmed, models.BookingStatus.card_saved}
     upcoming_bookings = [b for b in all_bookings
                          if b.status in active_statuses
                          and b.trip.departure_datetime >= now]
@@ -200,7 +205,15 @@ def edit_profile(
     default_car_type:  str         = Form("sedan"),
 ):
     current_user.full_name = full_name
-    current_user.phone     = phone or None
+
+    new_phone = phone or None
+    if new_phone != current_user.phone:
+        # Number changed — verification is no longer valid
+        current_user.phone            = new_phone
+        current_user.phone_verified   = False
+        current_user.phone_otp        = None
+        current_user.phone_otp_expires = None
+    # If unchanged, leave phone_verified (and any pending OTP) untouched
     current_user.bio       = bio or None
     current_user.default_car_make  = default_car_make  or None
     current_user.default_car_model = default_car_model or None

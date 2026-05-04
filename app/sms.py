@@ -110,6 +110,65 @@ def trip_reminder_to_driver(trip, passenger_count: int) -> None:
     )
 
 
+def mit_auth_failed_to_passenger(booking, retry_deadline) -> None:
+    """
+    Case B: MIT authorisation declined 24 h before departure.
+    Passenger has 2 hours to update their payment card.
+    Includes the +5 % surcharge notice.
+    """
+    if not booking.passenger.phone:
+        return
+    trip     = booking.trip
+    deadline = retry_deadline.strftime("%H:%M") if retry_deadline else "soon"
+    s        = get_settings()
+    _send(
+        booking.passenger.phone,
+        f"SameFare: your payment for {trip.origin} → {trip.destination} "
+        f"({trip.departure_datetime.strftime('%-d %b')}) could not be authorised. "
+        f"Please update your card by {deadline} to keep your seat. "
+        f"Note: a 5% late fee now applies. "
+        f"{s.base_url}/payments/auth-failed/{booking.id}",
+    )
+
+
+def mit_auth_failed_to_driver(booking) -> None:
+    """
+    Case B: notify driver that a passenger's payment is at risk.
+    Driver does not need to act, but should know the seat may be released.
+    """
+    if not booking.trip.driver.phone:
+        return
+    trip = booking.trip
+    pax  = booking.passenger.full_name.split()[0]
+    _send(
+        trip.driver.phone,
+        f"SameFare: {pax}'s payment for your trip "
+        f"{trip.origin} → {trip.destination} "
+        f"({trip.departure_datetime.strftime('%-d %b')}) failed. "
+        f"They have 2 hours to update their card — if not resolved their seat will be released. "
+        f"samefare.com/my-trips",
+    )
+
+
+def retry_expired_to_driver(booking) -> None:
+    """
+    The passenger's 2-hour retry window expired without them updating their card.
+    Driver is notified that the seat has been released.
+    """
+    if not booking.trip.driver.phone:
+        return
+    trip = booking.trip
+    pax  = booking.passenger.full_name.split()[0]
+    _send(
+        trip.driver.phone,
+        f"SameFare: {pax}'s booking on your trip "
+        f"{trip.origin} → {trip.destination} "
+        f"({trip.departure_datetime.strftime('%-d %b')}) has been cancelled — "
+        f"payment could not be secured. The seat is now available again. "
+        f"samefare.com/trips/{trip.id}",
+    )
+
+
 def trip_reminder_to_passenger(booking) -> None:
     """
     Day-before reminder to a confirmed passenger.
