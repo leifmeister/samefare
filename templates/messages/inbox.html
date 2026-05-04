@@ -3,6 +3,17 @@
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
 {% block title %}Messages — SameFare{% endblock %}
 
+{% set _status_labels = {
+  'pending':          'Pending',
+  'awaiting_payment': 'Needs payment',
+  'card_saved':       'Seat held',
+  'confirmed':        'Confirmed',
+  'cancelled':        'Cancelled',
+  'rejected':         'Declined',
+  'completed':        'Completed',
+  'no_show':          'No-show',
+} %}
+
 {% block content %}
 <div class="container" style="margin-top:2rem; margin-bottom:4rem;">
 
@@ -20,8 +31,11 @@
         </svg>
       </div>
       <p class="empty-state__text">No conversations yet.</p>
-      <p class="empty-state__sub">Once you book a ride or a passenger books yours, you can message each other here.</p>
-      <a href="/trips" class="btn btn-primary" style="margin-top:1rem;">Find a ride</a>
+      <p class="empty-state__sub">When you book a seat or a passenger books yours, you can message each other here to coordinate pickup, luggage, and anything else.</p>
+      <div style="display:flex; gap:var(--space-3); justify-content:center; margin-top:1rem; flex-wrap:wrap;">
+        <a href="/trips" class="btn btn-primary">Find a ride</a>
+        <a href="/trips/new" class="btn btn-outline">Post a ride</a>
+      </div>
     </div>
   {% else %}
     <div class="msg-inbox">
@@ -30,6 +44,7 @@
         {% set partner = conv.partner %}
         {% set last    = conv.last_message %}
         {% set unread  = conv.unread_count %}
+        {% set status  = b.status %}
         <a href="/messages/{{ b.id }}"
            class="msg-conv {% if unread %}msg-conv--unread{% endif %}">
 
@@ -42,15 +57,19 @@
           <div class="msg-conv__body">
             <div class="msg-conv__top">
               <span class="msg-conv__name">{{ partner.full_name.split()[0] }}</span>
-              <span class="msg-conv__route">
-                {{ b.trip.origin }}
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                     width="12" height="12" style="vertical-align:middle" aria-hidden="true">
-                  <path fill-rule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                </svg>
-                {{ b.trip.destination }}
+              <span class="msg-conv__status-badge msg-conv__status-badge--{{ status }}">
+                {{ _status_labels.get(status, status) }}
               </span>
             </div>
+            <p class="msg-conv__route">
+              {{ b.trip.origin }}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                   width="11" height="11" aria-hidden="true">
+                <path fill-rule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
+              </svg>
+              {{ b.trip.destination }}
+              &nbsp;·&nbsp;{{ b.trip.departure_datetime.strftime("%-d %b") }}
+            </p>
             <p class="msg-conv__snippet">
               {% if last %}
                 {% if last.sender_id == current_user.id %}<span class="msg-conv__you">You: </span>{% endif %}

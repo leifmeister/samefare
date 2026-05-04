@@ -4,10 +4,27 @@
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
 {% block title %}{{ partner.full_name.split()[0] }} — SameFare{% endblock %}
 
+{% set _status      = booking.status %}
+{% set _is_passenger = current_user.id == booking.passenger_id %}
+{% set _phone_ok    = _status in ('confirmed', 'card_saved')
+                      and partner.phone and partner.phone_verified %}
+{% set _active      = _status in ('pending', 'awaiting_payment', 'card_saved', 'confirmed') %}
+
+{% set _status_labels = {
+  'pending':          'Pending',
+  'awaiting_payment': 'Needs payment',
+  'card_saved':       'Seat held',
+  'confirmed':        'Confirmed',
+  'cancelled':        'Cancelled',
+  'rejected':         'Declined',
+  'completed':        'Completed',
+  'no_show':          'No-show',
+} %}
+
 {% block content %}
 <div class="chat-page">
 
-  <!-- Header -->
+  <!-- ── Header ──────────────────────────────────────────────────────── -->
   <div class="chat-header">
     <a href="/messages" class="chat-header__back" aria-label="Back to inbox">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
@@ -16,29 +33,104 @@
       </svg>
     </a>
 
-    {{ avatar(partner, cls="avatar--sm") }}
+    <a href="/users/{{ partner.id }}" class="chat-header__avatar-link">
+      {{ avatar(partner, cls="avatar--sm") }}
+    </a>
 
     <div class="chat-header__info">
-      <p class="chat-header__name">{{ partner.full_name }} {{ verified_badge(partner) }}</p>
-      <div class="chat-header__sub">
-        <a href="/trips/{{ booking.trip_id }}" class="chat-header__trip-link">
-          {{ booking.trip.origin }} → {{ booking.trip.destination }}
-          · {{ booking.trip.departure_datetime.strftime("%-d %b") }}
-        </a>
-        {% if booking.status == 'confirmed' and partner.phone and partner.phone_verified %}
-          <a href="tel:{{ partner.phone }}" class="contact-phone contact-phone--sm">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                 width="12" height="12" aria-hidden="true">
-              <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
-            </svg>
-            {{ partner.phone | format_phone }}
-          </a>
-        {% endif %}
+      <div class="chat-header__name-row">
+        <span class="chat-header__name">{{ partner.full_name.split()[0] }}</span>
+        {{ verified_badge(partner) }}
+        <span class="chat-status chat-status--{{ _status }}">
+          {{ _status_labels.get(_status, _status) }}
+        </span>
       </div>
+      <a href="/trips/{{ booking.trip_id }}" class="chat-header__trip-link">
+        {{ booking.trip.origin }} → {{ booking.trip.destination }}
+        · {{ booking.trip.departure_datetime.strftime("%-d %b · %H:%M") }}
+      </a>
+    </div>
+
+    <!-- Right: phone + report -->
+    <div class="chat-header__actions">
+      {% if _phone_ok %}
+      <a href="tel:{{ partner.phone }}"
+         class="chat-action-btn"
+         title="{{ partner.phone | format_phone }}"
+         aria-label="Call {{ partner.full_name.split()[0] }}">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+             width="17" height="17" aria-hidden="true">
+          <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+        </svg>
+      </a>
+      {% endif %}
+      <a href="/report?user_id={{ partner.id }}&booking_id={{ booking.id }}"
+         class="chat-action-btn chat-action-btn--report"
+         title="Report a safety concern"
+         aria-label="Report">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+             width="17" height="17" aria-hidden="true">
+          <path fill-rule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 7l2.55 2.4A1 1 0 0116 11H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clip-rule="evenodd"/>
+        </svg>
+      </a>
     </div>
   </div>
 
-  <!-- Messages -->
+  <!-- ── Status context strip ────────────────────────────────────────── -->
+  {% if _status == 'pending' %}
+    {% if _is_passenger %}
+    <div class="chat-strip chat-strip--amber">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+      Waiting for {{ partner.full_name.split()[0] }} to approve your request.
+    </div>
+    {% else %}
+    <div class="chat-strip chat-strip--amber">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+      Passenger requesting a seat.
+      <a href="/trips/{{ booking.trip_id }}" class="chat-strip__link">Approve or decline →</a>
+    </div>
+    {% endif %}
+  {% elif _status == 'awaiting_payment' %}
+    {% if _is_passenger %}
+    <div class="chat-strip chat-strip--warning">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+      Payment needed to confirm your seat.
+      <a href="/payments/checkout/{{ booking.id }}" class="chat-strip__link">Pay now →</a>
+    </div>
+    {% else %}
+    <div class="chat-strip chat-strip--amber">
+      Waiting for passenger to complete payment.
+    </div>
+    {% endif %}
+  {% elif _status == 'card_saved' %}
+  <div class="chat-strip chat-strip--info">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l3-3z" clip-rule="evenodd"/></svg>
+    {% if _is_passenger %}Seat held — payment charged 24h before departure.
+    {% else %}Seat held — card saved, payment scheduled.{% endif %}
+  </div>
+  {% elif _status == 'confirmed' %}
+  <div class="chat-strip chat-strip--success">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l3-3z" clip-rule="evenodd"/></svg>
+    Booking confirmed.
+    {% if _phone_ok %} Call {{ partner.full_name.split()[0] }}: <a href="tel:{{ partner.phone }}" class="chat-strip__link">{{ partner.phone | format_phone }}</a>{% endif %}
+  </div>
+  {% elif _status in ('cancelled', 'rejected') %}
+  <div class="chat-strip chat-strip--neutral">
+    This booking is no longer active.
+    {% if _is_passenger %}<a href="/trips" class="chat-strip__link">Find another ride →</a>{% endif %}
+  </div>
+  {% elif _status == 'completed' %}
+  <div class="chat-strip chat-strip--neutral">
+    This trip is complete.
+    {% if _is_passenger and not booking.reviews %}<a href="/trips/{{ booking.trip_id }}" class="chat-strip__link">Leave a review →</a>{% endif %}
+  </div>
+  {% elif _status == 'no_show' %}
+  <div class="chat-strip chat-strip--neutral">
+    Marked as no-show.
+  </div>
+  {% endif %}
+
+  <!-- ── Messages ────────────────────────────────────────────────────── -->
   <div class="chat-body"
        id="chat-body"
        hx-get="/messages/{{ booking.id }}/poll"
@@ -52,15 +144,49 @@
     {% if not messages %}
       <div class="chat-empty" id="chat-empty">
         <p>No messages yet.</p>
-        <p>Send {{ partner.full_name.split()[0] }} a message to coordinate your trip.</p>
+        <p>Ask {{ partner.full_name.split()[0] }} about pickup point, luggage, or anything else.</p>
       </div>
     {% endif %}
 
     {% include "messages/_bubbles.html" %}
-
   </div>
 
-  <!-- Send form -->
+  <!-- ── Quick reply chips ───────────────────────────────────────────── -->
+  {% if _active %}
+  <div class="chat-chips" x-data="{ used: false }" x-show="!used" x-cloak>
+    {% if _is_passenger %}
+      {% if _status == 'pending' %}
+        <button type="button" class="chat-chip"
+                @click="fillChat('Where will you pick me up?'); used=true">Pickup point?</button>
+        <button type="button" class="chat-chip"
+                @click="fillChat('How much luggage can I bring?'); used=true">Luggage?</button>
+      {% else %}
+        <button type="button" class="chat-chip"
+                @click="fillChat('Where exactly is the pickup point?'); used=true">Pickup point?</button>
+        <button type="button" class="chat-chip"
+                @click="fillChat('Can you drop me off at '); used=true">Dropoff?</button>
+        <button type="button" class="chat-chip"
+                @click="fillChat(&quot;I'm running a few minutes late, sorry!&quot;); used=true">Running late</button>
+      {% endif %}
+    {% else %}
+      {% if _status == 'pending' %}
+        <button type="button" class="chat-chip"
+                @click="fillChat('Hi! I\\'ll pick you up at '); used=true">Share pickup</button>
+        <button type="button" class="chat-chip"
+                @click="fillChat('How many bags are you bringing?'); used=true">Luggage?</button>
+      {% else %}
+        <button type="button" class="chat-chip"
+                @click="fillChat('I\\'ll pick you up at '); used=true">Pickup point</button>
+        <button type="button" class="chat-chip"
+                @click="fillChat(&quot;I'm running a few minutes late.&quot;); used=true">Running late</button>
+        <button type="button" class="chat-chip"
+                @click="fillChat('Confirm your dropoff: '); used=true">Confirm dropoff</button>
+      {% endif %}
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- ── Send form ───────────────────────────────────────────────────── -->
   <div class="chat-footer">
     <form class="chat-form"
           hx-post="/messages/{{ booking.id }}"
@@ -87,5 +213,13 @@
     var el = document.getElementById('chat-body');
     if (el) el.scrollTop = el.scrollHeight;
   })();
+
+  function fillChat(text) {
+    var el = document.getElementById('chat-input');
+    if (!el) return;
+    el.value = text;
+    el.focus();
+    el.setSelectionRange(text.length, text.length);
+  }
 </script>
 {% endblock %}

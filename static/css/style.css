@@ -2849,6 +2849,142 @@ button, input, select, textarea { font: inherit; }
 .contact-phone:hover { text-decoration: underline; }
 .contact-phone--sm { font-size: .78rem; }
 
+/* ── Chat header: name row + actions ─────────────────────────────────────── */
+.chat-header__avatar-link { display: flex; flex-shrink: 0; }
+
+.chat-header__name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: 1px;
+}
+
+.chat-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.chat-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-full);
+  color: var(--c-text-muted);
+  text-decoration: none;
+  transition: background .15s, color .15s;
+}
+.chat-action-btn:hover { background: var(--c-border-light); color: var(--c-text); }
+.chat-action-btn--report:hover { color: #DC2626; }
+
+/* ── Conversation status chip (in header) ───────────────────────────────── */
+.chat-status {
+  display: inline-flex;
+  align-items: center;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  padding: 2px 7px;
+  border-radius: 99px;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+.chat-status--pending          { background: #FEF3C7; color: #92400E; }
+.chat-status--awaiting_payment { background: #FEE2E2; color: #991B1B; }
+.chat-status--card_saved       { background: #DBEAFE; color: #1E40AF; }
+.chat-status--confirmed        { background: #D1FAE5; color: #065F46; }
+.chat-status--cancelled,
+.chat-status--rejected,
+.chat-status--no_show          { background: #F3F4F6; color: #6B7280; }
+.chat-status--completed        { background: #F3F4F6; color: #6B7280; }
+
+/* ── Context strip below header ─────────────────────────────────────────── */
+.chat-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: .5rem var(--space-5);
+  font-size: .8rem;
+  font-weight: 500;
+  flex-shrink: 0;
+  border-bottom: 1px solid transparent;
+}
+.chat-strip svg { flex-shrink: 0; }
+.chat-strip__link {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+.chat-strip--amber   { background: #FFFBEB; color: #92400E; border-color: #FDE68A; }
+.chat-strip--warning { background: #FEF2F2; color: #991B1B; border-color: #FECACA; }
+.chat-strip--info    { background: #EFF6FF; color: #1E40AF; border-color: #BFDBFE; }
+.chat-strip--success { background: #ECFDF5; color: #065F46; border-color: #A7F3D0; }
+.chat-strip--neutral { background: #F9FAFB; color: var(--c-text-muted); border-color: var(--c-border); }
+
+/* ── Quick reply chips ───────────────────────────────────────────────────── */
+.chat-chips {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  overflow-x: auto;
+  flex-shrink: 0;
+  scrollbar-width: none;
+  border-top: 1px solid var(--c-border);
+}
+.chat-chips::-webkit-scrollbar { display: none; }
+.chat-chip {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  font-size: .8rem;
+  font-weight: 500;
+  color: var(--c-primary);
+  background: transparent;
+  border: 1px solid var(--c-primary);
+  border-radius: 99px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+  flex-shrink: 0;
+}
+.chat-chip:hover { background: var(--c-primary); color: #fff; }
+
+/* ── Inbox status badge per row ─────────────────────────────────────────── */
+.msg-conv__status-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  padding: 1px 6px;
+  border-radius: 99px;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+.msg-conv__status-badge--pending          { background: #FEF3C7; color: #92400E; }
+.msg-conv__status-badge--awaiting_payment { background: #FEE2E2; color: #991B1B; }
+.msg-conv__status-badge--card_saved       { background: #DBEAFE; color: #1E40AF; }
+.msg-conv__status-badge--confirmed        { background: #D1FAE5; color: #065F46; }
+.msg-conv__status-badge--cancelled,
+.msg-conv__status-badge--rejected,
+.msg-conv__status-badge--no_show          { background: #F3F4F6; color: #6B7280; }
+.msg-conv__status-badge--completed        { background: #F3F4F6; color: #6B7280; }
+
+/* Inbox route line (moved below name row) */
+.msg-conv__route {
+  font-size: .775rem;
+  color: var(--c-text-muted);
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  margin-bottom: .15rem;
+}
+
 /* Chat header sub-line (route + phone) */
 .chat-header__sub {
   display: flex;
