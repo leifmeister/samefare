@@ -18,77 +18,150 @@
     <h3 class="empty-state__title">Same city selected</h3>
     <p class="empty-state__body">Origin and destination must be different cities. Try searching from <strong>{{ origin }}</strong> to somewhere else.</p>
   </div>
+
 {% elif trips %}
   <div class="trips-grid" id="trips-results">
     {% for trip in trips %}
       {% include "partials/trip_card.html" %}
     {% endfor %}
   </div>
+
 {% elif origin and destination %}
-  {# Meaningful route search returned nothing — offer an alert #}
-  <div class="empty-state" id="trips-results">
-    <div class="empty-state__icon">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+  {# Route searched — no results. Offer alert, flex dates, post ride. #}
+  <div class="empty-state empty-state--route" id="trips-results">
+
+    {# Route badge #}
+    <div class="empty-state__route-badge">
+      <span class="empty-state__route-city">{{ origin }}</span>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+           width="14" height="14" aria-hidden="true">
+        <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
       </svg>
+      <span class="empty-state__route-city">{{ destination }}</span>
     </div>
 
-    <h3 class="empty-state__title">No rides found</h3>
+    <h3 class="empty-state__title">No rides on this route right now</h3>
     <p class="empty-state__body">
-      There are no rides from <strong>{{ origin }}</strong> to <strong>{{ destination }}</strong>
-      {% if travel_date %} on <strong>{{ travel_date }}</strong>{% endif %} right now.
+      {% if travel_date_display %}
+        Nothing found for <strong>{{ travel_date_display }}</strong>. Try flexible dates or save an alert for when a driver posts this route.
+      {% else %}
+        No upcoming rides from <strong>{{ origin }}</strong> to <strong>{{ destination }}</strong>. Save an alert and we'll let you know the moment one is posted.
+      {% endif %}
     </p>
 
+    {# Flex date suggestions — only when an exact date was set #}
+    {% if travel_date and date_flex == 'exact' %}
+    <div class="empty-state__flex-row">
+      <span class="empty-state__flex-label">Try instead:</span>
+      <a href="/trips?origin={{ origin | urlencode }}&destination={{ destination | urlencode }}&travel_date={{ travel_date }}&date_flex=plus_minus_1&seats={{ seats }}"
+         class="date-chip" hx-get="/trips?origin={{ origin | urlencode }}&destination={{ destination | urlencode }}&travel_date={{ travel_date }}&date_flex=plus_minus_1&seats={{ seats }}" hx-target="#trips-results" hx-push-url="true">
+        ±1 day
+      </a>
+      <a href="/trips?origin={{ origin | urlencode }}&destination={{ destination | urlencode }}&date_flex=this_week&seats={{ seats }}"
+         class="date-chip" hx-get="/trips?origin={{ origin | urlencode }}&destination={{ destination | urlencode }}&date_flex=this_week&seats={{ seats }}" hx-target="#trips-results" hx-push-url="true">
+        This week
+      </a>
+      <a href="/trips?origin={{ origin | urlencode }}&destination={{ destination | urlencode }}&seats={{ seats }}"
+         class="date-chip" hx-get="/trips?origin={{ origin | urlencode }}&destination={{ destination | urlencode }}&seats={{ seats }}" hx-target="#trips-results" hx-push-url="true">
+        Any date
+      </a>
+    </div>
+    {% endif %}
+
+    {# Alert CTA #}
     <div class="alert-signup-card">
-      <p class="alert-signup-card__headline">
-        🔔 Get notified when one is posted
-      </p>
-      <p class="alert-signup-card__sub">
-        Save this search as an alert and we'll email you the moment a driver
-        posts a matching ride. No spam — one email per match, unsubscribe any time.
-      </p>
+      <div class="alert-signup-card__icon" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+        </svg>
+      </div>
+      <div class="alert-signup-card__body">
+        <p class="alert-signup-card__headline">Get notified when someone posts this route</p>
+        <p class="alert-signup-card__sub">We'll email you the moment a driver posts <strong>{{ origin }} → {{ destination }}</strong>. One email, no spam, unsubscribe any time.</p>
 
-      <form method="post" action="/alerts" class="alert-signup-card__form">
-        <input type="hidden" name="origin"      value="{{ origin }}">
-        <input type="hidden" name="destination" value="{{ destination }}">
-        <input type="hidden" name="travel_date" value="{{ travel_date }}">
-        <input type="hidden" name="seats"       value="{{ seats }}">
+        <form method="post" action="/alerts" class="alert-signup-card__form">
+          <input type="hidden" name="origin"      value="{{ origin }}">
+          <input type="hidden" name="destination" value="{{ destination }}">
+          <input type="hidden" name="travel_date" value="{{ travel_date }}">
+          <input type="hidden" name="seats"       value="{{ seats }}">
 
-        {% if not current_user %}
-          <div class="alert-signup-card__email-row">
-            <input type="email" name="email" class="input"
-                   placeholder="your@email.com" required
-                   aria-label="Email address for ride alert" />
-            <button type="submit" class="btn btn-primary">Notify me</button>
-          </div>
-          <p class="alert-signup-card__login-hint">
-            Already have an account?
-            {% set next_url = '/trips?origin=' + origin + '&destination=' + destination + ('&travel_date=' + travel_date if travel_date else '') %}
-            <a href="/login?next={{ next_url | urlencode }}">
-              Log in for one-click alerts
-            </a>
-          </p>
-        {% else %}
-          <button type="submit" class="btn btn-primary">
-            Save alert for {{ origin }} → {{ destination }}
-          </button>
-        {% endif %}
-      </form>
+          {% if not current_user %}
+            <div class="alert-signup-card__email-row">
+              <input type="email" name="email" class="input"
+                     placeholder="your@email.com" required
+                     aria-label="Email address for ride alert" />
+              <button type="submit" class="btn btn-primary">Notify me</button>
+            </div>
+            <p class="alert-signup-card__login-hint">
+              Already have an account?
+              {% set next_url = '/trips?origin=' + origin + '&destination=' + destination + ('&travel_date=' + travel_date if travel_date else '') %}
+              <a href="/login?next={{ next_url | urlencode }}">Log in for one-click alerts</a>
+            </p>
+          {% else %}
+            <button type="submit" class="btn btn-primary">
+              Save alert — {{ origin }} → {{ destination }}
+            </button>
+          {% endif %}
+        </form>
+      </div>
     </div>
 
-    <p class="empty-state__body" style="margin-top:1.5rem;">
-      Or — do you drive this route?
-      <a href="/trips/new" class="link">Post a ride</a>
-    </p>
+    {# Secondary actions #}
+    <div class="empty-state__actions">
+      <a href="/trips/new?origin={{ origin | urlencode }}&destination={{ destination | urlencode }}"
+         class="empty-state__action-link">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path d="M3 10a1 1 0 100 2 1 1 0 000-2zm10 0a1 1 0 100 2 1 1 0 000-2zM1.5 7l1.5-3h9l1.5 3H1.5z"/></svg>
+        Drive this route yourself
+      </a>
+      {% if origin or destination or travel_date %}
+        <a href="/trips" class="empty-state__action-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+          Clear all filters
+        </a>
+      {% endif %}
+    </div>
+
+    {# Popular routes nudge #}
+    {% if popular_routes %}
+    <div class="empty-state__popular">
+      <p class="empty-state__popular-label">Popular routes</p>
+      <div class="empty-state__popular-list">
+        {% for from_city, to_city in popular_routes[:6] %}
+          {% if from_city != origin or to_city != destination %}
+          <a href="/trips?origin={{ from_city | urlencode }}&destination={{ to_city | urlencode }}"
+             class="route-pill">
+            {{ from_city }} → {{ to_city }}
+          </a>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
   </div>
+
 {% else %}
-  {# Generic empty (no filters active) #}
-  <div class="empty-state" id="trips-results">
-    <div class="empty-state__icon">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6-3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0L9 7"/></svg>
+  {# No filters active — encourage searching or browsing popular routes #}
+  <div class="empty-state empty-state--browse" id="trips-results">
+    <h3 class="empty-state__title">Where are you headed?</h3>
+    <p class="empty-state__body">Search by origin and destination above, or pick a popular route to browse available rides.</p>
+
+    {% if popular_routes %}
+    <div class="empty-state__popular">
+      <p class="empty-state__popular-label">Popular routes</p>
+      <div class="empty-state__popular-list">
+        {% for from_city, to_city in popular_routes %}
+        <a href="/trips?origin={{ from_city | urlencode }}&destination={{ to_city | urlencode }}"
+           class="route-pill">
+          {{ from_city }} → {{ to_city }}
+        </a>
+        {% endfor %}
+      </div>
     </div>
-    <h3 class="empty-state__title">No rides available yet</h3>
-    <p class="empty-state__body">New trips are posted daily — check back soon, or be the first to offer a ride.</p>
-    <a href="/trips/new" class="btn btn-primary">Offer a ride</a>
+    {% endif %}
+
+    <p class="empty-state__driver-nudge">
+      Driving somewhere? <a href="/trips/new" class="link">Offer a ride</a> and share the fuel cost.
+    </p>
   </div>
 {% endif %}

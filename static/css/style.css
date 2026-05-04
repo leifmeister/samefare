@@ -3234,7 +3234,8 @@ button, input, select, textarea { font: inherit; }
   border: 1px solid var(--c-border, #DDE8E5);
   border-radius: var(--radius-lg, 12px);
   padding: var(--space-6, 1.5rem);
-  max-width: 420px;
+  width: 100%;
+  max-width: 480px;
   margin: var(--space-6, 1.5rem) auto 0;
   text-align: left;
 }
@@ -3783,4 +3784,154 @@ button, input, select, textarea { font: inherit; }
   border-radius: var(--radius);
   font-size: .9375rem;
   line-height: 1.6;
+}
+
+/* ── Search empty-state improvements ──────────────────────────── */
+
+/* Route variant of the empty state — less aggressive padding */
+.empty-state--route,
+.empty-state--browse {
+  padding: var(--space-10) var(--space-8) var(--space-8);
+  text-align: center;
+}
+
+/* Route badge: Origin → Destination */
+.empty-state__route-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  background: var(--c-bg);
+  border: 1.5px solid var(--c-border);
+  border-radius: 99px;
+  padding: .3rem .875rem;
+  font-size: .84rem;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  margin-bottom: var(--space-4);
+}
+.empty-state__route-badge svg { color: var(--c-primary); flex-shrink: 0; }
+.empty-state__route-city      { color: var(--c-text); }
+
+/* Flexible date suggestion row */
+.empty-state__flex-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-bottom: var(--space-6);
+}
+.empty-state__flex-label {
+  font-size: .8125rem;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-right: .2rem;
+}
+
+/* Alert card: horizontal icon + body layout */
+.alert-signup-card {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  max-width: 480px;
+}
+.alert-signup-card__icon {
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  background: var(--c-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  margin-top: .1rem;
+}
+.alert-signup-card__body { flex: 1; min-width: 0; }
+
+/* Secondary action links below alert card */
+.empty-state__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .75rem 1.5rem;
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--c-border-light);
+}
+.empty-state__action-link {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .875rem;
+  color: var(--c-text-muted);
+  font-weight: 500;
+  transition: color var(--t-fast);
+}
+.empty-state__action-link:hover { color: var(--c-primary); }
+.empty-state__action-link svg   { flex-shrink: 0; }
+
+/* Popular routes list */
+.empty-state__popular {
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--c-border-light);
+}
+.empty-state__popular-label {
+  font-size: .75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--c-text-muted);
+  margin-bottom: var(--space-3);
+}
+.empty-state__popular-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  justify-content: center;
+}
+
+/* Route pill — compact clickable route chip */
+.route-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: .3rem .75rem;
+  border-radius: 99px;
+  border: 1.5px solid var(--c-border);
+  background: var(--c-surface);
+  font-size: .8125rem;
+  font-weight: 500;
+  color: var(--c-text);
+  transition: border-color var(--t-fast), color var(--t-fast), background var(--t-fast);
+  white-space: nowrap;
+}
+.route-pill:hover {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+  background: var(--c-primary-light);
+}
+
+/* Driver nudge in browse state */
+.empty-state__driver-nudge {
+  margin-top: var(--space-6);
+  font-size: .875rem;
+  color: var(--c-text-muted);
+}
+
+/* Mobile: stack alert card icon+body vertically on narrow screens */
+@media (max-width: 480px) {
+  .empty-state--route,
+  .empty-state--browse { padding: var(--space-8) var(--space-5); }
+
+  .alert-signup-card { flex-direction: column; align-items: center; text-align: center; }
+  .alert-signup-card__email-row { flex-direction: column; }
+
+  .empty-state__flex-row { flex-direction: column; align-items: center; }
+  .empty-state__flex-label { margin-right: 0; margin-bottom: .2rem; }
+
+  .empty-state__popular-list { justify-content: center; }
 }

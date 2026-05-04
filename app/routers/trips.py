@@ -138,6 +138,18 @@ def _sort_trips(trips: list, sort: Optional[str]) -> list:
 
 _VALID_FLEX = frozenset({"exact", "plus_minus_1", "this_week", "weekend"})
 
+# Popular routes shown on empty-state and homepage — ordered by expected traffic
+POPULAR_ROUTES = [
+    ("Reykjavík",  "Akureyri"),
+    ("Reykjavík",  "Selfoss"),
+    ("Keflavík",   "Reykjavík"),
+    ("Reykjavík",  "Borgarnes"),
+    ("Reykjavík",  "Vík"),
+    ("Akureyri",   "Húsavík"),
+    ("Selfoss",    "Vík"),
+    ("Borgarnes",  "Akureyri"),
+]
+
 
 # ── Segment (intermediate-stop) matching ─────────────────────────────────────
 
@@ -373,6 +385,8 @@ def trips_list(
             "cities": ICELANDIC_CITIES,
             "alert_saved": False, "alert_error": False,
             "same_city_error": True,
+            "popular_routes": POPULAR_ROUTES,
+            "travel_date_display": "",
         }
         if request.headers.get("HX-Request"):
             return templates.TemplateResponse("trips/_list_partial.html", {**ctx, **ctx_extra})
@@ -441,6 +455,8 @@ def trips_list(
         "alert_saved": bool(alert_saved),
         "alert_error": bool(alert_error),
         "same_city_error": False,
+        "popular_routes": POPULAR_ROUTES,
+        "travel_date_display": parsed_date.strftime("%-d %b") if parsed_date else "",
     }
 
     if request.headers.get("HX-Request"):
