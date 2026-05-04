@@ -431,6 +431,57 @@ def mit_auth_failed_to_passenger(booking, retry_deadline) -> None:
     )
 
 
+def trip_reminder_to_driver(trip, passenger_count: int) -> None:
+    s          = get_settings()
+    departure  = trip.departure_datetime.strftime("%-d %B %Y at %H:%M")
+    pax_label  = f"{passenger_count} passenger{'s' if passenger_count != 1 else ''}"
+    body = (
+        _h1("Your trip is tomorrow") +
+        _p(f"Hi {trip.driver.full_name.split()[0]}, just a heads-up — you have "
+           f"<strong>{pax_label}</strong> confirmed for tomorrow's trip:") +
+        f'<div style="background:#F7FAF9;border:1px solid #DDE8E5;border-radius:8px;'
+        f'padding:16px;margin:8px 0;">'
+        f'{_route_line(trip.origin, trip.destination, trip.departure_datetime)}'
+        f'</div>' +
+        _divider() +
+        _p("Have a safe trip!") +
+        _btn("View trip", f"{s.base_url}/my-trips?tab=rides")
+    )
+    _send(
+        trip.driver.email,
+        f"Trip reminder — {trip.origin} → {trip.destination} · {departure}",
+        _wrap(body),
+    )
+
+
+def trip_reminder_to_passenger(booking) -> None:
+    s        = get_settings()
+    trip     = booking.trip
+    driver   = trip.driver.full_name.split()[0]
+    origin   = booking.pickup_city or trip.origin
+    dest     = booking.dropoff_city or trip.destination
+    departure = trip.departure_datetime.strftime("%-d %B %Y at %H:%M")
+    body = (
+        _h1("Your ride is tomorrow") +
+        _p(f"Hi {booking.passenger.full_name.split()[0]}, just a reminder — "
+           f"your ride with <strong>{driver}</strong> is tomorrow:") +
+        f'<div style="background:#F7FAF9;border:1px solid #DDE8E5;border-radius:8px;'
+        f'padding:16px;margin:8px 0;">'
+        f'{_route_line(origin, dest, trip.departure_datetime)}' +
+        (f'<p style="margin:12px 0 0;font-size:.875rem;color:#475569;">'
+         f'📍 Pickup: {trip.pickup_address}</p>' if trip.pickup_address else '') +
+        f'</div>' +
+        _divider() +
+        _p(f"Message {driver} if you need to confirm the exact pickup point.") +
+        _btn("Open conversation", f"{s.base_url}/messages/{booking.id}")
+    )
+    _send(
+        booking.passenger.email,
+        f"Ride reminder — {origin} → {dest} · {departure}",
+        _wrap(body),
+    )
+
+
 def password_reset(user, token: str) -> None:
     s    = get_settings()
     url  = f"{s.base_url}/reset-password?token={token}"

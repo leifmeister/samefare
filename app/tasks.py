@@ -300,10 +300,12 @@ def _run_trip_reminders() -> None:
 
             # Driver reminder
             sms.trip_reminder_to_driver(trip, len(confirmed))
+            mailer.trip_reminder_to_driver(trip, len(confirmed))
 
             # Passenger reminders
             for booking in confirmed:
                 sms.trip_reminder_to_passenger(booking)
+                mailer.trip_reminder_to_passenger(booking)
 
             trip.reminder_sent = True
             log.info("Sent reminders for trip %d (%s → %s)", trip.id, trip.origin, trip.destination)
