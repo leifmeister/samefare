@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import uuid
@@ -6,7 +7,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload, selectinload
 
@@ -385,6 +386,115 @@ def delete_account(
     response = RedirectResponse("/", status_code=303)
     response.delete_cookie("access_token")
     return response
+
+
+@router.get("/profile/export")
+def export_data(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    def _dt(v):
+        return v.isoformat() if v else None
+
+    user = current_user
+    payload = {
+        "exported_at": datetime.utcnow().isoformat(),
+        "profile": {
+            "id":           user.id,
+            "email":        user.email,
+            "full_name":    user.full_name,
+            "phone":        user.phone,
+            "bio":          user.bio,
+            "birth_year":   user.birth_year,
+            "role":         user.role,
+            "created_at":   _dt(user.created_at),
+            "phone_verified": user.phone_verified,
+            "email_verified": user.email_verified,
+            "id_verification":      user.id_verification,
+            "license_verification": user.license_verification,
+            "default_car_make":  user.default_car_make,
+            "default_car_model": user.default_car_model,
+            "default_car_year":  user.default_car_year,
+            "default_car_type":  user.default_car_type,
+            "payout_method":     user.payout_method,
+            "blikk_account_iban": user.blikk_account_iban,
+        },
+        "trips_as_driver": [
+            {
+                "id":                 t.id,
+                "origin":             t.origin,
+                "destination":        t.destination,
+                "departure_datetime": _dt(t.departure_datetime),
+                "price_per_seat":     t.price_per_seat,
+                "seats_total":        t.seats_total,
+                "status":             t.status,
+                "created_at":         _dt(t.created_at),
+            }
+            for t in user.trips
+        ],
+        "bookings_as_passenger": [
+            {
+                "id":           b.id,
+                "trip_id":      b.trip_id,
+                "origin":       b.trip.origin,
+                "destination":  b.trip.destination,
+                "departure":    _dt(b.trip.departure_datetime),
+                "seats":        b.seats_booked,
+                "status":       b.status,
+                "pickup_city":  b.pickup_city,
+                "dropoff_city": b.dropoff_city,
+                "created_at":   _dt(b.created_at),
+                "payment": {
+                    "passenger_total": b.payment.passenger_total,
+                    "driver_payout":   b.payment.driver_payout,
+                    "platform_fee":    b.payment.platform_fee,
+                    "status":          b.payment.status,
+                } if b.payment else None,
+            }
+            for b in user.bookings
+        ],
+        "reviews_given": [
+            {
+                "id":          r.id,
+                "trip_id":     r.trip_id,
+                "reviewee_id": r.reviewee_id,
+                "rating":      r.rating,
+                "comment":     r.comment,
+                "type":        r.review_type,
+                "created_at":  _dt(r.created_at),
+            }
+            for r in user.reviews_given
+        ],
+        "reviews_received": [
+            {
+                "id":          r.id,
+                "trip_id":     r.trip_id,
+                "reviewer_id": r.reviewer_id,
+                "rating":      r.rating,
+                "comment":     r.comment,
+                "type":        r.review_type,
+                "created_at":  _dt(r.created_at),
+            }
+            for r in user.reviews_received
+        ],
+        "messages": [
+            {
+                "id":         m.id,
+                "booking_id": m.booking_id,
+                "direction":  "sent",
+                "body":       m.body,
+                "sent_at":    _dt(m.sent_at),
+            }
+            for m in user.messages_sent
+        ],
+    }
+
+    filename = f"samefare-data-{user.id}-{datetime.utcnow().strftime('%Y%m%d')}.json"
+    return Response(
+        content=json.dumps(payload, indent=2, ensure_ascii=False),
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/profile/avatar", response_class=HTMLResponse)

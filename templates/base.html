@@ -392,5 +392,40 @@
   }
   </script>
   {% block scripts %}{% endblock %}
+
+  <!-- Cookie consent banner -->
+  <div x-data="cookieConsent()" x-show="visible" x-cloak
+       class="cookie-banner" role="dialog" aria-label="Cookie consent" aria-live="polite">
+    <p class="cookie-banner__text">
+      We use essential cookies to keep you logged in and make the site work.
+      We'd also like to set optional analytics cookies to help us improve SameFare.
+      Read our <a href="/legal/privacy" class="cookie-banner__link">Privacy Policy</a>.
+    </p>
+    <div class="cookie-banner__actions">
+      <button class="btn btn-primary btn-sm" @click="accept()">Accept all</button>
+      <button class="btn btn-outline btn-sm" @click="essential()">Essential only</button>
+    </div>
+  </div>
+
+  <script>
+  function cookieConsent() {
+    return {
+      visible: false,
+      init() {
+        if (!localStorage.getItem('cookie_consent')) {
+          this.visible = true;
+        }
+      },
+      accept() {
+        localStorage.setItem('cookie_consent', 'all');
+        this.visible = false;
+      },
+      essential() {
+        localStorage.setItem('cookie_consent', 'essential');
+        this.visible = false;
+      },
+    };
+  }
+  </script>
 </body>
 </html>
