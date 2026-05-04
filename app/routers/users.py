@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 from datetime import datetime
@@ -10,6 +11,8 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from app import models
 from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
+
+log = logging.getLogger(__name__)
 
 templates = Jinja2Templates(directory="templates")
 router = APIRouter(tags=["users"])
@@ -157,8 +160,10 @@ def my_trips_page(
     all_rides = (
         db.query(models.Trip)
         .options(
-            selectinload(models.Trip.bookings).joinedload(models.Booking.payment),
-            selectinload(models.Trip.bookings).joinedload(models.Booking.passenger),
+            selectinload(models.Trip.bookings).options(
+                joinedload(models.Booking.payment),
+                joinedload(models.Booking.passenger),
+            ),
         )
         .filter(models.Trip.driver_id == current_user.id)
         .order_by(models.Trip.departure_datetime.desc())
