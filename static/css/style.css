@@ -4200,6 +4200,84 @@ button, input, select, textarea { font: inherit; }
   background: var(--c-primary-light);
 }
 
+/* ── CarFare cross-sell card ─────────────────────────────────── */
+.carfare-nudge {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  text-decoration: none;
+  color: inherit;
+  text-align: left;
+  transition: border-color .15s, box-shadow .15s;
+}
+.carfare-nudge:hover {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px var(--c-primary-light);
+}
+.carfare-nudge__icon {
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--c-primary-light);
+  color: var(--c-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.carfare-nudge__body { flex: 1; min-width: 0; }
+.carfare-nudge__headline {
+  font-size: .9375rem;
+  font-weight: 600;
+  color: var(--c-text);
+  margin: 0 0 .2rem;
+}
+.carfare-nudge__sub {
+  font-size: .8125rem;
+  color: var(--c-text-muted);
+  margin: 0;
+}
+.carfare-nudge__price {
+  flex-shrink: 0;
+  text-align: right;
+  padding-right: .75rem;
+  border-right: 1px solid var(--c-border);
+  margin-right: .25rem;
+}
+.carfare-nudge__price-from {
+  display: block;
+  font-size: .7rem;
+  color: var(--c-text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.carfare-nudge__price-amount {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--c-primary);
+  white-space: nowrap;
+}
+.carfare-nudge__price-unit {
+  display: block;
+  font-size: .7rem;
+  color: var(--c-text-muted);
+}
+.carfare-nudge__arrow {
+  flex-shrink: 0;
+  color: var(--c-text-muted);
+  transition: color .15s, transform .15s;
+}
+.carfare-nudge:hover .carfare-nudge__arrow {
+  color: var(--c-primary);
+  transform: translateX(3px);
+}
+
 /* Driver nudge in browse state */
 .empty-state__driver-nudge {
   margin-top: var(--space-6);

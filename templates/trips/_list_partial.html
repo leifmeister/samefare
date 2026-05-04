@@ -163,6 +163,31 @@
       </div>
     </div>
 
+    {# CarFare cross-sell #}
+    <a href="https://carfare.is/cars"
+       class="carfare-nudge" target="_blank" rel="noopener">
+      <div class="carfare-nudge__icon" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.75" width="28" height="28">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M5 17H3a2 2 0 01-2-2V9a2 2 0 012-2h1l2-4h10l2 4h1a2 2 0 012 2v6a2 2 0 01-2 2h-2m-10 0a2 2 0 104 0m6 0a2 2 0 104 0"/>
+        </svg>
+      </div>
+      <div class="carfare-nudge__body">
+        <p class="carfare-nudge__headline">Need a rental car?</p>
+        <p class="carfare-nudge__sub">Browse available rental cars on CarFare — Iceland's car rental marketplace.</p>
+      </div>
+      <div class="carfare-nudge__price">
+        <span class="carfare-nudge__price-from">from</span>
+        <span class="carfare-nudge__price-amount">9,500 kr</span>
+        <span class="carfare-nudge__price-unit">/day</span>
+      </div>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+           width="16" height="16" class="carfare-nudge__arrow" aria-hidden="true">
+        <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
+      </svg>
+    </a>
+
     {# Secondary actions #}
     <div class="empty-state__actions">
       <a href="/trips/new?origin={{ origin | urlencode }}&destination={{ destination | urlencode }}"
