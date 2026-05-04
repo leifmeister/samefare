@@ -215,20 +215,6 @@
 
     <!-- Results -->
     <section class="list-main">
-      <div class="list-main__toolbar">
-        <p class="list-main__count">
-          {% if trips %}
-            <strong>{{ trips|length }}</strong> ride{{ 's' if trips|length != 1 }} found
-          {% endif %}
-          {% if active_filters > 0 %}
-            <span class="filter-badge">{{ active_filters }} filter{{ 's' if active_filters != 1 }} active</span>
-          {% endif %}
-        </p>
-        {% if active_filters > 0 %}
-          <a href="/trips" class="link-muted">Clear filters</a>
-        {% endif %}
-      </div>
-
       <div id="trips-results">
         {% include "trips/_list_partial.html" %}
       </div>

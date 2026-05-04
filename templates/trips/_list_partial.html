@@ -1,3 +1,19 @@
+{% if trips or active_filters > 0 %}
+<div class="list-main__toolbar">
+  <p class="list-main__count">
+    {% if trips %}
+      <strong>{{ trips|length }}</strong> ride{{ 's' if trips|length != 1 }} found
+    {% endif %}
+    {% if active_filters > 0 %}
+      <span class="filter-badge">{{ active_filters }} filter{{ 's' if active_filters != 1 }} active</span>
+    {% endif %}
+  </p>
+  {% if active_filters > 0 %}
+    <a href="/trips" class="link-muted">Clear filters</a>
+  {% endif %}
+</div>
+{% endif %}
+
 {% if date_range_label %}
 <div class="date-range-banner">
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
@@ -9,7 +25,7 @@
 {% endif %}
 
 {% if same_city_error %}
-  <div class="empty-state" id="trips-results">
+  <div class="empty-state">
     <div class="empty-state__icon">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
@@ -20,7 +36,7 @@
   </div>
 
 {% elif trips %}
-  <div class="trips-grid" id="trips-results">
+  <div class="trips-grid">
     {% for trip in trips %}
       {% include "partials/trip_card.html" %}
     {% endfor %}
@@ -28,7 +44,7 @@
 
 {% elif origin and destination %}
   {# Route searched — no results. Offer alert, flex dates, post ride. #}
-  <div class="empty-state empty-state--route" id="trips-results">
+  <div class="empty-state empty-state--route">
 
     {# Route badge #}
     <div class="empty-state__route-badge">
@@ -142,7 +158,7 @@
 
 {% else %}
   {# No filters active — encourage searching or browsing popular routes #}
-  <div class="empty-state empty-state--browse" id="trips-results">
+  <div class="empty-state empty-state--browse">
     <h3 class="empty-state__title">Where are you headed?</h3>
     <p class="empty-state__body">Search by origin and destination above, or pick a popular route to browse available rides.</p>
 
