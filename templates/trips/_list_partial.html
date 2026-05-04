@@ -127,7 +127,7 @@
       <p class="empty-state__popular-label">Popular routes</p>
       <div class="empty-state__popular-list">
         {% for from_city, to_city in popular_routes[:6] %}
-          {% if from_city != origin or to_city != destination %}
+          {% if not (from_city == origin and to_city == destination) %}
           <a href="/trips?origin={{ from_city | urlencode }}&destination={{ to_city | urlencode }}"
              class="route-pill">
             {{ from_city }} → {{ to_city }}

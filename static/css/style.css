@@ -3235,7 +3235,7 @@ button, input, select, textarea { font: inherit; }
   border-radius: var(--radius-lg, 12px);
   padding: var(--space-6, 1.5rem);
   width: 100%;
-  max-width: 480px;
+
   margin: var(--space-6, 1.5rem) auto 0;
   text-align: left;
 }
@@ -3835,7 +3835,7 @@ button, input, select, textarea { font: inherit; }
   display: flex;
   gap: 1rem;
   align-items: flex-start;
-  max-width: 480px;
+
 }
 .alert-signup-card__icon {
   flex-shrink: 0;

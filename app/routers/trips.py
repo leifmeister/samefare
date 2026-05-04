@@ -439,7 +439,9 @@ def trips_list(
 
     # A date is "active" when a specific date is set OR a non-exact flex mode is active
     date_active = bool(travel_date) or date_flex in ("this_week", "weekend")
-    active_filters = sum([bool(origin), bool(destination), date_active, bool(seats)])
+    # Seats=1 is the default — only count it as an active filter when >1
+    seats_active = bool(seats) and seats > 1
+    active_filters = sum([bool(origin), bool(destination), date_active, seats_active])
 
     ctx_extra = {
         "trips": trips,
