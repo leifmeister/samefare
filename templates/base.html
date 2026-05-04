@@ -28,7 +28,10 @@
   <meta name="twitter:description" content="{{ self.meta_description() }}" />
   <meta name="twitter:image"       content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/img/og-default.jpg" />
 
-  <link rel="stylesheet" href="/static/css/style.css?v=17" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/style.css?v=19" />
   <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml" />
 
   <!-- HTMX -->
@@ -54,14 +57,7 @@
         <div class="navbar__inner">
 
           <a href="/" class="navbar__brand" aria-label="SameFare home">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
-                 stroke-linejoin="round" aria-hidden="true" width="26" height="26">
-              <path d="M3 12h18M3 12l4-4m-4 4 4 4"/>
-              <circle cx="17" cy="12" r="4"/>
-              <path d="M17 9v6"/>
-            </svg>
-            SameFare
+            <span class="brand-same">Same</span><span class="brand-fare">Fare</span>
           </a>
 
           <div class="navbar__nav">

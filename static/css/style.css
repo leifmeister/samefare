@@ -16,13 +16,13 @@
   --c-accent-light:  #FEF3C7;
 
   /* Neutrals */
-  --c-bg:            #F7FAF9;
+  --c-bg:            #FAFAF7;
   --c-surface:       #FFFFFF;
   --c-dark:          #0E1C2A;
-  --c-text:          #1A2B3C;
+  --c-text:          #111827;
   --c-text-muted:    #64748B;
-  --c-border:        #DDE8E5;
-  --c-border-light:  #EEF4F2;
+  --c-border:        #B8CAC6;
+  --c-border-light:  #DDE8E5;
 
   /* Semantic */
   --c-success:       #059669;
@@ -37,7 +37,8 @@
   --c-aurora-2: #0EA5E9;
 
   /* Typography */
-  --font-sans:  -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-sans:    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-display: "Nunito", ui-sans-serif, system-ui, sans-serif;
   --font-size-base: 1rem;
 
   /* Spacing */
@@ -53,17 +54,17 @@
   --space-16: 4rem;
 
   /* Radii */
-  --r-sm:   6px;
-  --r-md:   10px;
-  --r-lg:   16px;
-  --r-xl:   24px;
+  --r-sm:   8px;
+  --r-md:   14px;
+  --r-lg:   20px;
+  --r-xl:   28px;
   --r-full: 9999px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
-  --shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
-  --shadow-lg: 0 12px 32px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.06);
-  --shadow-card: 0 2px 8px rgba(0,108,91,.08);
+  --shadow-sm:   0 2px 4px rgba(0,0,0,.08);
+  --shadow-md:   0 4px 16px rgba(0,0,0,.10);
+  --shadow-lg:   0 8px 32px rgba(0,0,0,.12);
+  --shadow-card: 0 3px 0 var(--c-border);
 
   /* Transitions */
   --ease: cubic-bezier(.4,0,.2,1);
@@ -400,14 +401,16 @@ button, input, select, textarea { font: inherit; }
 .navbar__brand {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  font-size: 1.375rem;
+  gap: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
   font-weight: 800;
-  color: var(--c-primary);
-  letter-spacing: -.02em;
+  letter-spacing: -0.045em;
   flex-shrink: 0;
+  text-decoration: none;
 }
-.navbar__brand svg { stroke: var(--c-primary); }
+.navbar__brand .brand-same { color: var(--c-primary-dark); }
+.navbar__brand .brand-fare { color: var(--c-primary); }
 .navbar__nav {
   display: flex;
   align-items: center;
@@ -5004,3 +5007,71 @@ input[list] {
   }
   .cookie-banner__actions { flex-direction: row; }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   BOLD / PLAYFUL THEME OVERRIDES
+   To revert: delete this block + restore :root from themes/original.css
+════════════════════════════════════════════════════════════════ */
+
+/* Heavier base font weight */
+body { font-weight: 450; }
+
+/* Buttons — Duolingo-style lifted press effect */
+.btn {
+  border-width: 2px;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+.btn-primary {
+  box-shadow: 0 4px 0 var(--c-primary-dark);
+  transition: transform 80ms ease, box-shadow 80ms ease, background var(--t-fast), border-color var(--t-fast);
+}
+.btn-primary:hover {
+  box-shadow: 0 4px 0 var(--c-primary-dark);
+  transform: translateY(-1px);
+}
+.btn-primary:active {
+  box-shadow: 0 1px 0 var(--c-primary-dark);
+  transform: translateY(3px);
+}
+.btn-outline {
+  border-width: 2px;
+  font-weight: 700;
+}
+
+/* Trip cards — chunky border + lifted shadow */
+.trip-card {
+  border: 2px solid var(--c-border);
+  box-shadow: 0 4px 0 var(--c-border);
+  transition: box-shadow var(--t-mid), transform var(--t-mid), border-color var(--t-mid);
+}
+.trip-card:hover {
+  border-color: var(--c-primary);
+  box-shadow: 0 4px 0 var(--c-primary-dark);
+  transform: translateY(-3px);
+}
+
+/* Details / form cards — bolder border */
+.details-card,
+.form-card,
+.alert-signup-card,
+.carfare-nudge,
+.booking-summary,
+.policy-box {
+  border-width: 2px;
+}
+
+/* Navbar — thicker bottom line */
+.navbar {
+  border-bottom: 2px solid var(--c-border);
+}
+
+/* Page headers — bigger, bolder */
+.page-header__title,
+.form-page__title,
+.hero__title {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+/* Inter for body via Google Fonts (already loaded in base.html) */

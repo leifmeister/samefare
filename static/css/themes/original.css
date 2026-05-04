@@ -1,0 +1,68 @@
+/* ── ORIGINAL THEME — restore by copying :root block into style.css ── */
+:root {
+  /* Brand */
+  --c-primary:       #006C5B;
+  --c-primary-dark:  #004D41;
+  --c-primary-light: #E0F2EE;
+  --c-primary-mid:   #00A886;
+
+  /* Accent — midnight sun gold */
+  --c-accent:        #D4A017;
+  --c-accent-light:  #FEF3C7;
+
+  /* Neutrals */
+  --c-bg:            #F7FAF9;
+  --c-surface:       #FFFFFF;
+  --c-dark:          #0E1C2A;
+  --c-text:          #1A2B3C;
+  --c-text-muted:    #64748B;
+  --c-border:        #DDE8E5;
+  --c-border-light:  #EEF4F2;
+
+  /* Semantic */
+  --c-success:       #059669;
+  --c-success-light: #D1FAE5;
+  --c-error:         #DC2626;
+  --c-error-light:   #FEE2E2;
+  --c-warning:       #D97706;
+  --c-warning-light: #FEF3C7;
+
+  /* Aurora accents */
+  --c-aurora-1: #5B21B6;
+  --c-aurora-2: #0EA5E9;
+
+  /* Typography */
+  --font-sans:    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-display: "Nunito", ui-sans-serif, system-ui, sans-serif;
+  --font-size-base: 1rem;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Radii */
+  --r-sm:   6px;
+  --r-md:   10px;
+  --r-lg:   16px;
+  --r-xl:   24px;
+  --r-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.06);
+  --shadow-card: 0 2px 8px rgba(0,108,91,.08);
+
+  /* Transitions */
+  --ease: cubic-bezier(.4,0,.2,1);
+  --t-fast: 120ms var(--ease);
+  --t-mid:  200ms var(--ease);
+}
