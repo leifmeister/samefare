@@ -171,7 +171,7 @@ def prorate_segment_price(
     if total_km <= 0:
         return full_price_per_seat
     ratio    = seg_km / total_km
-    prorated = round(full_price_per_seat * ratio / 100) * 100
+    prorated = int(full_price_per_seat * ratio / 100) * 100
     return prorated if prorated >= 200 else None
 
 
