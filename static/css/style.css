@@ -4185,6 +4185,71 @@ button, input, select, textarea { font: inherit; }
 .pax-badge--card      { background: #eef2ff; color: #4338ca; }
 .pax-badge--done      { background: #f0f9ff; color: #0369a1; }
 
+/* ── bk-strip sub-text (card last4 etc.) ────────────────────── */
+.bk-strip__sub {
+  display: block;
+  margin-top: 3px;
+  font-size: .75rem;
+  opacity: .75;
+}
+
+/* ── Pending chip action link ────────────────────────────────── */
+.trip-pax-summary__act {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── Completed ride earnings summary ─────────────────────────── */
+.ride-earn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  background: var(--c-surface);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--c-border-light);
+  margin-top: var(--space-3);
+}
+.ride-earn__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ride-earn__stat--earn .ride-earn__value {
+  color: var(--c-primary);
+  font-weight: 800;
+}
+.ride-earn__stat--warn .ride-earn__value {
+  color: #b45309;
+}
+.ride-earn__label {
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--c-text-muted);
+}
+.ride-earn__value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--c-text);
+}
+.ride-earn__link {
+  margin-left: auto;
+  font-size: .8125rem;
+  font-weight: 600;
+  color: var(--c-primary);
+  white-space: nowrap;
+}
+.ride-earn__link:hover { text-decoration: underline; }
+.ride-earn__empty {
+  font-size: .8125rem;
+  color: var(--c-text-muted);
+}
+
 /* Mobile: stack alert card icon+body vertically on narrow screens */
 @media (max-width: 480px) {
   .empty-state--route,

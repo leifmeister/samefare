@@ -5,7 +5,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app import models
 from app.database import get_db
@@ -128,8 +128,9 @@ def my_trips_page(
     all_bookings = (
         db.query(models.Booking)
         .options(
-            joinedload(models.Booking.trip),
+            joinedload(models.Booking.trip).joinedload(models.Trip.driver),
             joinedload(models.Booking.payment),
+            selectinload(models.Booking.reviews),
         )
         .filter(models.Booking.passenger_id == current_user.id)
         .order_by(models.Booking.created_at.desc())
@@ -147,6 +148,10 @@ def my_trips_page(
     # ── Driver: all trips split into upcoming / past + pending requests ───────
     all_rides = (
         db.query(models.Trip)
+        .options(
+            selectinload(models.Trip.bookings).joinedload(models.Booking.payment),
+            selectinload(models.Trip.bookings).joinedload(models.Booking.passenger),
+        )
         .filter(models.Trip.driver_id == current_user.id)
         .order_by(models.Trip.departure_datetime.desc())
         .all()
