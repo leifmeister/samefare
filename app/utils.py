@@ -1,6 +1,7 @@
 """
 Shared utility helpers.
 """
+import heapq
 import unicodedata
 from typing import TYPE_CHECKING, Optional
 from urllib.parse import urlparse
@@ -84,8 +85,48 @@ def route_km(
     origin: str,
     destination: str,
 ) -> Optional[float]:
-    """Return the direct road distance (km) between two cities, or None."""
+    """Return the direct road distance (km) between two adjacent cities, or None.
+
+    Prefer shortest_path_km() when you need a distance that may span
+    multiple hops (e.g. Hveragerði→Vík on a Reykjavík→Vík route).
+    """
     return graph.get(origin, {}).get(destination)
+
+
+def shortest_path_km(
+    graph: dict[str, dict[str, float]],
+    origin: str,
+    destination: str,
+) -> Optional[float]:
+    """Return the shortest road distance (km) between two cities by traversing
+    the route graph, even when no direct edge exists.
+
+    Uses Dijkstra's algorithm over the adjacency dict built by
+    build_route_graph().  Returns None if no path exists in the graph.
+
+    Example: Hveragerði→Vík has no direct row in the routes table, but
+    the path Hveragerði→Selfoss→Vík is found automatically.
+    """
+    if origin == destination:
+        return 0.0
+    direct = graph.get(origin, {}).get(destination)
+    if direct is not None:
+        return direct          # fast path: direct edge exists
+
+    dist: dict[str, float] = {origin: 0.0}
+    heap: list[tuple[float, str]] = [(0.0, origin)]
+    while heap:
+        d, node = heapq.heappop(heap)
+        if node == destination:
+            return d
+        if d > dist.get(node, float("inf")):
+            continue
+        for neighbour, edge_km in graph.get(node, {}).items():
+            new_d = d + edge_km
+            if new_d < dist.get(neighbour, float("inf")):
+                dist[neighbour] = new_d
+                heapq.heappush(heap, (new_d, neighbour))
+    return None
 
 
 def is_on_route(
@@ -94,22 +135,25 @@ def is_on_route(
     trip_destination: str,
     city: str,
 ) -> bool:
-    """
-    Return True if *city* lies on the direct route from *trip_origin* to
+    """Return True if *city* lies on the route from *trip_origin* to
     *trip_destination*.
 
-    Endpoints are always considered "on the route".  An intermediate city is
+    Endpoints are always considered on the route.  An intermediate city is
     on the route when the triangular inequality holds within _ROUTE_TOLERANCE:
 
         dist(A→B) + dist(B→C)  ≤  dist(A→C) × (1 + tolerance)
+
+    All distances are computed via shortest_path_km() so that multi-hop
+    segments (e.g. Hveragerði on Reykjavík→Vík) work without requiring every
+    possible city-pair to be seeded as a direct route-table row.
     """
     if city in (trip_origin, trip_destination):
         return True
-    d_total = graph.get(trip_origin, {}).get(trip_destination)
+    d_total = shortest_path_km(graph, trip_origin, trip_destination)
     if d_total is None:
         return False
-    d1 = graph.get(trip_origin, {}).get(city)
-    d2 = graph.get(city, {}).get(trip_destination)
+    d1 = shortest_path_km(graph, trip_origin, city)
+    d2 = shortest_path_km(graph, city, trip_destination)
     if d1 is None or d2 is None:
         return False
     return (d1 + d2) <= d_total * (1 + _ROUTE_TOLERANCE)

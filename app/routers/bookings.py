@@ -13,7 +13,7 @@ from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
 from app.limiter import rate_limit
 from app.routers.payments import calc_fees, _issue_rapyd_refund
-from app.utils import canonical_city, build_route_graph, route_km, is_on_route, prorate_segment_price
+from app.utils import canonical_city, build_route_graph, shortest_path_km, is_on_route, prorate_segment_price
 
 settings = get_settings()
 templates = Jinja2Templates(directory="templates")
@@ -99,8 +99,8 @@ def _resolve_segment(
     if pickup == trip.origin and dropoff == trip.destination:
         return None, None, None, None
 
-    seg_km   = route_km(graph, pickup, dropoff)
-    total_km = route_km(graph, trip.origin, trip.destination)
+    seg_km   = shortest_path_km(graph, pickup, dropoff)
+    total_km = shortest_path_km(graph, trip.origin, trip.destination)
     if not seg_km or not total_km:
         return None, None, None, (
             "We don't have distance data for that segment. "

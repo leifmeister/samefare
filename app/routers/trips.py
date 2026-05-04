@@ -15,7 +15,7 @@ from app.routers.alerts import notify_matching_alerts
 from app.routers.payments import _issue_rapyd_refund
 from app.estimator import estimate_trip_cost, route_lookup
 from app.fuel import active_policy, get_cached_petrol_price
-from app.utils import canonical_city, build_route_graph, is_on_route, route_km, prorate_segment_price
+from app.utils import canonical_city, build_route_graph, is_on_route, shortest_path_km, prorate_segment_price
 
 settings = get_settings()
 
@@ -218,8 +218,10 @@ def _find_segment_trips(
     """
     graph = build_route_graph(db)
 
-    # We can only prorate if we know the segment's distance
-    seg_km = route_km(graph, search_origin, search_dest)
+    # We can only prorate if we know the segment's distance.
+    # shortest_path_km() traverses the graph so Hveragerði→Vík works even
+    # without a direct route-table row for that pair.
+    seg_km = shortest_path_km(graph, search_origin, search_dest)
     if seg_km is None:
         return []
 
@@ -249,7 +251,7 @@ def _find_segment_trips(
     results: list[SegmentedTrip] = []
 
     for trip in q.all():
-        total_km = route_km(graph, trip.origin, trip.destination)
+        total_km = shortest_path_km(graph, trip.origin, trip.destination)
         if total_km is None:
             continue  # unknown route — can't validate or prorate
 
@@ -262,14 +264,14 @@ def _find_segment_trips(
         # Verify ordering: search_origin must appear *before* search_dest along the trip
         d_to_pickup = (
             0.0 if trip.origin == search_origin
-            else route_km(graph, trip.origin, search_origin)
+            else shortest_path_km(graph, trip.origin, search_origin)
         )
         if d_to_pickup is None:
             continue
 
         d_to_dropoff = (
             total_km if trip.destination == search_dest
-            else route_km(graph, trip.origin, search_dest)
+            else shortest_path_km(graph, trip.origin, search_dest)
         )
         if d_to_dropoff is None:
             continue
@@ -1111,8 +1113,8 @@ def trip_detail(
     if (segment_pickup and segment_dropoff
             and (segment_pickup != trip.origin or segment_dropoff != trip.destination)):
         graph    = build_route_graph(db)
-        seg_km   = route_km(graph, segment_pickup, segment_dropoff)
-        total_km = route_km(graph, trip.origin, trip.destination)
+        seg_km   = shortest_path_km(graph, segment_pickup, segment_dropoff)
+        total_km = shortest_path_km(graph, trip.origin, trip.destination)
         if seg_km and total_km:
             segment_price = prorate_segment_price(trip.price_per_seat, seg_km, total_km)
         else:
