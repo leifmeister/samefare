@@ -6,16 +6,20 @@
    which is falsy), so the segment badge is simply hidden. #}
 {% set _is_partial = trip.is_partial %}
 {% set _card_href %}{% if _is_partial %}/trips/{{ trip.id }}?pickup={{ trip.pickup_city | urlencode }}&dropoff={{ trip.dropoff_city | urlencode }}{% else %}/trips/{{ trip.id }}{% endif %}{% endset %}
+{% set _driver_trips = trip.driver.total_trips_as_driver %}
 <article class="trip-card{% if _is_partial %} trip-card--partial{% endif %}">
   <a href="{{ _card_href }}" class="trip-card__link"
      aria-label="{{ trip.origin }} to {{ trip.destination }}{% if _is_partial %} (boards {{ trip.pickup_city }}, exits {{ trip.dropoff_city }}){% endif %}">
+
+    <!-- Route + price -->
     <div class="trip-card__header">
       <div class="trip-card__route">
         <span class="trip-card__city trip-card__city--from">{{ trip.origin }}</span>
         <div class="trip-card__route-line">
           <span class="trip-card__dot"></span>
           <span class="trip-card__line"></span>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="trip-card__car" width="16" height="16" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"
+               class="trip-card__car" width="16" height="16" aria-hidden="true">
             <path d="M3 10a1 1 0 100 2 1 1 0 000-2zm10 0a1 1 0 100 2 1 1 0 000-2zM1.5 7l1.5-3h9l1.5 3H1.5z"/>
           </svg>
         </div>
@@ -38,19 +42,27 @@
     </div>
     {% endif %}
 
+    <!-- Date · time · seats · booking type -->
     <div class="trip-card__meta">
       <div class="trip-card__meta-item">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
-        {{ trip.departure_datetime.strftime("%d %b") }}
+        {{ trip.departure_datetime.strftime("%a %-d %b · %H:%M") }}
       </div>
-      <div class="trip-card__meta-item">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
-        {{ trip.departure_datetime.strftime("%H:%M") }}
-      </div>
-      <div class="trip-card__meta-item">
+      <div class="trip-card__meta-item{% if trip.seats_available == 1 %} trip-card__seats--last{% endif %}">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
-        {{ trip.seats_available }} seat{{ 's' if trip.seats_available != 1 }}
+        {% if trip.seats_available == 1 %}1 seat left{% else %}{{ trip.seats_available }} seats{% endif %}
       </div>
+      {% if trip.instant_book %}
+      <span class="trip-card__book-pill trip-card__book-pill--instant">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="11" height="11" aria-hidden="true"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+        Instant
+      </span>
+      {% else %}
+      <span class="trip-card__book-pill trip-card__book-pill--request">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="11" height="11" aria-hidden="true"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
+        Approval req.
+      </span>
+      {% endif %}
     </div>
   </a>
 
@@ -58,25 +70,39 @@
   <div class="trip-card__footer">
     <a href="/users/{{ trip.driver_id }}" class="trip-card__driver">
       {{ avatar(trip.driver, cls="avatar--sm") }}
-      <span class="trip-card__driver-name">{{ trip.driver.full_name.split()[0] }}</span>
-      {{ verified_badge(trip.driver) }}
-      {% if trip.driver.average_rating %}
-        <span class="trip-card__rating">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="12" height="12" class="star-icon" aria-hidden="true"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-          {{ trip.driver.average_rating }}
-        </span>
-      {% endif %}
+      <div class="trip-card__driver-info">
+        <div class="trip-card__driver-top">
+          <span class="trip-card__driver-name">{{ trip.driver.full_name.split()[0] }}</span>
+          {{ verified_badge(trip.driver) }}
+          {% if trip.driver.phone_verified %}
+          <span class="trip-card__phone-dot" title="Phone verified" aria-label="Phone verified"></span>
+          {% endif %}
+        </div>
+        {% if trip.driver.average_rating or _driver_trips > 0 %}
+        <div class="trip-card__driver-bottom">
+          {% if trip.driver.average_rating %}
+          <span class="trip-card__rating">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="12" height="12" class="star-icon" aria-hidden="true"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            {{ trip.driver.average_rating }}
+          </span>
+          {% endif %}
+          {% if _driver_trips > 0 %}
+          <span class="trip-card__trip-count">{{ _driver_trips }} trip{{ 's' if _driver_trips != 1 }}</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
     </a>
+
+    <!-- Preferences only — booking type moved to meta row -->
     <div class="trip-card__badges">
-      {# Show meaningful preferences — skip allows_luggage (near-universal) #}
-      {% if trip.chattiness == 'quiet' %}<span class="badge badge--neutral" title="Quiet ride preferred">🤫</span>{% endif %}
-      {% if trip.allows_pets %}<span class="badge badge--neutral" title="Pets welcome">🐾</span>{% endif %}
-      {% if trip.large_luggage %}<span class="badge badge--neutral" title="Large luggage OK — suitcases, skis">🎿</span>{% endif %}
-      {% if trip.child_seat %}<span class="badge badge--neutral" title="Child seat available">🧒</span>{% endif %}
-      {% if trip.winter_ready %}<span class="badge badge--neutral" title="Winter-ready vehicle">❄️</span>{% endif %}
-      {% if trip.chattiness == 'chatty' %}<span class="badge badge--neutral" title="Chatty driver — conversation welcome">💬</span>{% endif %}
-      {% if trip.smoking %}<span class="badge badge--neutral" title="Smoking permitted">🚬</span>{% endif %}
-      {% if not trip.instant_book %}<span class="badge badge--approval" title="Driver approves each request">Approval</span>{% endif %}
+      {% if trip.chattiness == 'quiet' %}<span class="badge badge--pref" title="Quiet ride preferred">🤫</span>{% endif %}
+      {% if trip.allows_pets %}<span class="badge badge--pref" title="Pets welcome">🐾</span>{% endif %}
+      {% if trip.large_luggage %}<span class="badge badge--pref" title="Large luggage OK — suitcases, skis">🎿</span>{% endif %}
+      {% if trip.child_seat %}<span class="badge badge--pref" title="Child seat available">🧒</span>{% endif %}
+      {% if trip.winter_ready %}<span class="badge badge--pref" title="Winter-ready vehicle">❄️</span>{% endif %}
+      {% if trip.chattiness == 'chatty' %}<span class="badge badge--pref" title="Chatty driver — conversation welcome">💬</span>{% endif %}
+      {% if trip.smoking %}<span class="badge badge--pref" title="Smoking permitted">🚬</span>{% endif %}
     </div>
   </div>
 </article>
