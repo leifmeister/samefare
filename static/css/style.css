@@ -4460,3 +4460,56 @@ button, input, select, textarea { font: inherit; }
 
   .empty-state__popular-list { justify-content: center; }
 }
+
+/* ── City combobox ───────────────────────────────────────────── */
+.city-combo { position: relative; }
+
+.city-combo__input { padding-right: 2.5rem; }
+
+.city-combo__btn {
+  position: absolute;
+  right: .625rem;
+  top: 50%;
+  transform: translateY(-50%);
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: none;
+  padding: .25rem;
+  cursor: pointer;
+  color: #94a3b8;
+  line-height: 0;
+  z-index: 1;
+  border-radius: 4px;
+  user-select: none;
+}
+.city-combo__btn:hover { color: #475569; background: #f1f5f9; }
+
+.city-combo__list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-md);
+  box-shadow: 0 4px 16px rgba(0,0,0,.1);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 200;
+  margin: 0;
+  padding: .25rem 0;
+  list-style: none;
+}
+
+.city-combo__option {
+  padding: .5rem .875rem;
+  cursor: pointer;
+  font-size: .9375rem;
+  color: var(--c-text);
+}
+.city-combo__option:hover,
+.city-combo__option--active {
+  background: var(--c-primary-light);
+  color: var(--c-primary-dark);
+}

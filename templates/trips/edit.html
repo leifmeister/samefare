@@ -13,28 +13,63 @@
       <div class="alert alert--error" role="alert">{{ error }}</div>
     {% endif %}
 
+    <script>
+      var _routes    = {{ routes_js | safe }};
+      var _policy    = {{ policy_js | safe }};
+      var _fuelPrice = {{ fuel_price }};
+      var _cities    = {{ cities | tojson }};
+    </script>
     <form method="post" action="/trips/{{ trip.id }}/edit" class="form-card"
-          x-data="tripPricing({{ routes_js }}, {{ policy_js }}, {{ fuel_price }})">
+          x-data="tripPricing(_routes, _policy, _fuelPrice, _cities)">
 
       <fieldset class="form-section">
         <legend class="form-section__title">Route</legend>
         <div class="form-row">
           <div class="form-group">
             <label for="origin" class="label">Departing from <span class="required">*</span></label>
-            <input id="origin" name="origin" type="text" class="input" required
-                   placeholder="e.g. Reykjavík" list="cities-list" autocomplete="off"
-                   value="{{ vals.origin }}" x-model.lazy="origin" />
+            <div class="city-combo" @click.outside="oOpen=false">
+              <input id="origin" name="origin" type="text" class="input city-combo__input" required
+                     placeholder="e.g. Reykjavík" autocomplete="off"
+                     x-model="fromCity"
+                     @focus="oOpen=true"
+                     @input="oShowAll=false;oCursor=-1;oOpen=true"
+                     @keydown.escape.prevent="oOpen=false"
+                     @keydown.enter.prevent="oPick(oFiltered[oCursor>=0?oCursor:0])"
+                     @keydown.arrow-down.prevent="oCursor=Math.min(oCursor+1,oFiltered.length-1);oOpen=true"
+                     @keydown.arrow-up.prevent="oCursor=Math.max(oCursor-1,0)" />
+              <span class="city-combo__btn" @mousedown.prevent="oToggle()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              </span>
+              <ul class="city-combo__list" x-show="oOpen && oFiltered.length">
+                <template x-for="(city, i) in oFiltered" :key="city">
+                  <li class="city-combo__option" :class="{'city-combo__option--active':i===oCursor}" @mousedown.prevent="oPick(city)" x-text="city"></li>
+                </template>
+              </ul>
+            </div>
           </div>
           <div class="form-group">
             <label for="destination" class="label">Going to <span class="required">*</span></label>
-            <input id="destination" name="destination" type="text" class="input" required
-                   placeholder="e.g. Akureyri" list="cities-list" autocomplete="off"
-                   value="{{ vals.destination }}" x-model.lazy="destination" />
+            <div class="city-combo" @click.outside="dOpen=false">
+              <input id="destination" name="destination" type="text" class="input city-combo__input" required
+                     placeholder="e.g. Akureyri" autocomplete="off"
+                     x-model="toCity"
+                     @focus="dOpen=true"
+                     @input="dShowAll=false;dCursor=-1;dOpen=true"
+                     @keydown.escape.prevent="dOpen=false"
+                     @keydown.enter.prevent="dPick(dFiltered[dCursor>=0?dCursor:0])"
+                     @keydown.arrow-down.prevent="dCursor=Math.min(dCursor+1,dFiltered.length-1);dOpen=true"
+                     @keydown.arrow-up.prevent="dCursor=Math.max(dCursor-1,0)" />
+              <span class="city-combo__btn" @mousedown.prevent="dToggle()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              </span>
+              <ul class="city-combo__list" x-show="dOpen && dFiltered.length">
+                <template x-for="(city, i) in dFiltered" :key="city">
+                  <li class="city-combo__option" :class="{'city-combo__option--active':i===dCursor}" @mousedown.prevent="dPick(city)" x-text="city"></li>
+                </template>
+              </ul>
+            </div>
           </div>
         </div>
-        <datalist id="cities-list">
-          {% for city in cities %}<option value="{{ city }}"/>{% endfor %}
-        </datalist>
         <div class="form-row" style="margin-top:1rem;">
           <div class="form-group">
             <label for="pickup_address" class="label">Pickup address <span class="optional">(optional)</span></label>
@@ -101,7 +136,7 @@
         <div class="price-cap-card" x-show="distanceKm" x-cloak>
           <p class="price-cap-card__title">
             Cost breakdown
-            <span class="price-cap-card__route" x-text="origin + ' → ' + destination + ' · ' + distanceKm + ' km'"></span>
+            <span class="price-cap-card__route" x-text="fromCity + ' → ' + toCity + ' · ' + distanceKm + ' km'"></span>
           </p>
           <div class="price-cap-card__rows">
             <div class="price-cap-card__row">
@@ -325,16 +360,25 @@
 
 {% block scripts %}
 <script>
-function tripPricing(routes, policy, fuelPrice) {
+function tripPricing(routes, policy, fuelPrice, cities) {
   const vehicleClassMap = {sedan:'standard', suv:'suv', van:'van', electric:'standard', '4x4':'suv', camper:'van'};
   return {
-    origin:      '{{ vals.origin | e }}',
-    destination: '{{ vals.destination | e }}',
+    fromCity:    '{{ vals.origin | e }}',
+    toCity:      '{{ vals.destination | e }}',
     seats:       {{ vals.seats_total | default(3) }},
     carType:     '{{ defaults.car_type | default("sedan") | e }}',
     fuelType:    '{{ vals.fuel_type or ("electric" if vals.car_type == "electric" else "petrol") | e }}',
 
-    get routeKey()  { return this.origin + '|' + this.destination; },
+    oOpen:false, oShowAll:false, oCursor:-1,
+    dOpen:false, dShowAll:false, dCursor:-1,
+    get oFiltered(){ const q=this.fromCity.toLowerCase(); return (this.oShowAll||!this.fromCity)?cities:cities.filter(c=>c.toLowerCase().includes(q)); },
+    get dFiltered(){ const q=this.toCity.toLowerCase(); return (this.dShowAll||!this.toCity)?cities:cities.filter(c=>c.toLowerCase().includes(q)); },
+    oToggle(){ if(this.oOpen&&this.oShowAll){this.oOpen=false;return;} this.oShowAll=true;this.oCursor=-1;this.oOpen=true; },
+    dToggle(){ if(this.dOpen&&this.dShowAll){this.dOpen=false;return;} this.dShowAll=true;this.dCursor=-1;this.dOpen=true; },
+    oPick(city){ if(!city)return; this.fromCity=city;this.oOpen=false;this.oShowAll=false;this.oCursor=-1; },
+    dPick(city){ if(!city)return; this.toCity=city;this.dOpen=false;this.dShowAll=false;this.dCursor=-1; },
+
+    get routeKey()  { return this.fromCity + '|' + this.toCity; },
     get distanceKm(){ return routes[this.routeKey] || null; },
     get vClass()    { return vehicleClassMap[this.carType] || 'standard'; },
     get resolvedFuelType() {
