@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from app import models
 from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
+from app.fuel import active_policy
 
 log = logging.getLogger(__name__)
 
@@ -192,6 +193,19 @@ def my_trips_page(
         "pending_bookings":  pending_bookings,
         "tab":               tab,
         "completion":        profile_completion(current_user),
+    })
+
+
+@router.get("/pricing/how-it-works", response_class=HTMLResponse)
+def pricing_methodology(
+    request: Request,
+    ctx: dict = Depends(get_template_context),
+    db: Session = Depends(get_db),
+):
+    policy = active_policy(db)
+    return templates.TemplateResponse("pricing/how_it_works.html", {
+        **ctx,
+        "policy": policy,
     })
 
 

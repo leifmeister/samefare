@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}How trip costs are calculated — SameFare{% endblock %}
+{% block meta_description %}SameFare calculates a fair per-seat cap based on actual fuel costs, road-use charges, wear and tear, and depreciation. No profit — just cost-sharing.{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:720px; margin-top:2.5rem; margin-bottom:4rem;">
+
+  <h1 class="page-title" style="margin-bottom:.5rem;">How trip costs are calculated</h1>
+  <p style="color:#64748B; margin-bottom:2.5rem;">
+    SameFare is a cost-sharing platform. Drivers set a price at or below a cap we
+    calculate from real running costs — no profit allowed.
+  </p>
+
+  {# ── Step 1: cost per km ─────────────────────────────────────────────────── #}
+  <section style="margin-bottom:2.5rem;">
+    <h2 style="font-size:1.1rem; font-weight:600; margin-bottom:1rem;">Step 1 — Cost per kilometre</h2>
+    <p style="color:#475569; margin-bottom:1rem;">
+      We add four components to find what the trip genuinely costs the driver per km:
+    </p>
+
+    <div style="border:1px solid #E2E8F0; border-radius:10px; overflow:hidden;">
+      <table style="width:100%; border-collapse:collapse; font-size:.9rem;">
+        <thead>
+          <tr style="background:#F8FAFC;">
+            <th style="padding:.75rem 1rem; text-align:left; font-weight:600; color:#374151; border-bottom:1px solid #E2E8F0;">Component</th>
+            <th style="padding:.75rem 1rem; text-align:left; font-weight:600; color:#374151; border-bottom:1px solid #E2E8F0;">What it covers</th>
+            {% if policy %}<th style="padding:.75rem 1rem; text-align:right; font-weight:600; color:#374151; border-bottom:1px solid #E2E8F0;">Current rate</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #F1F5F9;">
+            <td style="padding:.75rem 1rem; font-weight:500;">Fuel / energy</td>
+            <td style="padding:.75rem 1rem; color:#475569;">Litres per 100 km × current fuel price, or kWh per 100 km × electricity price for EVs</td>
+            {% if policy %}<td style="padding:.75rem 1rem; text-align:right; color:#475569;">Varies by vehicle &amp; live fuel price</td>{% endif %}
+          </tr>
+          <tr style="border-bottom:1px solid #F1F5F9;">
+            <td style="padding:.75rem 1rem; font-weight:500;">Kilometragjald</td>
+            <td style="padding:.75rem 1rem; color:#475569;">Statutory Icelandic road-use charge, all vehicles</td>
+            {% if policy %}<td style="padding:.75rem 1rem; text-align:right; color:#475569;">{{ "%.1f"|format(policy.kilometragjald_standard|float) }} ISK/km</td>{% endif %}
+          </tr>
+          <tr style="border-bottom:1px solid #F1F5F9;">
+            <td style="padding:.75rem 1rem; font-weight:500;">Wear &amp; tear</td>
+            <td style="padding:.75rem 1rem; color:#475569;">Tyres, brakes, filters, and oil averaged over mileage</td>
+            {% if policy %}<td style="padding:.75rem 1rem; text-align:right; color:#475569;">{{ "%.1f"|format(policy.wear_and_tear_isk_per_km|float) }} ISK/km</td>{% endif %}
+          </tr>
+          <tr>
+            <td style="padding:.75rem 1rem; font-weight:500;">Depreciation</td>
+            <td style="padding:.75rem 1rem; color:#475569;">Marginal usage fraction of real vehicle depreciation</td>
+            {% if policy %}<td style="padding:.75rem 1rem; text-align:right; color:#475569;">Fraction of {{ "%.0f"|format(policy.real_depreciation_isk_per_km|float) }} ISK/km</td>{% endif %}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="color:#64748B; font-size:.85rem; margin-top:.75rem;">
+      The sum is capped at a platform maximum
+      {% if policy %}(currently {{ "%.0f"|format(policy.platform_cost_cap_isk_per_km|float) }} ISK/km){% endif %}
+      so unusually expensive vehicles can't produce unreasonable seat prices.
+    </p>
+  </section>
+
+  {# ── Step 2: per-seat cap ───────────────────────────────────────────────── #}
+  <section style="margin-bottom:2.5rem;">
+    <h2 style="font-size:1.1rem; font-weight:600; margin-bottom:1rem;">Step 2 — Per-seat cap</h2>
+    <p style="color:#475569; margin-bottom:1rem;">
+      The driver and each passenger share the total trip cost equally — one share
+      per seat plus one share for the driver.
+    </p>
+    <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:1.25rem; font-family:monospace; font-size:.875rem; color:#1E293B; line-height:1.7;">
+      total_cost = distance_km × allowed_cost_per_km<br>
+      price_per_seat_cap = floor(total_cost / (seats + 1) / {{ policy.rounding_unit if policy else 50 }}) × {{ policy.rounding_unit if policy else 50 }}
+    </div>
+    <p style="color:#64748B; font-size:.85rem; margin-top:.75rem;">
+      The cap is always rounded <strong>down</strong> to the nearest
+      {{ policy.rounding_unit if policy else 50 }} ISK — never up.
+      Drivers set their own price at or below this cap.
+    </p>
+  </section>
+
+  {# ── Step 3: fuel price ─────────────────────────────────────────────────── #}
+  <section style="margin-bottom:2.5rem;">
+    <h2 style="font-size:1.1rem; font-weight:600; margin-bottom:1rem;">Step 3 — Fuel price source</h2>
+    <p style="color:#475569;">
+      We fetch the 80th-percentile petrol price in Iceland daily from
+      <a href="https://apis.is" target="_blank" rel="noopener" style="color:#10B981;">apis.is</a>.
+      If the live feed is unavailable we fall back to a cached value, then to a
+      conservative policy default. The price tier used is recorded in every
+      trip's cost snapshot so calculations are always reproducible.
+    </p>
+  </section>
+
+  {# ── Why cost-sharing ───────────────────────────────────────────────────── #}
+  <section style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:10px; padding:1.25rem 1.5rem;">
+    <h2 style="font-size:1rem; font-weight:600; margin-bottom:.5rem; color:#15803D;">Why cost-sharing, not pricing?</h2>
+    <p style="color:#166534; font-size:.9rem; margin:0;">
+      Icelandic law distinguishes between commercial transport and genuine cost-sharing.
+      SameFare enforces the cap so drivers recover real expenses without generating
+      profit, keeping the platform legal and fair for everyone.
+    </p>
+  </section>
+
+  <div style="margin-top:2rem;">
+    <a href="/trips/new" class="btn btn-primary">Offer a ride</a>
+    <a href="/trips" class="btn btn-outline" style="margin-left:.75rem;">Browse rides</a>
+  </div>
+
+</div>
+{% endblock %}
