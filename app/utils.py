@@ -175,6 +175,69 @@ def prorate_segment_price(
     return prorated if prorated >= 200 else None
 
 
+def resolve_segment(
+    graph: dict,
+    trip,
+    raw_pickup: str,
+    raw_dropoff: str,
+) -> tuple:
+    """
+    Canonicalize, validate, and price a segment (partial-route) booking.
+
+    Returns (pickup_city, dropoff_city, segment_price, error_message).
+    - Empty input  → (None, None, None, None)   — full-route booking
+    - Valid segment → (pickup, dropoff, price, None)
+    - Invalid      → (None, None, None, error_str)
+    """
+    pickup  = canonical_city(raw_pickup.strip())  if raw_pickup.strip()  else None
+    dropoff = canonical_city(raw_dropoff.strip()) if raw_dropoff.strip() else None
+
+    if not pickup and not dropoff:
+        return None, None, None, None
+
+    if bool(pickup) != bool(dropoff):
+        return None, None, None, "Please provide both a pickup and dropoff city for a partial route."
+
+    if pickup == dropoff:
+        return None, None, None, "Pickup and dropoff cities must be different."
+
+    if not is_on_route(graph, trip.origin, trip.destination, pickup):
+        return None, None, None, (
+            f"'{pickup}' is not on this trip's route "
+            f"({trip.origin} → {trip.destination})."
+        )
+    if not is_on_route(graph, trip.origin, trip.destination, dropoff):
+        return None, None, None, (
+            f"'{dropoff}' is not on this trip's route "
+            f"({trip.origin} → {trip.destination})."
+        )
+
+    if not is_on_route(graph, trip.origin, dropoff, pickup):
+        return None, None, None, (
+            f"'{pickup}' does not come before '{dropoff}' on this route. "
+            "Please check the order of your pickup and dropoff cities."
+        )
+
+    if pickup == trip.origin and dropoff == trip.destination:
+        return None, None, None, None
+
+    seg_km   = shortest_path_km(graph, pickup, dropoff)
+    total_km = shortest_path_km(graph, trip.origin, trip.destination)
+    if not seg_km or not total_km:
+        return None, None, None, (
+            "We don't have distance data for that segment. "
+            "Please book the full route."
+        )
+
+    price = prorate_segment_price(trip.price_per_seat, seg_km, total_km)
+    if price is None:
+        return None, None, None, (
+            "This segment is too short to book separately — the minimum fare is 200 ISK. "
+            "Please book the full route or choose a longer segment."
+        )
+    return pickup, dropoff, price, None
+
+
 def safe_redirect(target: str, fallback: str = "/") -> str:
     """
     Return a safe same-origin redirect path from *target*.

@@ -15,7 +15,7 @@ from app.routers.alerts import notify_matching_alerts
 from app.routers.payments import _issue_rapyd_refund
 from app.estimator import estimate_trip_cost, route_lookup
 from app.fuel import active_policy, get_cached_petrol_price
-from app.utils import canonical_city, build_route_graph, is_on_route, shortest_path_km, prorate_segment_price
+from app.utils import canonical_city, build_route_graph, is_on_route, shortest_path_km, prorate_segment_price, resolve_segment
 
 settings = get_settings()
 
@@ -1108,25 +1108,12 @@ def trip_detail(
             .first()
         )
 
-    # Compute segment price if a passenger arrived via a partial-route search
-    segment_pickup  = canonical_city(pickup)  if pickup  else None
-    segment_dropoff = canonical_city(dropoff) if dropoff else None
-    segment_price   = None
-    if (segment_pickup and segment_dropoff
-            and (segment_pickup != trip.origin or segment_dropoff != trip.destination)):
-        graph    = build_route_graph(db)
-        seg_km   = shortest_path_km(graph, segment_pickup, segment_dropoff)
-        total_km = shortest_path_km(graph, trip.origin, trip.destination)
-        if seg_km and total_km:
-            segment_price = prorate_segment_price(trip.price_per_seat, seg_km, total_km)
-            if segment_price is None:
-                # Below 200 ISK floor — segment not available, clear context
-                segment_pickup  = None
-                segment_dropoff = None
-        else:
-            # Unknown segment — fall back to full price, clear segment labels
-            segment_pickup  = None
-            segment_dropoff = None
+    # Validate and price the segment using the same logic as the booking flow.
+    # Any invalid or out-of-route segment is silently dropped so the page
+    # falls back to full-trip context rather than showing a contradictory price.
+    segment_pickup, segment_dropoff, segment_price, _ = resolve_segment(
+        build_route_graph(db), trip, pickup or "", dropoff or ""
+    )
 
     return templates.TemplateResponse("trips/detail.html", {
         **ctx,
