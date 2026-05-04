@@ -413,9 +413,9 @@ def trips_list(
     )
 
     if origin:
-        query = query.filter(models.Trip.origin.ilike(f"%{origin}%"))
+        query = query.filter(models.Trip.origin.ilike(origin))
     if destination:
-        query = query.filter(models.Trip.destination.ilike(f"%{destination}%"))
+        query = query.filter(models.Trip.destination.ilike(destination))
 
     # Apply date range filter (respects flex mode)
     range_start, range_end, date_range_label = _flex_date_range(parsed_date, date_flex)
