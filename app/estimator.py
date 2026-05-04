@@ -51,8 +51,10 @@ import math
 import logging
 from datetime import datetime
 
+from types import SimpleNamespace
 from app import models
 from app.fuel import active_policy
+from app.utils import build_route_graph, shortest_path_km
 
 log = logging.getLogger(__name__)
 
@@ -308,9 +310,13 @@ def estimate_for_trip(
     )
 
 
-def route_lookup(origin: str, destination: str, db) -> models.Route | None:
-    """Return the active Route for a city pair, or None if not in the table."""
-    return (
+def route_lookup(origin: str, destination: str, db):
+    """
+    Return the active Route for a city pair, or a synthetic object with
+    distance_km computed via Dijkstra for multi-hop routes not stored as
+    direct rows.  Returns None only when no path exists at all.
+    """
+    direct = (
         db.query(models.Route)
         .filter(
             models.Route.origin      == origin,
@@ -319,3 +325,7 @@ def route_lookup(origin: str, destination: str, db) -> models.Route | None:
         )
         .first()
     )
+    if direct:
+        return direct
+    km = shortest_path_km(build_route_graph(db), origin, destination)
+    return SimpleNamespace(distance_km=km) if km else None

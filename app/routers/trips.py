@@ -76,12 +76,21 @@ def _pricing_ctx(
     policy = active_policy(db)
     fuel_price, fuel_tier = get_cached_petrol_price(db)
 
-    # All active routes as a JS-injectable dict keyed "origin|destination"
+    # Build a distance map for the Alpine JS calculator.
+    # Start from direct DB rows, then fill in any multi-hop city pairs so that
+    # every combination of known cities produces a valid pricing estimate.
     all_routes = db.query(models.Route).filter(models.Route.is_active == True).all()  # noqa: E712
-    routes_js = json.dumps(
-        {f"{r.origin}|{r.destination}": r.distance_km for r in all_routes},
-        ensure_ascii=False,
-    )
+    routes_map: dict[str, float] = {f"{r.origin}|{r.destination}": float(r.distance_km) for r in all_routes}
+    graph = build_route_graph(db)
+    for o in ICELANDIC_CITIES:
+        for d in ICELANDIC_CITIES:
+            if o != d:
+                key = f"{o}|{d}"
+                if key not in routes_map:
+                    km = shortest_path_km(graph, o, d)
+                    if km is not None:
+                        routes_map[key] = km
+    routes_js = json.dumps(routes_map, ensure_ascii=False)
 
     # Policy constants for the Alpine cost calculator
     policy_js = "null"
