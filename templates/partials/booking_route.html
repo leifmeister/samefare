@@ -9,10 +9,9 @@
              route is never lost.
 
   Usage:
-    {% from "partials/booking_route.html" import booking_route, seg_origin, seg_dest %}
-    {{ booking_route(booking) }}
-    {# inline text: #}
-    {{ seg_origin(booking) }} → {{ seg_dest(booking) }}
+    from "partials/booking_route.html" import booking_route, seg_origin, seg_dest
+    booking_route(booking)
+    seg_origin(booking) / seg_dest(booking)  -- inline helpers
 #}
 
 {% macro seg_origin(booking) %}{{ booking.pickup_city or booking.trip.origin }}{% endmacro %}
