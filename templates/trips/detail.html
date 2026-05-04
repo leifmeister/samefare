@@ -337,7 +337,7 @@
               <p class="booking-state__sub">You'll be notified when the driver responds.</p>
             </div>
           </div>
-          <a href="/bookings/{{ current_user_booking.id }}" class="btn btn-outline btn-block btn-sm">View request</a>
+          <a href="/messages/{{ current_user_booking.id }}" class="btn btn-outline btn-block btn-sm">Message driver</a>
 
           {% elif current_user_booking.status == 'awaiting_payment' %}
           <div class="booking-widget__price">
@@ -365,7 +365,7 @@
               <p class="booking-state__sub">Seat confirmed and paid.</p>
             </div>
           </div>
-          <a href="/bookings/{{ current_user_booking.id }}" class="btn btn-outline btn-block btn-sm">View booking</a>
+          <a href="/messages/{{ current_user_booking.id }}" class="btn btn-outline btn-block btn-sm">Message driver</a>
           {% endif %}
 
           {% elif current_user %}
