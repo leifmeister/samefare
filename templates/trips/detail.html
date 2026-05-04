@@ -489,8 +489,8 @@
         <a href="/users/{{ trip.driver_id }}" class="driver-trust-card__head">
           {{ avatar(trip.driver, cls="driver-trust-card__avatar") }}
           <div class="driver-trust-card__identity">
-            <span class="driver-trust-card__name">{{ trip.driver.full_name }}</span>
-            <div class="driver-trust-card__badges">
+            <div class="driver-trust-card__name-row">
+              <span class="driver-trust-card__name">{{ trip.driver.full_name }}</span>
               {{ verified_badge(trip.driver, size=15) }}
               {% if trip.driver.phone_verified %}
               <span class="trip-card__phone-dot" title="Phone verified" aria-label="Phone verified"></span>
