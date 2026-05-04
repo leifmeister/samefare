@@ -108,6 +108,11 @@ def _resolve_segment(
         )
 
     price = prorate_segment_price(trip.price_per_seat, seg_km, total_km)
+    if price is None:
+        return None, None, None, (
+            "This segment is too short to book separately — the minimum fare is 200 ISK. "
+            "Please book the full route or choose a longer segment."
+        )
     return pickup, dropoff, price, None
 
 

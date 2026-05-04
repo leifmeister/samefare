@@ -280,6 +280,8 @@ def _find_segment_trips(
             continue  # wrong direction — passenger's origin is at or past the exit
 
         segment_price = prorate_segment_price(trip.price_per_seat, seg_km, total_km)
+        if segment_price is None:
+            continue
         results.append(SegmentedTrip(trip, search_origin, search_dest, segment_price))
 
     return results
@@ -1117,6 +1119,10 @@ def trip_detail(
         total_km = shortest_path_km(graph, trip.origin, trip.destination)
         if seg_km and total_km:
             segment_price = prorate_segment_price(trip.price_per_seat, seg_km, total_km)
+            if segment_price is None:
+                # Below 200 ISK floor — segment not available, clear context
+                segment_pickup  = None
+                segment_dropoff = None
         else:
             # Unknown segment — fall back to full price, clear segment labels
             segment_pickup  = None

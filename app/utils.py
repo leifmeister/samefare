@@ -163,18 +163,16 @@ def prorate_segment_price(
     full_price_per_seat: int,
     seg_km: float,
     total_km: float,
-) -> int:
+) -> Optional[int]:
     """
-    Return a prorated price for a partial segment.
-
-    Rounds to the nearest 100 ISK and enforces a 200 ISK floor so the driver
-    always earns something meaningful even on very short hops.
+    Return a prorated price for a partial segment, or None if it falls below
+    the 200 ISK minimum fare (segment is too short to offer separately).
     """
     if total_km <= 0:
         return full_price_per_seat
     ratio    = seg_km / total_km
     prorated = round(full_price_per_seat * ratio / 100) * 100
-    return max(200, prorated)
+    return prorated if prorated >= 200 else None
 
 
 def safe_redirect(target: str, fallback: str = "/") -> str:
