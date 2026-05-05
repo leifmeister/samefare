@@ -19,10 +19,15 @@ and pass the returned tier string to the estimator for transparency.
 
 import json
 import logging
+import ssl
 import statistics
 import urllib.error
 import urllib.request
 from datetime import date, datetime, timedelta
+
+import certifi
+
+_SSL_CTX = ssl.create_default_context(cafile=certifi.where())
 
 from app import models
 
@@ -61,7 +66,7 @@ def _fetch_live(policy: models.PricingPolicy) -> float | None:
     """
     try:
         req  = urllib.request.Request(_APIS_IS_URL, headers={"Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=_REQUEST_TIMEOUT) as resp:
+        with urllib.request.urlopen(req, timeout=_REQUEST_TIMEOUT, context=_SSL_CTX) as resp:
             data = json.loads(resp.read().decode())
     except urllib.error.URLError as exc:
         log.warning("apis.is fetch failed (network): %s", exc)
@@ -206,7 +211,7 @@ def get_current_petrol_price(db) -> tuple[float, str]:
         # We do a quick second pass to get median/count for the cache row.
         try:
             req = urllib.request.Request(_APIS_IS_URL, headers={"Accept": "application/json"})
-            with urllib.request.urlopen(req, timeout=_REQUEST_TIMEOUT) as resp:
+            with urllib.request.urlopen(req, timeout=_REQUEST_TIMEOUT, context=_SSL_CTX) as resp:
                 data = json.loads(resp.read().decode())
             prices = [
                 float(s["bensin95"])
