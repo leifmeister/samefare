@@ -33,6 +33,7 @@ from app import models
 
 log = logging.getLogger(__name__)
 
+_GASVAKTIN_URL    = "https://raw.githubusercontent.com/gasvaktin/gasvaktin/master/vaktin/gas.min.json"
 _APIS_IS_URL      = "https://apis.is/petrol"
 _REQUEST_TIMEOUT  = 10        # seconds
 MAX_CACHE_AGE_DAYS = 7        # use cached price if fetch fails, up to this many days old
@@ -53,41 +54,57 @@ def _percentile_80(prices: list[float]) -> float:
     return sorted_prices[idx]
 
 
-# ── Live fetch ────────────────────────────────────────────────────────────────
+# ── Live fetch helpers ────────────────────────────────────────────────────────
 
-def _fetch_live(policy: models.PricingPolicy) -> float | None:
-    """
-    Fetch station prices from apis.is and return the p80.
-
-    Returns None (and logs a warning) if:
-      - The HTTP request fails
-      - Fewer than MIN_STATION_COUNT valid prices are returned
-      - The computed p80 falls outside the policy's sanity bounds
-    """
+def _prices_from_gasvaktin() -> list[float] | None:
+    """Fetch bensin95 prices from gasvaktin GitHub JSON. Returns raw price list or None."""
     try:
-        req  = urllib.request.Request(_APIS_IS_URL, headers={"Accept": "application/json"})
+        req = urllib.request.Request(_GASVAKTIN_URL, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=_REQUEST_TIMEOUT, context=_SSL_CTX) as resp:
+            stations = json.loads(resp.read().decode())
+    except Exception as exc:
+        log.warning("gasvaktin fetch failed: %s", exc)
+        return None
+    prices = [
+        float(s["bensin95"])
+        for s in stations
+        if s.get("bensin95") and isinstance(s["bensin95"], (int, float)) and s["bensin95"] > 0
+    ]
+    return prices if prices else None
+
+
+def _prices_from_apis_is() -> list[float] | None:
+    """Fetch bensin95 prices from apis.is. Returns raw price list or None."""
+    try:
+        req = urllib.request.Request(_APIS_IS_URL, headers={"Accept": "application/json"})
         with urllib.request.urlopen(req, timeout=_REQUEST_TIMEOUT, context=_SSL_CTX) as resp:
             data = json.loads(resp.read().decode())
-    except urllib.error.URLError as exc:
+    except Exception as exc:
         log.warning("apis.is fetch failed (network): %s", exc)
         return None
-    except Exception as exc:
-        log.warning("apis.is fetch failed (parse): %s", exc)
-        return None
+    prices = [
+        float(s["bensin95"])
+        for s in data.get("results", [])
+        if s.get("bensin95") and isinstance(s["bensin95"], (int, float)) and s["bensin95"] > 0
+    ]
+    return prices if prices else None
 
-    results = data.get("results", [])
-    prices: list[float] = []
-    for station in results:
-        raw = station.get("bensin95")
-        if raw and isinstance(raw, (int, float)) and raw > 0:
-            prices.append(float(raw))
 
-    if len(prices) < MIN_STATION_COUNT:
-        log.warning(
-            "apis.is returned only %d valid petrol prices (need >= %d) — rejecting",
-            len(prices), MIN_STATION_COUNT,
-        )
-        return None
+def _fetch_live(policy: models.PricingPolicy) -> tuple[float | None, list[float], str]:
+    """
+    Try gasvaktin first, then apis.is. Returns (p80_or_None, raw_prices, source).
+
+    p80 is None if both sources fail or the result fails sanity checks.
+    """
+    prices = _prices_from_gasvaktin()
+    source = "gasvaktin"
+    if not prices or len(prices) < MIN_STATION_COUNT:
+        log.warning("gasvaktin returned insufficient prices (%d) — trying apis.is", len(prices) if prices else 0)
+        prices = _prices_from_apis_is()
+        source = "apis_is"
+
+    if not prices or len(prices) < MIN_STATION_COUNT:
+        return None, [], source
 
     p80    = _percentile_80(prices)
     median = statistics.median(prices)
@@ -96,21 +113,21 @@ def _fetch_live(policy: models.PricingPolicy) -> float | None:
     hi = float(policy.fuel_price_max_isk_per_liter)
     if not (lo <= p80 <= hi):
         log.warning(
-            "apis.is p80=%.1f ISK/L is outside sanity bounds [%.0f, %.0f] — "
+            "%s p80=%.1f ISK/L is outside sanity bounds [%.0f, %.0f] — "
             "possible data glitch, falling back to cache",
-            p80, lo, hi,
+            source, p80, lo, hi,
         )
-        return None
+        return None, [], source
 
     log.info(
-        "Fuel price refreshed from apis.is: p80=%.1f ISK/L  "
+        "Fuel price refreshed from %s: p80=%.1f ISK/L  "
         "median=%.1f ISK/L  stations=%d",
-        p80, median, len(prices),
+        source, p80, median, len(prices),
     )
-    return p80
+    return p80, prices, source
 
 
-def _store_cache(db, p80: float, median: float | None, count: int | None) -> None:
+def _store_cache(db, p80: float, median: float | None, count: int | None, source: str = "gasvaktin") -> None:
     """Append a new row to fuel_price_cache.  Errors are logged, not raised."""
     try:
         entry = models.FuelPriceCache(
@@ -118,7 +135,7 @@ def _store_cache(db, p80: float, median: float | None, count: int | None) -> Non
             p80_price     = p80,
             median_price  = median,
             station_count = count,
-            source        = "apis_is",
+            source        = source,
             fetched_at    = datetime.utcnow(),
         )
         db.add(entry)
@@ -205,23 +222,10 @@ def get_current_petrol_price(db) -> tuple[float, str]:
         return 290.0, "fallback"
 
     # ── Tier 1: live fetch ────────────────────────────────────────────────────
-    p80 = _fetch_live(policy)
+    p80, prices, src = _fetch_live(policy)
     if p80 is not None:
-        # Fire-and-forget: store in cache for future fallback use.
-        # We do a quick second pass to get median/count for the cache row.
-        try:
-            req = urllib.request.Request(_APIS_IS_URL, headers={"Accept": "application/json"})
-            with urllib.request.urlopen(req, timeout=_REQUEST_TIMEOUT, context=_SSL_CTX) as resp:
-                data = json.loads(resp.read().decode())
-            prices = [
-                float(s["bensin95"])
-                for s in data.get("results", [])
-                if s.get("bensin95") and isinstance(s["bensin95"], (int, float))
-            ]
-            median = statistics.median(prices) if prices else None
-            _store_cache(db, p80, median, len(prices))
-        except Exception:
-            _store_cache(db, p80, None, None)
+        median = statistics.median(prices) if prices else None
+        _store_cache(db, p80, median, len(prices) if prices else None, source=src)
         return p80, "live"
 
     # ── Tier 2: stale cache ───────────────────────────────────────────────────
