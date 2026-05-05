@@ -512,6 +512,9 @@ _MIGRATIONS = [
          -- Hveragerði ─ Selfoss short hop (Hveragerði is between Reykjavík and Selfoss)
          ('Hveragerði',   'Selfoss',        16,  15, 'seeded_approximate', TRUE, now()),
          ('Selfoss',      'Hveragerði',     16,  15, 'seeded_approximate', TRUE, now()),
+         -- Borgarnes ─ Hella (via Reykjavík, Ring Road 1)
+         ('Borgarnes',    'Hella',         192, 155, 'seeded_approximate', TRUE, now()),
+         ('Hella',        'Borgarnes',     192, 155, 'seeded_approximate', TRUE, now()),
          -- Snæfellsnes peninsula: Borgarnes ─ Stykkishólmur ─ Ólafsvík
          ('Borgarnes',    'Ólafsvík',      122, 105, 'seeded_approximate', TRUE, now()),
          ('Ólafsvík',     'Borgarnes',     122, 105, 'seeded_approximate', TRUE, now()),
@@ -559,6 +562,8 @@ _MIGRATIONS = [
          ('Vík','Höfn','[[63.419,-18.998],[63.783,-18.055],[64.048,-16.180],[64.253,-15.207]]'),
          ('Reykjavík','Borgarnes','[[64.135,-21.895],[64.215,-21.878],[64.350,-21.920],[64.537,-21.914]]'),
          ('Borgarnes','Reykjavík','[[64.537,-21.914],[64.350,-21.920],[64.215,-21.878],[64.135,-21.895]]'),
+         ('Borgarnes','Hella','[[64.537,-21.914],[64.350,-21.920],[64.215,-21.878],[64.135,-21.895],[64.023,-21.544],[63.991,-21.184],[63.933,-20.998],[63.834,-20.387]]'),
+         ('Hella','Borgarnes','[[63.834,-20.387],[63.933,-20.998],[63.991,-21.184],[64.023,-21.544],[64.135,-21.895],[64.215,-21.878],[64.350,-21.920],[64.537,-21.914]]'),
          ('Reykjavík','Stykkishólmur','[[64.135,-21.895],[64.215,-21.878],[64.537,-21.914],[64.780,-21.750],[65.000,-22.350],[65.073,-22.726]]'),
          ('Stykkishólmur','Reykjavík','[[65.073,-22.726],[65.000,-22.350],[64.780,-21.750],[64.537,-21.914],[64.215,-21.878],[64.135,-21.895]]'),
          ('Reykjavík','Ólafsvík','[[64.135,-21.895],[64.215,-21.878],[64.537,-21.914],[64.780,-21.750],[65.000,-22.350],[65.073,-22.726],[64.894,-23.714]]'),

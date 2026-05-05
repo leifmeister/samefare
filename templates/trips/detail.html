@@ -36,7 +36,7 @@
             :class="{ 'share-btn--copied': copied }">
       <svg x-show="!copied" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path d="M13 4.5a2.5 2.5 0 11.702 1.737L6.97 9.604a2.518 2.518 0 010 .792l6.733 3.367a2.5 2.5 0 11-.671 1.341l-6.733-3.367a2.5 2.5 0 110-3.475l6.733-3.366A2.52 2.52 0 0113 4.5z"/></svg>
       <svg x-show="copied" x-cloak xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
-      <span x-text="copied ? 'Link copied!' : 'Share'"></span>
+      <span x-text="copied ? 'Link copied!' : 'Share'">Share</span>
     </button>
   </div>
 
@@ -650,12 +650,23 @@ function shareTrip(route, date) {
       const text  = `${route} · ${date} — book a seat on SameFare`;
       if (navigator.share) {
         navigator.share({ title, text, url }).catch(() => {});
-      } else {
+      } else if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(() => {
           this.copied = true;
           setTimeout(() => { this.copied = false; }, 2500);
-        });
+        }).catch(() => this._fallbackCopy(url));
+      } else {
+        this._fallbackCopy(url);
       }
+    },
+    _fallbackCopy(url) {
+      const el = document.createElement('textarea');
+      el.value = url;
+      el.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(el);
+      el.select();
+      try { document.execCommand('copy'); this.copied = true; setTimeout(() => { this.copied = false; }, 2500); } catch(e) {}
+      document.body.removeChild(el);
     },
   };
 }
