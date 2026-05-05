@@ -369,6 +369,11 @@ _MIGRATIONS = [
     "CREATE INDEX IF NOT EXISTS ix_routes_origin      ON routes(origin)",
     "CREATE INDEX IF NOT EXISTS ix_routes_destination ON routes(destination)",
     "CREATE INDEX IF NOT EXISTS ix_routes_active      ON routes(is_active)",
+    # Columns added after initial routes table deployment — safe no-ops if already present
+    "ALTER TABLE routes ADD COLUMN IF NOT EXISTS duration_min     INTEGER",
+    "ALTER TABLE routes ADD COLUMN IF NOT EXISTS polyline         TEXT",
+    "ALTER TABLE routes ADD COLUMN IF NOT EXISTS source           VARCHAR(50)",
+    "ALTER TABLE routes ADD COLUMN IF NOT EXISTS last_verified_at TIMESTAMP",
 
     # ── trips — pricing module columns ────────────────────────────────────────
     "ALTER TABLE trips ADD COLUMN IF NOT EXISTS fuel_type      fueltype",
