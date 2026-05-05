@@ -599,13 +599,28 @@
   var origin      = {{ trip.origin      | tojson }};
   var destination = {{ trip.destination | tojson }};
 
+  // Cities on each side of Reykjavík — used to build hub-routed fallback paths.
+  var WEST_NORTH = new Set(['Borgarnes','Blönduós','Sauðárkrókur','Akureyri','Mývatn',
+                             'Húsavík','Siglufjörður','Egilsstaðir','Seyðisfjörður',
+                             'Vopnafjörður','Ísafjörður','Stykkishólmur','Ólafsvík']);
+  var SOUTH_EAST = new Set(['Keflavík','Hveragerði','Selfoss','Hella','Vík',
+                             'Kirkjubæjarklaustur','Höfn']);
+
   // Build the coordinate list: use stored polyline if available,
-  // otherwise fall back to straight line between the two cities.
+  // otherwise build an approximate path via Reykjavík for cross-corridor trips,
+  // and only fall back to a straight line as a last resort.
   var coords = polyline;
   if (!coords || coords.length < 2) {
     var a = CITIES[origin];
     var b = CITIES[destination];
-    coords = (a && b) ? [a, b] : null;
+    var rvk = CITIES['Reykjavík'];
+    if (a && b) {
+      var crossCorridor = (WEST_NORTH.has(origin) && SOUTH_EAST.has(destination)) ||
+                          (SOUTH_EAST.has(origin) && WEST_NORTH.has(destination));
+      coords = crossCorridor ? [a, rvk, b] : [a, b];
+    } else {
+      coords = null;
+    }
   }
 
   if (!coords) return;   // unknown cities, skip map
