@@ -572,55 +572,62 @@
   var polyline = {{ trip_polyline | tojson }};
 
   // Fallback city-coordinate table for routes without a stored polyline
-  var CITIES = {
-    'Reykjavík':             [64.135, -21.895],
-    'Keflavík':              [63.985, -22.556],
-    'Hveragerði':            [63.991, -21.184],
-    'Selfoss':               [63.933, -20.998],
-    'Hella':                 [63.834, -20.387],
-    'Vík':                   [63.419, -18.998],
-    'Kirkjubæjarklaustur':   [63.783, -18.055],
-    'Höfn':                  [64.253, -15.207],
-    'Borgarnes':             [64.537, -21.914],
-    'Stykkishólmur':         [65.073, -22.726],
-    'Ólafsvík':              [64.894, -23.714],
-    'Akureyri':              [65.683, -18.088],
-    'Mývatn':                [65.600, -16.970],
-    'Egilsstaðir':           [65.267, -14.395],
-    'Seyðisfjörður':         [65.258, -13.999],
-    'Vopnafjörður':          [65.747, -14.841],
-    'Húsavík':               [66.042, -17.339],
-    'Siglufjörður':          [66.152, -18.910],
-    'Sauðárkrókur':          [65.746, -19.639],
-    'Blönduós':              [65.662, -20.291],
-    'Ísafjörður':            [66.075, -23.137],
+  // Ring Road order (clockwise from Reykjavík). Any two cities can be routed
+  // by taking the shorter arc of this ring.
+  var RING = [
+    ['Reykjavík',           [64.135,-21.895]],
+    ['Hveragerði',          [63.991,-21.184]],
+    ['Selfoss',             [63.933,-20.998]],
+    ['Hella',               [63.834,-20.387]],
+    ['Vík',                 [63.419,-18.998]],
+    ['Kirkjubæjarklaustur', [63.783,-18.055]],
+    ['Höfn',                [64.253,-15.207]],
+    ['Egilsstaðir',         [65.267,-14.395]],
+    ['Mývatn',              [65.600,-16.970]],
+    ['Akureyri',            [65.683,-18.088]],
+    ['Blönduós',            [65.662,-20.291]],
+    ['Borgarnes',           [64.537,-21.914]],
+  ];
+  // Branch cities: connect to the ring at their junction city.
+  var BRANCH = {
+    'Keflavík':      { via: 'Reykjavík',   coords: [63.985,-22.556] },
+    'Sauðárkrókur':  { via: 'Blönduós',    coords: [65.746,-19.639] },
+    'Húsavík':       { via: 'Akureyri',    coords: [66.042,-17.339] },
+    'Siglufjörður':  { via: 'Akureyri',    coords: [66.152,-18.910] },
+    'Stykkishólmur': { via: 'Borgarnes',   coords: [65.073,-22.726] },
+    'Ólafsvík':      { via: 'Borgarnes',   coords: [64.894,-23.714] },
+    'Ísafjörður':    { via: 'Borgarnes',   coords: [66.075,-23.137] },
+    'Seyðisfjörður': { via: 'Egilsstaðir', coords: [65.258,-13.999] },
+    'Vopnafjörður':  { via: 'Egilsstaðir', coords: [65.747,-14.841] },
   };
+
+  function ringRoute(from, to) {
+    var fromRing = BRANCH[from] ? BRANCH[from].via : from;
+    var toRing   = BRANCH[to]   ? BRANCH[to].via   : to;
+    var n = RING.length;
+    var oi = RING.findIndex(function(r){ return r[0]===fromRing; });
+    var di = RING.findIndex(function(r){ return r[0]===toRing; });
+    if (oi === -1 || di === -1) return null;
+    // Build clockwise and counter-clockwise arcs
+    var cw = [], i = oi;
+    do { cw.push(RING[i][1]); i = (i+1)%n; } while (i !== di);
+    cw.push(RING[di][1]);
+    var ccw = [], j = oi;
+    do { ccw.push(RING[j][1]); j = (j-1+n)%n; } while (j !== di);
+    ccw.push(RING[di][1]);
+    var path = cw.length <= ccw.length ? cw : ccw;
+    if (BRANCH[from])  path = [BRANCH[from].coords].concat(path);
+    if (BRANCH[to])    path = path.concat([BRANCH[to].coords]);
+    return path;
+  }
 
   var origin      = {{ trip.origin      | tojson }};
   var destination = {{ trip.destination | tojson }};
 
-  // Cities on each side of Reykjavík — used to build hub-routed fallback paths.
-  var WEST_NORTH = new Set(['Borgarnes','Blönduós','Sauðárkrókur','Akureyri','Mývatn',
-                             'Húsavík','Siglufjörður','Egilsstaðir','Seyðisfjörður',
-                             'Vopnafjörður','Ísafjörður','Stykkishólmur','Ólafsvík']);
-  var SOUTH_EAST = new Set(['Keflavík','Hveragerði','Selfoss','Hella','Vík',
-                             'Kirkjubæjarklaustur','Höfn']);
-
-  // Build the coordinate list: use stored polyline if available,
-  // otherwise build an approximate path via Reykjavík for cross-corridor trips,
-  // and only fall back to a straight line as a last resort.
+  // Use stored polyline when available; otherwise build from ring road topology.
   var coords = polyline;
   if (!coords || coords.length < 2) {
-    var a = CITIES[origin];
-    var b = CITIES[destination];
-    var rvk = CITIES['Reykjavík'];
-    if (a && b) {
-      var crossCorridor = (WEST_NORTH.has(origin) && SOUTH_EAST.has(destination)) ||
-                          (SOUTH_EAST.has(origin) && WEST_NORTH.has(destination));
-      coords = crossCorridor ? [a, rvk, b] : [a, b];
-    } else {
-      coords = null;
-    }
+    coords = ringRoute(origin, destination);
   }
 
   if (!coords) return;   // unknown cities, skip map
