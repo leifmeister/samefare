@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% block head %}<meta name="robots" content="noindex">{% endblock %}
 {% block title %}Terms & Conditions — SameFare{% endblock %}
 
 {% block content %}
@@ -7,7 +6,7 @@
 
   <div class="legal-header">
     <h1 class="legal-title">Terms &amp; Conditions</h1>
-    <p class="legal-meta">Effective date: <strong>1 May 2025</strong> &nbsp;·&nbsp; Wellfare ehf., Iceland</p>
+    <p class="legal-meta">Effective date: <strong>7 May 2026</strong> &nbsp;·&nbsp; Wellfare ehf., Iceland</p>
   </div>
 
   <!-- TOC -->
@@ -21,7 +20,7 @@
       <li><a href="#s5">Posting a Ride</a></li>
       <li><a href="#s6">Booking a Seat</a></li>
       <li><a href="#s7">Cost Contributions &amp; Fees</a></li>
-      <li><a href="#s8">Payment Authorisation, Cancellation &amp; Refund Policy</a></li>
+      <li><a href="#s8">Payment Processing, Cancellation &amp; Refund Policy</a></li>
       <li><a href="#s9">No-Show Policy</a></li>
       <li><a href="#s10">Conduct &amp; Obligations</a></li>
       <li><a href="#s11">Reviews &amp; Ratings</a></li>
@@ -75,13 +74,15 @@
       <p>Once approved, your profile displays a <strong>verified identity badge</strong>, increasing trust with drivers and other passengers.</p>
 
       <h3>4.2 Driver's Licence Verification (drivers)</h3>
-      <p>Before posting your first ride, you must upload a valid Icelandic driver's licence. Submission of a licence confirms that:</p>
+      <p>Before posting your first ride, you must upload a valid Icelandic driver's licence. Your submission is reviewed through an identity and document verification process. Submission of a licence confirms that:</p>
       <ul>
         <li>The licence is valid and covers the class of vehicle you intend to drive.</li>
+        <li>The name and photograph on the licence match your identity.</li>
         <li>Your civil liability insurance policy covers ridesharing or carrying fare-contributing passengers. <strong>It is your responsibility to confirm this with your insurer.</strong></li>
         <li>The vehicle has a valid roadworthiness certificate (<em>skoðun</em>).</li>
       </ul>
-      <p>Once approved, your profile displays a <strong>verified driver's licence badge</strong>. SameFare verifies document authenticity to a reasonable standard but cannot guarantee the validity of any document submitted.</p>
+      <p>SameFare uses an automated document and liveness verification service to confirm document authenticity and match the document to the submitting person. Until verification is approved by our team, no rides may be posted. Once approved, your profile displays a <strong>verified driver's licence badge</strong>.</p>
+      <p>SameFare reserves the right to re-verify drivers periodically and to suspend posting privileges if a previously approved licence expires or is found to be invalid.</p>
 
       <h3>4.3 Minors</h3>
       <p>Users under 18 may not register or use the Platform. Passengers under 13 may not travel unaccompanied on any trip booked through SameFare.</p>
@@ -138,24 +139,31 @@
       <p><strong>Late-authorisation surcharge.</strong> For trips booked more than 7 days in advance, your card is saved today and charged 24 hours before departure (see section 8.1). If that authorisation fails and you choose to update your card within the 2-hour retry window, a <strong>5% surcharge</strong> is added to the service fee, bringing the total service fee to <strong>23%</strong>. This surcharge is non-refundable once the updated card is saved.</p>
 
       <h3>7.3 Driver Payouts</h3>
-      <p>Cost contributions are transferred to drivers after the trip departure date. Payouts may be withheld pending investigation of disputes or policy violations.</p>
+      <p>At the moment a passenger's payment is processed, the cost contribution (82% of the total amount charged) is <strong>immediately split and routed directly to the driver</strong> by our licensed payment processor. SameFare receives only its service fee portion and does not hold driver funds. Disbursement to the driver's nominated bank account is subject to the terms of our licensed payment processor and may be subject to a short settlement period.</p>
+      <p>Payouts may be withheld or delayed pending investigation of disputes, reported no-shows, policy violations, or where required by applicable anti-money laundering or fraud screening obligations (see section 13).</p>
     </section>
 
     <!-- 8 -->
     <section id="s8" class="legal-section">
-      <h2>8. Payment Authorisation, Cancellation &amp; Refund Policy</h2>
+      <h2>8. Payment Processing, Cancellation &amp; Refund Policy</h2>
 
       <h3>8.1 How Payment Works</h3>
+      <p>Payments on SameFare are processed by our <strong>licensed payment processor</strong>. At the moment of capture, the total amount paid is immediately split: the driver's cost contribution (82%) is routed directly to the driver's account and the SameFare service fee (18%) is routed to SameFare. <strong>SameFare never holds passenger funds on behalf of drivers.</strong> Card details are never stored on SameFare servers.</p>
+
       <p>SameFare uses an <strong>authorise-then-capture</strong> model. Your card is never charged at the moment of booking — it is <em>authorised</em> (a hold is placed) and the funds are only <em>captured</em> (collected) when your trip departs.</p>
 
       <p><strong>Trips departing within 7 days (Case A)</strong><br>
-      When you complete checkout, your card is authorised for the full amount. You will see a pending reservation on your statement. The actual charge is collected at departure. If the trip is cancelled before departure, the authorisation is released in full.</p>
+      When you complete checkout, your card is authorised for the full amount. You will see a pending reservation on your statement. The actual charge is collected at departure, at which point the split described above is applied. If the trip is cancelled before departure, the authorisation is released in full.</p>
 
       <p><strong>Trips departing more than 7 days away (Case B)</strong><br>
-      Your card details are saved securely today (no charge). We will authorise the full amount <strong>24 hours before your departure date</strong>. By saving your card you consent to this merchant-initiated authorisation in accordance with PSD2 strong customer authentication rules.</p>
+      Your card details are saved securely today (no charge). We will authorise the full amount <strong>24 hours before your departure date</strong>. By saving your card you consent to this merchant-initiated authorisation in accordance with PSD2 strong customer authentication rules (Regulation (EU) 2015/2366).</p>
 
       <p><strong>Case B authorisation failure &amp; retry window</strong><br>
       If the 24-hour-before-departure authorisation fails (e.g. insufficient funds, expired card), you will immediately receive an SMS and email notification. You have <strong>2 hours</strong> to update your payment card via <a href="/my-trips">My Trips</a>. If you update your card within this window, a <strong>5% late-authorisation surcharge</strong> is added (total service fee becomes 23% — see section 7.2). If you do not update your card within 2 hours, your booking is automatically cancelled and your seat is released to other passengers. No charge is made on cancellation.</p>
+
+      <h3>8.3 Payment Disputes &amp; Chargebacks</h3>
+      <p>If you believe a payment was taken in error, contact <a href="mailto:support@samefare.com">support@samefare.com</a> within <strong>30 days</strong> of the transaction date. We will investigate and respond within <strong>5 business days</strong>. Eligible refunds are processed within 5–10 business days via the original payment method.</p>
+      <p>If you initiate a chargeback with your card issuer without first contacting us, we reserve the right to suspend your account pending resolution of the dispute.</p>
 
       <h3>8.2 Cancellation &amp; Refund Schedule</h3>
 
@@ -208,7 +216,7 @@
       </div>
 
       <p style="margin-top:1.25rem;">The grace period only applies when the departure is still more than 24 hours away — if the trip is imminent, the standard departure-based rules apply regardless of when the booking was made.</p>
-      <p>Refunds are processed within <strong>5–10 business days</strong> via the original payment method. Card payments are processed securely by Rapyd — SameFare never stores your card number. To cancel a booking, go to <a href="/my-trips">My Trips</a> and select the relevant booking.</p>
+      <p>Refunds are processed within <strong>5–10 business days</strong> via the original payment method. Card payments are processed securely by our licensed payment processor — SameFare never stores your card number. To cancel a booking, go to <a href="/my-trips">My Trips</a> and select the relevant booking.</p>
     </section>
 
     <!-- 9 — NEW: No-Show Policy -->
@@ -319,6 +327,15 @@
         <li>We do not provide or endorse any insurance product in connection with ridesharing trips.</li>
       </ul>
       <p>Nothing in these Terms limits liability for death or personal injury caused by our own negligence, or for fraud or fraudulent misrepresentation.</p>
+
+      <h3>13.1 Anti-Money Laundering &amp; Fraud Screening</h3>
+      <p>SameFare and its licensed payment processor are required to comply with applicable anti-money laundering (AML) and counter-terrorism financing laws, including Icelandic Act no. 140/2018 on Measures against Money Laundering and Terrorist Financing. Accordingly:</p>
+      <ul>
+        <li>We reserve the right to withhold, delay or reverse any payment — including driver disbursements — where we have reasonable grounds to suspect fraudulent activity, money laundering, or a breach of applicable financial regulations.</li>
+        <li>We may request additional identity information or documentation at any time as part of our ongoing compliance obligations. Failure to provide requested information within a reasonable timeframe may result in account suspension and payment hold.</li>
+        <li>Unusual transaction patterns (including but not limited to unusually high booking volumes, repeated cancellations, or suspicious pricing) may be flagged for manual review.</li>
+        <li>We are legally obliged to report suspicious activity to the relevant Icelandic authorities and cannot notify affected users when such a report has been made.</li>
+      </ul>
     </section>
 
     <!-- 14 (was 13) -->
