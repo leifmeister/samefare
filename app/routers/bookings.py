@@ -17,6 +17,8 @@ from app.utils import (
     build_route_graph, resolve_segment,
     seats_for_segment, recompute_seats_available,
 )
+from app import blikk as blikk_client
+from app.blikk import BlikkError
 
 settings = get_settings()
 templates = Jinja2Templates(directory="templates")
@@ -76,22 +78,49 @@ def book_trip_page(
         return templates.TemplateResponse("errors/404.html", {**ctx}, status_code=404)
     if trip.driver_id == current_user.id:
         return RedirectResponse(f"/trips/{trip_id}", status_code=303)
-    if trip.status != models.TripStatus.active or trip.seats_available < 1:
+    if trip.status != models.TripStatus.active:
         return RedirectResponse(f"/trips/{trip_id}", status_code=303)
 
-    # Compute segment price if this is a partial-route booking
+    # Block bookings within 1 hour of departure.
+    if trip.departure_datetime <= datetime.utcnow() + timedelta(hours=1):
+        return RedirectResponse(f"/trips/{trip_id}?booking_closed=1", status_code=303)
+
+    # Resolve the segment early so we can detect origin→midpoint intent
+    # (pickup == trip.origin but dropoff != trip.destination) before the
+    # availability guard.  Invalid/missing params resolve to (None, None, …).
     graph = build_route_graph(db)
     segment_pickup, segment_dropoff, segment_price, _ = resolve_segment(
         graph, trip, pickup or "", dropoff or ""
     )
-    # Bad query-string params (invalid segment from a crafted URL) are silently
-    # dropped — the user sees a full-route booking form without an error banner.
 
-    has_discount = _newsletter_discount(db, current_user) is not None
+    # Segment intent: either pickup OR dropoff differs from the trip endpoints.
+    # Checking only pickup misses the origin→midpoint case (Bug 3).
+    is_segment_request = bool(segment_pickup or segment_dropoff)
+
+    if not is_segment_request:
+        # Full-route request — whole-trip minimum is the correct guard.
+        if trip.seats_available < 1:
+            return RedirectResponse(f"/trips/{trip_id}", status_code=303)
+        booking_available_seats = trip.seats_available
+    else:
+        # Per-segment availability — peak occupancy on this specific leg.
+        active = [b for b in trip.bookings if b.status in _SEAT_HOLDING_STATUSES]
+        seg_p  = segment_pickup  or trip.origin
+        seg_d  = segment_dropoff or trip.destination
+        booking_available_seats = seats_for_segment(
+            graph, trip.seats_total, active,
+            trip.origin, trip.destination, seg_p, seg_d,
+        )
+        if booking_available_seats < 1:
+            return RedirectResponse(f"/trips/{trip_id}", status_code=303)
+
+    has_discount  = _newsletter_discount(db, current_user) is not None
+    less_than_24h = trip.departure_datetime <= datetime.utcnow() + timedelta(hours=24)
     return templates.TemplateResponse("bookings/create.html", {
         **ctx, "trip": trip, "error": None, "has_discount": has_discount,
         "segment_pickup": segment_pickup, "segment_dropoff": segment_dropoff,
-        "segment_price": segment_price,
+        "segment_price": segment_price, "less_than_24h": less_than_24h,
+        "booking_available_seats": booking_available_seats,
     })
 
 
@@ -124,9 +153,20 @@ def create_booking(
     if not trip:
         return templates.TemplateResponse("errors/404.html", {**ctx}, status_code=404)
 
-    # Reject inactive or full trips — mirrors the GET guard so a direct POST
-    # cannot bypass the availability check.
-    if trip.status != models.TripStatus.active or trip.seats_available < 1:
+    # Detect segment intent early — needed to gate the availability guards below.
+    # pickup_city/dropoff_city come from the submitted form fields.
+    is_segment = (pickup_city and pickup_city != trip.origin) or \
+                 (dropoff_city and dropoff_city != trip.destination)
+
+    # Reject inactive trips.  For full-route requests also enforce the
+    # whole-trip availability floor — seats_available is the minimum remaining
+    # capacity across all legs and is the correct guard for passengers who need
+    # a seat for the entire journey.  For segment requests, skip this guard:
+    # seats_available can be 0 because a different leg is full while the
+    # requested leg still has room.  Per-segment availability is checked below.
+    if trip.status != models.TripStatus.active:
+        return RedirectResponse(f"/trips/{trip_id}", status_code=303)
+    if not is_segment and trip.seats_available < 1:
         return RedirectResponse(f"/trips/{trip_id}", status_code=303)
 
     # Reject bookings on trips that have already departed.
@@ -134,6 +174,10 @@ def create_booking(
     # departure, so we must check departure_datetime explicitly.
     if trip.departure_datetime <= datetime.utcnow():
         return RedirectResponse(f"/trips/{trip_id}", status_code=303)
+
+    # Block bookings within 1 hour of departure.
+    if trip.departure_datetime <= datetime.utcnow() + timedelta(hours=1):
+        return RedirectResponse(f"/trips/{trip_id}?booking_closed=1", status_code=303)
 
     has_discount = _newsletter_discount(db, current_user) is not None
     err_ctx = {**ctx, "trip": trip, "has_discount": has_discount}
@@ -146,7 +190,9 @@ def create_booking(
         return templates.TemplateResponse("bookings/create.html",
             {**err_ctx, "error": "Please select at least 1 seat."}, status_code=400)
 
-    if seats_booked > trip.seats_available:
+    # For full-route bookings, the whole-trip minimum is the right ceiling.
+    # For segment bookings, skip this — the per-segment check below is authoritative.
+    if not is_segment and seats_booked > trip.seats_available:
         return templates.TemplateResponse("bookings/create.html",
             {**err_ctx, "error": f"Only {trip.seats_available} seat(s) available."}, status_code=400)
 
@@ -165,6 +211,11 @@ def create_booking(
     ).first()
     if existing:
         if existing.status == models.BookingStatus.awaiting_payment:
+            # Route to Blikk or Rapyd depending on the trip's payment method
+            if trip.payment_method == models.TripPaymentMethod.blikk:
+                return RedirectResponse(
+                    f"/bookings/{existing.id}/blikk-pay", status_code=303
+                )
             return RedirectResponse(
                 f"/payments/checkout/{existing.id}", status_code=303
             )
@@ -176,8 +227,6 @@ def create_booking(
             {**err_ctx, "error": "You already have a booking on this trip."}, status_code=400)
 
     # Block segment bookings when the driver hasn't opted in
-    is_segment = (pickup_city and pickup_city != trip.origin) or \
-                 (dropoff_city and dropoff_city != trip.destination)
     if is_segment and not trip.allow_segments:
         return templates.TemplateResponse("bookings/create.html",
             {**err_ctx, "error": "This driver only accepts full-route bookings."}, status_code=400)
@@ -197,17 +246,25 @@ def create_booking(
         }, status_code=400)
     price_per_seat = prorated_price if prorated_price is not None else trip.price_per_seat
 
-    # Segment-aware seat check: count only bookings that overlap this leg
-    active_bookings = [
-        b for b in trip.bookings
-        if b.status in _SEAT_HOLDING_STATUSES
-    ]
-    seg_pickup  = pickup_city  or trip.origin
-    seg_dropoff = dropoff_city or trip.destination
-    available_on_segment = seats_for_segment(
-        graph, trip.seats_total, active_bookings,
-        trip.origin, trip.destination, seg_pickup, seg_dropoff,
-    )
+    # Definitive availability check.
+    # Segment booking: count only bookings overlapping this specific leg —
+    #   seats_for_segment handles this correctly regardless of other legs.
+    # Full-route booking: use trip.seats_available (peak concurrent occupancy
+    #   minimum) which is already verified above; we re-read it here to produce
+    #   an accurate error message if seats were grabbed between the early guard
+    #   and the lock.  Do NOT call seats_for_segment for the full route: it
+    #   counts all bookings that touch any part of the route and overcounts when
+    #   non-overlapping segment bookings are present.
+    active_bookings = [b for b in trip.bookings if b.status in _SEAT_HOLDING_STATUSES]
+    if is_segment:
+        seg_pickup  = pickup_city  or trip.origin
+        seg_dropoff = dropoff_city or trip.destination
+        available_on_segment = seats_for_segment(
+            graph, trip.seats_total, active_bookings,
+            trip.origin, trip.destination, seg_pickup, seg_dropoff,
+        )
+    else:
+        available_on_segment = trip.seats_available
     if seats_booked > available_on_segment:
         return templates.TemplateResponse("bookings/create.html",
             {**err_ctx, "error": f"Only {available_on_segment} seat(s) available on that leg."}, status_code=400)
@@ -262,6 +319,38 @@ def create_booking(
     db.refresh(booking)
 
     if trip.instant_book:
+        # ── Blikk payment method ───────────────────────────────────────────────
+        if trip.payment_method == models.TripPaymentMethod.blikk:
+            # Create the service-fee P2P and redirect passenger to Blikk
+            try:
+                db.refresh(booking)  # load passenger relationship
+                payment_id, redirect_url = blikk_client.create_fee_payment(
+                    booking, settings.base_url
+                )
+                payment = models.Payment(
+                    booking_id      = booking.id,
+                    passenger_total = booking.total_price,
+                    driver_payout   = booking.subtotal,
+                    platform_fee    = booking.service_fee,
+                    status          = models.PaymentStatus.blikk_fee_pending,
+                    blikk_fee_payment_id = payment_id,
+                )
+                db.add(payment)
+                db.commit()
+            except BlikkError as exc:
+                import logging as _log
+                _log.getLogger(__name__).error(
+                    "Blikk create_fee_payment failed for booking %d: %s", booking.id, exc
+                )
+                # Leave booking in awaiting_payment; send to Blikk-pay page
+                return RedirectResponse(f"/bookings/{booking.id}/blikk-pay", status_code=303)
+
+            if redirect_url:
+                return RedirectResponse(redirect_url, status_code=303)
+            # Blikk didn't return a URL — send to our pending page
+            return RedirectResponse(f"/bookings/{booking.id}/blikk-pay", status_code=303)
+
+        # ── Rapyd card payment (default) ───────────────────────────────────────
         return RedirectResponse(f"/payments/checkout/{booking.id}", status_code=303)
     else:
         # Notify driver of the pending request
@@ -271,53 +360,38 @@ def create_booking(
 
 def _refund_preview(booking) -> dict:
     """
-    Calculate the refund a passenger would receive if they cancelled now.
+    Calculate the outcome for the passenger if they cancelled now.
     Returns a dict with 'amount', 'label', and 'policy'.
     Does NOT modify anything — safe to call from a GET handler.
-    """
-    now = datetime.utcnow()
-    if not booking.payment:
-        return {"amount": 0, "label": "No charge yet", "policy": "free"}
 
-    # Case B card_saved: card tokenized for MIT but nothing charged yet
-    if booking.status == models.BookingStatus.card_saved:
+    Policy (two-tier, no partial refunds):
+    ───────────────────────────────────────
+    • Before pre-authorisation (card_saved / pending / no payment):
+        No charge.  Cancel freely.
+    • After pre-authorisation (payment.status == authorised or later):
+        No refund.  The seat is reserved — the full amount will be captured
+        immediately on cancellation, regardless of time remaining.
+    """
+    if not booking.payment:
+        return {"amount": 0, "label": "No charge — booking not yet paid", "policy": "free"}
+
+    # Card tokenised for future MIT but pre-auth not yet placed → no charge
+    if booking.payment.status in (
+        models.PaymentStatus.pending,
+        models.PaymentStatus.failed,
+    ) or booking.status == models.BookingStatus.card_saved:
         return {
             "amount": 0,
             "label":  "No charge — card not billed yet",
             "policy": "card_not_charged",
         }
 
-    departure    = booking.trip.departure_datetime
-    hours_left   = (departure - now).total_seconds() / 3600
-    mins_since   = (now - booking.created_at).total_seconds() / 60
-    contribution = booking.payment.driver_payout
-    total        = booking.payment.passenger_total
-
-    if mins_since <= 30 and hours_left >= 24:
-        return {
-            "amount": total,
-            "label":  f"Full refund — {total:,} ISK",
-            "policy": "Within 30-minute grace period",
-        }
-    elif hours_left >= 24:
-        return {
-            "amount": contribution,
-            "label":  f"Partial refund — {contribution:,} ISK",
-            "policy": "Service fee is non-refundable",
-        }
-    elif hours_left > 0:
-        half = round(contribution * 0.5)
-        return {
-            "amount": half,
-            "label":  f"Partial refund — {half:,} ISK",
-            "policy": "Less than 24 hours before departure — 50% of contribution",
-        }
-    else:
-        return {
-            "amount": 0,
-            "label":  "No refund",
-            "policy": "Trip has already departed",
-        }
+    # Pre-auth is in place (or capture already requested / captured) → no refund
+    return {
+        "amount": 0,
+        "label":  "No refund — full amount will be captured",
+        "policy": "pre_auth_placed",
+    }
 
 
 @router.get("/{booking_id}/cancel", response_class=HTMLResponse)
@@ -390,21 +464,33 @@ def cancel_booking(
             _refresh_seats(trip, db)
     booking.status = models.BookingStatus.cancelled
 
+    pre_auth_placed = (
+        booking.payment
+        and booking.payment.status in (
+            models.PaymentStatus.authorised,
+            models.PaymentStatus.capture_requested,
+        )
+    )
+
     if booking.payment:
-        if original_status == models.BookingStatus.card_saved:
-            # Card was tokenized for a future MIT but never charged.
-            # Mark the payment failed (no charge to refund, no Rapyd call needed).
+        if original_status == models.BookingStatus.card_saved or not pre_auth_placed:
+            # Card was tokenised for a future MIT but the pre-auth has not fired yet.
+            # No charge has been made — mark payment failed so the MIT cron skips it.
             booking.payment.status = models.PaymentStatus.failed
         else:
-            refund = _refund_preview(booking)["amount"]
-            # _issue_rapyd_refund owns refund_amount and status — do not pre-set them.
-            _issue_rapyd_refund(db, booking, refund,
-                                reason="requested_by_customer")
+            # Pre-auth is in place: the seat is reserved.
+            # Trigger immediate capture by moving capture_at to now.
+            # The _run_capture_payments cron (runs every 10 min) will pick this up.
+            # No refund is issued — the full amount is forfeited per the cancellation policy.
+            booking.payment.capture_at = datetime.utcnow()
 
     db.commit()
     db.refresh(booking)
     if seats_were_held:
-        mailer.booking_cancelled_to_driver(booking)
+        if pre_auth_placed:
+            mailer.booking_cancelled_charged(booking)   # driver: cancelled but you'll be paid
+        else:
+            mailer.booking_cancelled_to_driver(booking)
     mailer.booking_cancelled_to_passenger(booking)
     return RedirectResponse("/bookings?cancelled=1", status_code=303)
 
@@ -499,22 +585,26 @@ def report_driver_no_show(
         .filter(models.Booking.id == booking_id)
         .first()
     )
+    now = datetime.utcnow()
+    report_open_from  = booking.trip.departure_datetime + timedelta(minutes=15)
+    report_open_until = booking.trip.departure_datetime + timedelta(hours=4)
     if (not booking
             or booking.passenger_id != current_user.id
             or booking.status != models.BookingStatus.confirmed
-            or datetime.utcnow() < booking.trip.departure_datetime + timedelta(minutes=15)):
+            or now < report_open_from
+            or now > report_open_until):
         return RedirectResponse("/my-trips?tab=bookings", status_code=303)
 
-    # Flag the trip so the driver can be penalised by auto-ratings
+    # Flag the trip for accountability tracking and auto-rating
     booking.trip.driver_no_show = True
-    # Cancel the booking and issue a full refund via Rapyd.
-    # _issue_rapyd_refund owns refund_amount and status — do not pre-set them.
+    # Cancel the booking on our side (seat released, status updated).
+    # Under the Slize marketplace model the driver is registered as the sub-merchant
+    # and receives their 82% directly at capture time. SameFare does not hold or
+    # control that portion — the passenger's financial remedy is a chargeback filed
+    # with their card issuer against the driver's sub-merchant account.
+    # SameFare's role: suspend the driver, record the event, support the dispute
+    # with evidence if the card issuer requests it. No platform-funded refund.
     booking.status = models.BookingStatus.cancelled
-    if booking.payment:
-        _issue_rapyd_refund(
-            db, booking, booking.payment.passenger_total,
-            reason="driver_no_show",
-        )
 
     # Issue an immediate 1-star auto-review for the driver (no grace period for no-shows)
     existing_review = (
@@ -536,7 +626,24 @@ def report_driver_no_show(
             is_auto     = True,
         ))
 
+    # ── Driver accountability: zero-tolerance for confirmed no-shows ───────────
+    driver = booking.trip.driver
+    driver.no_shows_confirmed += 1
+    if not driver.posting_suspended:
+        driver.posting_suspended = True
+        driver.suspension_reason = (
+            f"Driver no-show confirmed (booking #{booking.id}). "
+            f"Total confirmed no-shows: {driver.no_shows_confirmed}."
+        )
+
     db.commit()
+
+    # Notify admin — action required to investigate and void/refund via payment dashboard
+    try:
+        mailer.driver_no_show_admin_alert(booking, driver)
+    except Exception:
+        pass  # never block the user flow on an admin notification failure
+
     return RedirectResponse("/my-trips?tab=bookings&driver_no_show=1", status_code=303)
 
 

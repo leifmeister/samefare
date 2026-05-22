@@ -4,16 +4,63 @@
 {% block content %}
 <div class="error-page">
   <div class="error-page__code">429</div>
-  <h1 class="error-page__title">Slow down a little</h1>
-  <p class="error-page__body">
-    You've made too many requests in a short time. Please wait a moment and try again.
-    {% if retry_after %}
-      You can retry in <strong>{{ retry_after }} second{{ 's' if retry_after != 1 }}</strong>.
-    {% endif %}
-  </p>
-  <div class="error-page__actions">
-    <a href="/" class="btn btn-primary">Back to home</a>
-    <a href="javascript:history.back()" class="btn btn-outline">Go back</a>
-  </div>
+
+  {% set path = request.url.path %}
+
+  {% if '/login' in path %}
+    <h1 class="error-page__title">Too many login attempts</h1>
+    <p class="error-page__body">
+      You've made too many failed login attempts. Please wait a moment before trying again.
+      {% if retry_after %}
+        You can retry in <strong>{{ retry_after }} second{{ 's' if retry_after != 1 }}</strong>.
+      {% endif %}
+    </p>
+    <p class="error-page__body" style="margin-top:.5rem;">
+      If you've forgotten your password, you can <a href="/auth/reset-password">reset it here</a>.
+    </p>
+    <div class="error-page__actions">
+      <a href="/auth/login" class="btn btn-primary">Back to log in</a>
+      <a href="/auth/reset-password" class="btn btn-outline">Reset password</a>
+    </div>
+
+  {% elif '/register' in path or '/signup' in path %}
+    <h1 class="error-page__title">Too many attempts</h1>
+    <p class="error-page__body">
+      Too many sign-up attempts from this device. Please wait a moment and try again.
+      {% if retry_after %}
+        You can retry in <strong>{{ retry_after }} second{{ 's' if retry_after != 1 }}</strong>.
+      {% endif %}
+    </p>
+    <div class="error-page__actions">
+      <a href="/auth/register" class="btn btn-primary">Back to sign up</a>
+      <a href="/" class="btn btn-outline">Back to home</a>
+    </div>
+
+  {% elif '/reset' in path or '/password' in path %}
+    <h1 class="error-page__title">Too many reset attempts</h1>
+    <p class="error-page__body">
+      You've requested too many password resets. Please wait before trying again.
+      {% if retry_after %}
+        You can retry in <strong>{{ retry_after }} second{{ 's' if retry_after != 1 }}</strong>.
+      {% endif %}
+    </p>
+    <div class="error-page__actions">
+      <a href="/auth/forgot-password" class="btn btn-primary">Back to reset</a>
+      <a href="/" class="btn btn-outline">Back to home</a>
+    </div>
+
+  {% else %}
+    <h1 class="error-page__title">Slow down a little</h1>
+    <p class="error-page__body">
+      You've made too many requests in a short time. Please wait a moment and try again.
+      {% if retry_after %}
+        You can retry in <strong>{{ retry_after }} second{{ 's' if retry_after != 1 }}</strong>.
+      {% endif %}
+    </p>
+    <div class="error-page__actions">
+      <a href="/" class="btn btn-primary">Back to home</a>
+    </div>
+  {% endif %}
+
 </div>
 {% endblock %}

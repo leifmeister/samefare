@@ -907,6 +907,14 @@ button, input, select, textarea { font: inherit; }
 .section--teal  { background: linear-gradient(135deg, var(--c-primary-dark) 0%, var(--c-primary) 100%); }
 .section--dark  { background: var(--c-dark); }
 .section--cta   { background: linear-gradient(135deg, #0A1628 0%, #0E2D28 100%); }
+.section--cta .btn-outline {
+  color: #fff;
+  border-color: rgba(255,255,255,0.55);
+}
+.section--cta .btn-outline:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: #fff;
+}
 
 .driver-card-cta {
   display: flex;
@@ -2745,6 +2753,38 @@ button, input, select, textarea { font: inherit; }
   flex: 1;
   height: 1px;
   background: var(--c-border);
+}
+
+/* ── System event bubble (payment events, booking state changes) ── */
+.bubble--system {
+  align-self: center;
+  max-width: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: var(--space-1) 0;
+}
+.bubble--system .bubble__inner {
+  align-items: center;
+}
+.bubble--system .bubble__text {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  font-size: .78rem;
+  color: var(--c-muted);
+  white-space: normal;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.bubble--system .bubble__text strong {
+  color: var(--c-text);
+}
+.bubble--system .bubble__time {
+  text-align: center;
 }
 
 /* ── Send form ─────────────── */

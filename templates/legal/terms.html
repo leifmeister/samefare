@@ -70,18 +70,20 @@
     <section id="s4" class="legal-section">
       <h2>4. Identity &amp; Driver Verification</h2>
       <h3>4.1 Identity Verification (all users)</h3>
-      <p>Before making your first booking as a passenger, you must submit a government-issued photo ID (national ID card or passport). Our team reviews submissions within 1–2 business days. Until approved, you may browse trips but cannot complete a booking.</p>
+      <p>Before making your first booking as a passenger, you must complete identity verification using one of the following government-issued documents: a <strong>national ID card</strong>, a <strong>passport</strong>, or a <strong>driver's licence</strong> (submitting a driver's licence simultaneously satisfies driving verification under section 4.2).</p>
+      <p>Verification is performed through our automated identity verification service, which checks document authenticity, performs a liveness check, and matches your face to the document. This process typically completes within a few minutes. In rare cases requiring additional review, verification may take up to 1–2 business days. Until approved, you may browse trips but cannot complete a booking.</p>
+      <p>The verification process involves processing of biometric data (liveness and face matching). By submitting a document for verification, you acknowledge this processing as described in our <a href="/privacy">Privacy Policy</a> and <a href="/kyc-aml">KYC &amp; AML Policy</a>.</p>
       <p>Once approved, your profile displays a <strong>verified identity badge</strong>, increasing trust with drivers and other passengers.</p>
 
       <h3>4.2 Driver's Licence Verification (drivers)</h3>
-      <p>Before posting your first ride, you must upload a valid Icelandic driver's licence. Your submission is reviewed through an identity and document verification process. Submission of a licence confirms that:</p>
+      <p>Before posting your first ride, you must complete driver's licence verification using a driving licence that is valid in Iceland (Icelandic-issued or an equivalent EEA licence). Your submission is processed through our automated identity and document verification service. Submission of a licence confirms that:</p>
       <ul>
         <li>The licence is valid and covers the class of vehicle you intend to drive.</li>
         <li>The name and photograph on the licence match your identity.</li>
         <li>Your civil liability insurance policy covers ridesharing or carrying fare-contributing passengers. <strong>It is your responsibility to confirm this with your insurer.</strong></li>
         <li>The vehicle has a valid roadworthiness certificate (<em>skoðun</em>).</li>
       </ul>
-      <p>SameFare uses an automated document and liveness verification service to confirm document authenticity and match the document to the submitting person. Until verification is approved by our team, no rides may be posted. Once approved, your profile displays a <strong>verified driver's licence badge</strong>.</p>
+      <p>Verification uses automated document authenticity checks, liveness detection, and biometric face matching. Until verification is approved, no rides may be posted. Once approved, your profile displays a <strong>verified driver's licence badge</strong>. Submitting a driver's licence simultaneously satisfies identity verification under section 4.1.</p>
       <p>SameFare reserves the right to re-verify drivers periodically and to suspend posting privileges if a previously approved licence expires or is found to be invalid.</p>
 
       <h3>4.3 Minors</h3>
@@ -99,6 +101,7 @@
         <li>You will not post the same trip in multiple listings simultaneously.</li>
         <li>You will <strong>wait at least 15 minutes</strong> beyond the agreed pickup time before departing, and will be present at the agreed pickup location.</li>
         <li>You will promptly notify passengers of any delays or cancellations.</li>
+        <li><strong>Trip details are locked once any passenger has booked.</strong> Departure time, date, route, and price may not be changed after the first booking is confirmed. If you need to change a locked detail, you must cancel the trip entirely — passengers will not be charged — and post a new listing with the correct details.</li>
       </ul>
       <p>Trip listings are visible to all platform visitors. SameFare reserves the right to remove listings that violate these Terms.</p>
     </section>
@@ -108,8 +111,8 @@
       <h2>6. Booking a Seat</h2>
       <p>When you complete a booking as a passenger:</p>
       <ul>
-        <li>Your card is <strong>authorised</strong> for the full amount (cost contribution + service fee). The actual charge is collected at departure — see section 8 for the payment authorisation model.</li>
-        <li>Your booking is <strong>confirmed</strong> once authorisation succeeds; the driver is notified.</li>
+        <li>Your card is validated at checkout with a zero-value transaction. A pre-authorisation hold for the full amount (cost contribution + service fee) is placed automatically 24 hours before departure — or immediately at checkout if your departure is within 24 hours. Funds are captured automatically at the scheduled departure time — see section 8.</li>
+        <li>The driver is notified as soon as your booking is confirmed.</li>
         <li>The driver's contact details are shared with you, and your first name is shared with the driver.</li>
         <li>You agree to arrive at the pickup point and <strong>wait at least 15 minutes</strong> past the agreed departure time.</li>
         <li>You must carry valid photo ID for the journey.</li>
@@ -135,88 +138,72 @@
       </table>
 
       <h3>7.2 Service Fee</h3>
-      <p>SameFare charges a <strong>18% service fee</strong> on the cost contribution, payable by the passenger at the time of booking. This fee is <strong>non-refundable</strong> unless the driver cancels the trip or fails to appear (see sections 8 and 9).</p>
-      <p><strong>Late-authorisation surcharge.</strong> For trips booked more than 7 days in advance, your card is saved today and charged 24 hours before departure (see section 8.1). If that authorisation fails and you choose to update your card within the 2-hour retry window, a <strong>5% surcharge</strong> is added to the service fee, bringing the total service fee to <strong>23%</strong>. This surcharge is non-refundable once the updated card is saved.</p>
+      <p>SameFare charges a <strong>18% service fee</strong> on the cost contribution, payable by the passenger at the time of booking. This fee is <strong>non-refundable in all circumstances</strong>. If the driver cancels, no capture is made and no charge is incurred. If the driver fails to appear, capture fires as scheduled and the passenger's remedy is a chargeback against the driver — the service fee portion is not recoverable through SameFare (see sections 8 and 9).</p>
+      <p><strong>Pre-authorisation retry surcharge.</strong> If the automatic pre-authorisation 24 hours before departure fails, you will be notified by SMS and email and given a <strong>2-hour window</strong> to update your payment card via <a href="/my-trips">My Trips</a>. If you choose to update your card and retry within this window, a <strong>5% retry surcharge</strong> is added to the service fee, bringing the total to <strong>23%</strong> of the cost contribution. This surcharge covers the cost of payment notifications and retry processing and is non-refundable once the updated card is authorised. The new total will be shown clearly before you confirm the retry. <strong>One retry attempt is permitted.</strong> If the retry is also declined, your booking is automatically cancelled, your seat is released, and no charge is made. If you do not attempt a retry within the 2-hour window, the same outcome applies.</p>
 
       <h3>7.3 Driver Payouts</h3>
-      <p>At the moment a passenger's payment is processed, the cost contribution (82% of the total amount charged) is <strong>immediately split and routed directly to the driver</strong> by our licensed payment processor. SameFare receives only its service fee portion and does not hold driver funds. Disbursement to the driver's nominated bank account is subject to the terms of our licensed payment processor and may be subject to a short settlement period.</p>
-      <p>Payouts may be withheld or delayed pending investigation of disputes, reported no-shows, policy violations, or where required by applicable anti-money laundering or fraud screening obligations (see section 13).</p>
+      <p>Capture is triggered automatically at the scheduled departure time. At the moment of capture, the amount is <strong>immediately split and routed directly</strong> by our licensed payment processor: the cost contribution (82%) goes to the driver and the service fee (18%) goes to SameFare. SameFare never holds driver funds. If the driver cancels, no capture is made. If the passenger cancels or fails to appear after the pre-authorisation is placed, the full amount is captured with no refund (see section 8.2).</p>
+      <p>Disbursement to the driver's nominated bank account is subject to the terms of our licensed payment processor and may be subject to a short settlement period. Payouts may be withheld or delayed pending investigation of disputes, reported no-shows, policy violations, or where required by applicable anti-money laundering or fraud screening obligations (see section 13).</p>
     </section>
 
     <!-- 8 -->
     <section id="s8" class="legal-section">
-      <h2>8. Payment Processing, Cancellation &amp; Refund Policy</h2>
+      <h2>8. Payment, Cancellation &amp; Refund Policy</h2>
 
       <h3>8.1 How Payment Works</h3>
-      <p>Payments on SameFare are processed by our <strong>licensed payment processor</strong>. At the moment of capture, the total amount paid is immediately split: the driver's cost contribution (82%) is routed directly to the driver's account and the SameFare service fee (18%) is routed to SameFare. <strong>SameFare never holds passenger funds on behalf of drivers.</strong> Card details are never stored on SameFare servers.</p>
+      <p>Your card is not charged when you book. A hold is placed on your card 24 hours before your departure — or immediately at booking if your trip departs within 24 hours — reserving the full amount. The charge is collected automatically at the scheduled departure time. SameFare never stores your card number.</p>
+      <p>Once the hold is placed, the booking is <strong>non-refundable</strong> — the seat is reserved and the service is considered fulfilled whether or not you travel.</p>
 
-      <p>SameFare uses an <strong>authorise-then-capture</strong> model. Your card is never charged at the moment of booking — it is <em>authorised</em> (a hold is placed) and the funds are only <em>captured</em> (collected) when your trip departs.</p>
-
-      <p><strong>Trips departing within 7 days (Case A)</strong><br>
-      When you complete checkout, your card is authorised for the full amount. You will see a pending reservation on your statement. The actual charge is collected at departure, at which point the split described above is applied. If the trip is cancelled before departure, the authorisation is released in full.</p>
-
-      <p><strong>Trips departing more than 7 days away (Case B)</strong><br>
-      Your card details are saved securely today (no charge). We will authorise the full amount <strong>24 hours before your departure date</strong>. By saving your card you consent to this merchant-initiated authorisation in accordance with PSD2 strong customer authentication rules (Regulation (EU) 2015/2366).</p>
-
-      <p><strong>Case B authorisation failure &amp; retry window</strong><br>
-      If the 24-hour-before-departure authorisation fails (e.g. insufficient funds, expired card), you will immediately receive an SMS and email notification. You have <strong>2 hours</strong> to update your payment card via <a href="/my-trips">My Trips</a>. If you update your card within this window, a <strong>5% late-authorisation surcharge</strong> is added (total service fee becomes 23% — see section 7.2). If you do not update your card within 2 hours, your booking is automatically cancelled and your seat is released to other passengers. No charge is made on cancellation.</p>
-
-      <h3>8.3 Payment Disputes &amp; Chargebacks</h3>
-      <p>If you believe a payment was taken in error, contact <a href="mailto:support@samefare.com">support@samefare.com</a> within <strong>30 days</strong> of the transaction date. We will investigate and respond within <strong>5 business days</strong>. Eligible refunds are processed within 5–10 business days via the original payment method.</p>
-      <p>If you initiate a chargeback with your card issuer without first contacting us, we reserve the right to suspend your account pending resolution of the dispute.</p>
-
-      <h3>8.2 Cancellation &amp; Refund Schedule</h3>
+      <h3>8.2 Cancellation Policy</h3>
 
       <div class="legal-policy-grid">
+
+        <div class="legal-policy-card legal-policy-card--passenger">
+          <div class="legal-policy-card__label">Passenger cancels — more than 24 hours before departure</div>
+          <div class="legal-policy-card__result">
+            <strong>No charge.</strong> Booking cancelled, seat released.
+          </div>
+        </div>
+
+        <div class="legal-policy-card legal-policy-card--passenger">
+          <div class="legal-policy-card__label">Passenger cancels — within 24 hours of departure</div>
+          <div class="legal-policy-card__result">
+            <strong>Full amount charged. No refund.</strong><br>
+            The seat is reserved and the service is considered fulfilled.
+          </div>
+        </div>
+
+        <div class="legal-policy-card legal-policy-card--noshow">
+          <div class="legal-policy-card__label">Passenger no-show</div>
+          <div class="legal-policy-card__result">
+            <strong>Full amount charged. No refund.</strong>
+          </div>
+        </div>
+
         <div class="legal-policy-card legal-policy-card--driver">
           <div class="legal-policy-card__label">Driver cancels (any time)</div>
           <div class="legal-policy-card__result">
-            <strong>Full refund</strong> — cost contribution <em>and</em> service fee returned to all passengers.
+            <strong>No charge.</strong> Any hold on your card is released in full.
           </div>
         </div>
-        <div class="legal-policy-card legal-policy-card--passenger">
-          <div class="legal-policy-card__label">Grace period — cancelled within 30 min of booking, departure still &gt;24 h away</div>
-          <div class="legal-policy-card__result">
-            <strong>Full refund</strong> — cost contribution <em>and</em> service fee returned.
-          </div>
-        </div>
-        <div class="legal-policy-card legal-policy-card--passenger">
-          <div class="legal-policy-card__label">Passenger cancels &gt;24 hours before departure</div>
-          <div class="legal-policy-card__result">
-            Cost contribution refunded in full.<br>
-            <span class="legal-policy-card__note">Service fee is retained by SameFare.</span>
-          </div>
-        </div>
-        <div class="legal-policy-card legal-policy-card--passenger">
-          <div class="legal-policy-card__label">Passenger cancels ≤24 hours before departure</div>
-          <div class="legal-policy-card__result">
-            50% of cost contribution refunded to passenger.<br>
-            50% paid to driver as compensation.<br>
-            <span class="legal-policy-card__note">Service fee is retained by SameFare.</span>
-          </div>
-        </div>
-        <div class="legal-policy-card legal-policy-card--noshow">
-          <div class="legal-policy-card__label">Passenger no-show (after departure)</div>
-          <div class="legal-policy-card__result">
-            <strong>No refund.</strong> Full cost contribution paid to driver.
-          </div>
-        </div>
+
         <div class="legal-policy-card legal-policy-card--driver">
-          <div class="legal-policy-card__label">Driver no-show (reported by passenger)</div>
+          <div class="legal-policy-card__label">Driver no-show</div>
           <div class="legal-policy-card__result">
-            <strong>Full refund</strong> — cost contribution <em>and</em> service fee returned to affected passengers.
+            <strong>Driver's account suspended immediately.</strong> Contact your card issuer to dispute the charge. SameFare will provide booking records to support your case. Most issuers require disputes within 60–120 days of the transaction.
           </div>
         </div>
-        <div class="legal-policy-card legal-policy-card--noshow">
-          <div class="legal-policy-card__label">Case B — authorisation failed, retry window expired</div>
-          <div class="legal-policy-card__result">
-            Booking automatically cancelled. <strong>No charge made.</strong> Seat released.
-          </div>
-        </div>
+
       </div>
 
-      <p style="margin-top:1.25rem;">The grace period only applies when the departure is still more than 24 hours away — if the trip is imminent, the standard departure-based rules apply regardless of when the booking was made.</p>
-      <p>Refunds are processed within <strong>5–10 business days</strong> via the original payment method. Card payments are processed securely by our licensed payment processor — SameFare never stores your card number. To cancel a booking, go to <a href="/my-trips">My Trips</a> and select the relevant booking.</p>
+      <p style="margin-top:1.25rem;"><strong>Booking cutoff.</strong> Bookings close <strong>1 hour before scheduled departure</strong>.</p>
+      <p><strong>Right of withdrawal.</strong> Under the Consumer Rights Directive (2011/83/EU) Article 16(l) and its Icelandic transposition, the standard 14-day withdrawal right does not apply to transport services for a specific date. No cooling-off period applies.</p>
+
+      <h3>8.3 Payment Failure</h3>
+      <p>If the payment hold fails (for example due to insufficient funds or an expired card), you will be notified by SMS and email immediately. You have <strong>2 hours</strong> to update your card via <a href="/my-trips">My Trips</a> and retry. A <strong>5% surcharge</strong> applies on retry (see section 7.2). If the retry fails or you do not act within 2 hours, your booking is cancelled and your seat released. No charge is made.</p>
+
+      <h3>8.4 Disputes</h3>
+      <p>If you believe a charge was made in error, contact <a href="mailto:samefare@samefare.com">samefare@samefare.com</a> within <strong>30 days</strong>. We will respond within <strong>5 business days</strong>. If you initiate a chargeback without first contacting us, we reserve the right to suspend your account pending resolution.</p>
     </section>
 
     <!-- 9 — NEW: No-Show Policy -->
@@ -226,18 +213,21 @@
       <h3>9.1 Passenger No-Show</h3>
       <p>If a passenger does not appear at the agreed pickup point within 15 minutes of the scheduled departure time, the driver may mark that passenger as a <strong>no-show</strong> via the trip page on the Platform. The following applies:</p>
       <ul>
-        <li>The passenger's booking is cancelled and <strong>no refund is issued</strong>.</li>
-        <li>The driver receives the full cost contribution as compensation.</li>
+        <li>The passenger's booking is cancelled. The pre-authorisation hold on the passenger's card is <strong>captured in full</strong> — no refund of any kind is issued.</li>
+        <li>The cost contribution is paid to the driver as compensation for the reserved seat.</li>
         <li>A first no-show is treated as a grace offence — no automatic rating penalty is applied.</li>
         <li>Subsequent no-shows result in an <strong>automatic 1-star rating</strong> being added to the passenger's profile after 14 days (see section 11).</li>
       </ul>
 
       <h3>9.2 Driver No-Show</h3>
-      <p>If the driver does not appear at the agreed pickup point, any confirmed passenger may report a <strong>driver no-show</strong> via their booking on the Platform. The following applies:</p>
+      <p>Each driver on SameFare is registered as a merchant with our licensed payment processor. Payments for their trips are routed directly to the driver at capture time. SameFare acts as the platform intermediary and retains only the service fee.</p>
+      <p>If the driver does not appear at the agreed pickup point, any confirmed passenger may report a <strong>driver no-show</strong> via their booking on the Platform between <strong>15 minutes and 4 hours</strong> after the scheduled departure time. The following applies:</p>
       <ul>
-        <li>The reporting passenger receives a <strong>full refund</strong> — cost contribution and service fee — within 5–10 business days.</li>
-        <li>An <strong>automatic 1-star rating</strong> is immediately added to the driver's profile.</li>
-        <li>Repeated driver no-shows may result in account suspension (see section 12).</li>
+        <li>The driver's account is <strong>immediately suspended</strong> from posting new trips. A first confirmed no-show results in permanent suspension unless successfully appealed to <a href="mailto:samefare@samefare.com">samefare@samefare.com</a>.</li>
+        <li>An <strong>automatic 1-star rating</strong> is immediately added to the driver's profile. No grace period applies.</li>
+        <li>Because the driver is the registered merchant for the transaction, the passenger's financial remedy is a <strong>chargeback</strong> filed with their card issuer. The card issuer will reverse the charge against the driver's merchant account. SameFare will provide booking confirmation, scheduled departure time, and no-show report records to support the dispute upon request by the passenger or the card issuer.</li>
+        <li>Passengers should contact their card issuer promptly. Most issuers require disputes to be raised within 60–120 days of the transaction date.</li>
+        <li>No-show reports submitted outside the 4-hour window cannot be processed through the Platform. Passengers in this situation should contact their card issuer directly or email <a href="mailto:samefare@samefare.com">samefare@samefare.com</a> for assistance obtaining booking records.</li>
       </ul>
       <p>Drivers are required to wait at least 15 minutes beyond the agreed pickup time before treating a passenger as a no-show. Passengers are similarly required to arrive within that window and should contact the driver if they will be delayed.</p>
     </section>
@@ -312,7 +302,15 @@
         <li>Repeatedly fail to appear for confirmed trips (sections 9.1 and 9.2).</li>
         <li>Are suspected of fraudulent activity.</li>
       </ul>
-      <p>Where practicable, we will notify you before suspension so you may provide an explanation. You may appeal a suspension by contacting <a href="mailto:support@samefare.com">support@samefare.com</a>.</p>
+
+      <h3>12.1 Driver Posting Suspension Thresholds</h3>
+      <p>The following thresholds trigger an automatic suspension of your ability to post new trips. Existing bookings are not affected. You may appeal by contacting <a href="mailto:samefare@samefare.com">samefare@samefare.com</a>:</p>
+      <ul>
+        <li><strong>3 or more cancellations within any 90-day period</strong> — posting suspended pending review. This threshold applies to all driver-initiated trip cancellations regardless of timing.</li>
+        <li><strong>2 or more late cancellations within any 90-day period</strong> — immediate posting suspended. A late cancellation is a driver-initiated cancellation made after the pre-authorisation has been placed (i.e. within 24 hours of scheduled departure), when passengers have already had funds ring-fenced on their cards.</li>
+        <li><strong>1 confirmed driver no-show</strong> — immediate permanent suspension from posting trips. A confirmed no-show is one reported by a passenger within 4 hours of scheduled departure (see section 9.2). No grace period applies. Appeal is available but reinstatement is at SameFare's sole discretion.</li>
+      </ul>
+      <p>Where practicable, we will notify you before suspension so you may provide an explanation. You may appeal a suspension by contacting <a href="mailto:samefare@samefare.com">samefare@samefare.com</a>.</p>
       <p>You may close your account at any time by contacting us. Closure does not entitle you to refunds for confirmed bookings, nor does it affect SameFare's right to retain records as required by law.</p>
     </section>
 
@@ -329,7 +327,7 @@
       <p>Nothing in these Terms limits liability for death or personal injury caused by our own negligence, or for fraud or fraudulent misrepresentation.</p>
 
       <h3>13.1 Anti-Money Laundering &amp; Fraud Screening</h3>
-      <p>SameFare and its licensed payment processor are required to comply with applicable anti-money laundering (AML) and counter-terrorism financing laws, including Icelandic Act no. 140/2018 on Measures against Money Laundering and Terrorist Financing. Accordingly:</p>
+      <p>SameFare and its licensed payment processor are required to comply with applicable anti-money laundering (AML) and counter-terrorism financing laws, including Icelandic Act no. 140/2018 on Measures against Money Laundering and Terrorist Financing. Our full customer due diligence procedures are set out in our <a href="/kyc-aml">KYC &amp; AML Policy</a>. Accordingly:</p>
       <ul>
         <li>We reserve the right to withhold, delay or reverse any payment — including driver disbursements — where we have reasonable grounds to suspect fraudulent activity, money laundering, or a breach of applicable financial regulations.</li>
         <li>We may request additional identity information or documentation at any time as part of our ongoing compliance obligations. Failure to provide requested information within a reasonable timeframe may result in account suspension and payment hold.</li>
@@ -359,7 +357,7 @@
       <address class="legal-address">
         Wellfare ehf.<br>
         Reykjavík, Iceland<br>
-        Email: <a href="mailto:support@samefare.com">support@samefare.com</a>
+        Email: <a href="mailto:samefare@samefare.com">samefare@samefare.com</a>
       </address>
     </section>
 

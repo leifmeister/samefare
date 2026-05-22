@@ -73,6 +73,29 @@ def migrate() -> None:
     steps.append(("users.default_car_type",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS default_car_type  cartype NOT NULL DEFAULT 'sedan'"))
 
+    steps.append(("users.didit_identity_session_id",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS didit_identity_session_id VARCHAR(64)"))
+    steps.append(("users.didit_licence_session_id",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS didit_licence_session_id  VARCHAR(64)"))
+
+    # Driver accountability columns
+    steps.append(("users.cancellations_90d",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS cancellations_90d      INTEGER NOT NULL DEFAULT 0"))
+    steps.append(("users.late_cancellations_90d",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS late_cancellations_90d INTEGER NOT NULL DEFAULT 0"))
+    steps.append(("users.no_shows_confirmed",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS no_shows_confirmed     INTEGER NOT NULL DEFAULT 0"))
+    steps.append(("users.posting_suspended",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS posting_suspended      BOOLEAN NOT NULL DEFAULT FALSE"))
+    # AML retention deadline — null for active accounts; set to deleted_at + 5 years on soft-delete.
+    steps.append(("users.aml_retain_until",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS aml_retain_until       TIMESTAMP"))
+    # Licence expiry — extracted from Didit document data at approval time.
+    steps.append(("users.licence_expiry",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS licence_expiry         DATE"))
+    steps.append(("users.licence_expiry_warned_at",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS licence_expiry_warned_at TIMESTAMP"))
+
     # ── 4. bookings ────────────────────────────────────────────────────────────
     steps.append(("bookings.service_fee",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS service_fee INTEGER NOT NULL DEFAULT 0"))

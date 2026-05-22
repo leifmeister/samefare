@@ -95,7 +95,11 @@
     <div class="chat-strip chat-strip--warning">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
       Payment needed to confirm your seat.
-      <a href="/payments/checkout/{{ booking.id }}" class="chat-strip__link">Pay now →</a>
+      {% if booking.trip.payment_method and booking.trip.payment_method.value == 'blikk' %}
+        <a href="/bookings/{{ booking.id }}/blikk-pay" class="chat-strip__link">Pay via Blikk →</a>
+      {% else %}
+        <a href="/payments/checkout/{{ booking.id }}" class="chat-strip__link">Pay now →</a>
+      {% endif %}
     </div>
     {% else %}
     <div class="chat-strip chat-strip--amber">
@@ -140,6 +144,112 @@
        hx-target="#chat-body"
        hx-sync="this:replace"
        hx-on::after-swap="this.scrollTop = this.scrollHeight">
+
+    {# ── Payment history events ──────────────────────────────────────── #}
+    {# Rendered as system bubbles at the top of the thread so both parties
+       can see the full payment timeline in one place. #}
+    {% set _pay = booking.payment %}
+    {% set _pay_status = _pay.status.value if _pay else '' %}
+
+    {# 1. Booking requested #}
+    <div class="bubble bubble--system">
+      <div class="bubble__inner">
+        <p class="bubble__text">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" width="13" height="13" aria-hidden="true" style="flex-shrink:0"><path d="M5.5 3.5A1.5 1.5 0 0 1 7 2h2.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12a1.5 1.5 0 0 1 .439 1.061V12.5A1.5 1.5 0 0 1 12 14H7a1.5 1.5 0 0 1-1.5-1.5v-9Z"/></svg>
+          <strong>Booking requested</strong>
+          &nbsp;·&nbsp;{{ "{:,}".format(booking.total_price) }} ISK total
+          {% if booking.service_fee %}&nbsp;(incl. {{ "{:,}".format(booking.service_fee) }} ISK fee){% endif %}
+        </p>
+        <time class="bubble__time">{{ booking.created_at.strftime("%-d %b · %H:%M") }}</time>
+      </div>
+    </div>
+
+    {# 2. Booking approved / confirmed #}
+    {% if booking.status.value in ('awaiting_payment', 'confirmed', 'completed', 'no_show') %}
+    <div class="bubble bubble--system">
+      <div class="bubble__inner">
+        <p class="bubble__text">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" width="13" height="13" style="flex-shrink:0;color:#059669"><path fill-rule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd"/></svg>
+          {% if booking.trip.instant_book %}<strong>Instant booking confirmed</strong>{% else %}<strong>Request approved</strong>{% endif %}
+        </p>
+        <time class="bubble__time">{{ booking.updated_at.strftime("%-d %b · %H:%M") if booking.updated_at else '' }}</time>
+      </div>
+    </div>
+    {% endif %}
+
+    {# 3. Service fee collected (Rapyd card captured) #}
+    {% if _pay and _pay_status in ('captured', 'blikk_fee_paid') %}
+    <div class="bubble bubble--system">
+      <div class="bubble__inner">
+        <p class="bubble__text">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" width="13" height="13" style="flex-shrink:0;color:#059669"><path d="M2 3a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H2ZM2 8.5h12v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-3Z"/></svg>
+          <strong>Service fee paid</strong>&nbsp;·&nbsp;{{ "{:,}".format(booking.service_fee) }} ISK
+          {% if _pay_status == 'blikk_fee_paid' %}&nbsp;via Blikk{% endif %}
+        </p>
+        <time class="bubble__time">{{ _pay.updated_at.strftime("%-d %b · %H:%M") if _pay.updated_at else '' }}</time>
+      </div>
+    </div>
+    {% elif _pay and _pay_status in ('blikk_fee_pending', 'authorised', 'capture_requested', 'card_saved') %}
+    <div class="bubble bubble--system">
+      <div class="bubble__inner">
+        <p class="bubble__text">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" width="13" height="13" style="flex-shrink:0;color:#d97706"><path fill-rule="evenodd" d="M1 8a7 7 0 1 1 14 0A7 7 0 0 1 1 8Zm7.75-4.25a.75.75 0 0 0-1.5 0V8c0 .414.336.75.75.75h3.25a.75.75 0 0 0 0-1.5h-2.5V3.75Z" clip-rule="evenodd"/></svg>
+          <strong>Payment pending</strong>&nbsp;·&nbsp;{{ "{:,}".format(booking.service_fee) }} ISK service fee
+        </p>
+        <time class="bubble__time">{{ _pay.created_at.strftime("%-d %b · %H:%M") if _pay.created_at else '' }}</time>
+      </div>
+    </div>
+    {% endif %}
+
+    {# 4. Blikk fare requested #}
+    {% if _pay and _pay.blikk_fare_payment_id and _pay_status in ('blikk_fare_pending', 'blikk_fare_paid') %}
+    <div class="bubble bubble--system">
+      <div class="bubble__inner">
+        <p class="bubble__text">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" width="13" height="13" style="flex-shrink:0;color:#7c3aed"><path d="M3.75 2a.75.75 0 0 0-.75.75v10.5a.75.75 0 0 0 1.28.53L8 10.06l3.72 3.72A.75.75 0 0 0 13 13.25V2.75a.75.75 0 0 0-.75-.75h-8.5Z"/></svg>
+          <strong>Fare payment requested</strong>&nbsp;·&nbsp;{{ "{:,}".format(booking.subtotal) }} ISK via Blikk
+        </p>
+        <time class="bubble__time">{{ _pay.updated_at.strftime("%-d %b · %H:%M") if _pay.updated_at else '' }}</time>
+      </div>
+    </div>
+    {% endif %}
+
+    {# 5. Blikk fare paid #}
+    {% if _pay and _pay_status == 'blikk_fare_paid' %}
+    <div class="bubble bubble--system">
+      <div class="bubble__inner">
+        <p class="bubble__text">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" width="13" height="13" style="flex-shrink:0;color:#059669"><path fill-rule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd"/></svg>
+          <strong>Fare received</strong>&nbsp;·&nbsp;{{ "{:,}".format(booking.subtotal) }} ISK
+        </p>
+        <time class="bubble__time">{{ _pay.updated_at.strftime("%-d %b · %H:%M") if _pay.updated_at else '' }}</time>
+      </div>
+    </div>
+    {% endif %}
+
+    {# 6. Refund #}
+    {% if _pay and _pay_status in ('refunded', 'blikk_refunded') %}
+    <div class="bubble bubble--system">
+      <div class="bubble__inner">
+        <p class="bubble__text">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" width="13" height="13" style="flex-shrink:0;color:#6b7280"><path fill-rule="evenodd" d="M2.628 1.601C3.628.55 5 0 6.5 0h3c1.5 0 2.87.55 3.872 1.601.987 1.034 1.503 2.418 1.407 3.835l-.065.911a3.5 3.5 0 0 1-.956 2.234L12 10.35V12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1.65l-1.758-1.77a3.5 3.5 0 0 1-.956-2.234l-.065-.91c-.096-1.418.42-2.802 1.407-3.836Z" clip-rule="evenodd"/></svg>
+          <strong>Refund issued</strong>&nbsp;·&nbsp;{{ "{:,}".format(_pay.refund_amount if _pay.refund_amount else booking.service_fee) }} ISK
+        </p>
+        <time class="bubble__time">{{ _pay.updated_at.strftime("%-d %b · %H:%M") if _pay.updated_at else '' }}</time>
+      </div>
+    </div>
+    {% elif _pay and _pay_status == 'partial_refund' %}
+    <div class="bubble bubble--system">
+      <div class="bubble__inner">
+        <p class="bubble__text">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" width="13" height="13" style="flex-shrink:0;color:#6b7280"><path fill-rule="evenodd" d="M2.628 1.601C3.628.55 5 0 6.5 0h3c1.5 0 2.87.55 3.872 1.601.987 1.034 1.503 2.418 1.407 3.835l-.065.911a3.5 3.5 0 0 1-.956 2.234L12 10.35V12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1.65l-1.758-1.77a3.5 3.5 0 0 1-.956-2.234l-.065-.91c-.096-1.418.42-2.802 1.407-3.836Z" clip-rule="evenodd"/></svg>
+          <strong>Partial refund</strong>&nbsp;·&nbsp;{{ "{:,}".format(_pay.refund_amount) }} ISK
+          <span style="color:var(--c-muted)">(service fee retained)</span>
+        </p>
+        <time class="bubble__time">{{ _pay.updated_at.strftime("%-d %b · %H:%M") if _pay.updated_at else '' }}</time>
+      </div>
+    </div>
+    {% endif %}
 
     {% if not messages %}
       <div class="chat-empty" id="chat-empty">

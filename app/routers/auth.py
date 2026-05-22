@@ -13,12 +13,18 @@ from app import models, email as mailer
 from app.config import get_settings
 from app.database import get_db
 from app.dependencies import get_current_user_optional, get_template_context
+from app.i18n import get_translations, detect_lang
 from app.limiter import rate_limit
 
 settings = get_settings()
 templates = Jinja2Templates(directory="templates")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 router = APIRouter(tags=["auth"])
+
+
+def _lc(request: Request) -> dict:
+    lang = detect_lang(request)
+    return {"lang": lang, "_t": get_translations(lang)}
 
 
 def _subscribe_newsletter(db: Session, email: str, source: str = "register") -> None:
@@ -62,7 +68,7 @@ def login(
     db: Session = Depends(get_db),
     _rl=rate_limit(5, 60),
 ):
-    ctx = {"request": request, "current_user": None, "is_newsletter_subscriber": False}
+    ctx = {**_lc(request), "request": request, "current_user": None, "is_newsletter_subscriber": False}
     user = db.query(models.User).filter(models.User.email == email.strip().lower()).first()
     if not user:
         return templates.TemplateResponse(
@@ -122,7 +128,7 @@ def register(
     if current_user:
         return RedirectResponse("/", status_code=303)
 
-    ctx = {"request": request, "current_user": None, "is_newsletter_subscriber": False}
+    ctx = {**_lc(request), "request": request, "current_user": None, "is_newsletter_subscriber": False}
     email = email.strip().lower()
 
     current_year = date.today().year

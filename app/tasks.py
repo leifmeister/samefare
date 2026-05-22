@@ -14,10 +14,12 @@ _run_advance_payout_items  Move pending items to payout_ready when bank details 
 _run_send_driver_payouts   Batch and submit payout_ready items (no-op until PAYOUT_ENABLED=true).
 """
 import asyncio
+import datetime as _dt_module
 import logging
 from datetime import datetime, timedelta
 from itertools import groupby
 
+from sqlalchemy import Integer, func
 from sqlalchemy.orm import joinedload
 
 from app.database import SessionLocal
@@ -483,6 +485,9 @@ _CAPTURABLE_BOOKING_STATUSES = frozenset({
     models.BookingStatus.confirmed,
     models.BookingStatus.completed,
     models.BookingStatus.no_show,
+    # A passenger who cancels after pre-auth is charged in full (no refund policy).
+    # cancel_booking() sets capture_at = now so the next cron tick picks this up.
+    models.BookingStatus.cancelled,
 })
 
 
@@ -789,6 +794,10 @@ def _run_create_payout_items() -> None:
                 models.Booking.status.in_([
                     models.BookingStatus.completed,
                     models.BookingStatus.no_show,
+                    # Passengers who cancel after pre-auth forfeit the full amount.
+                    # The booking is cancelled but the payment is still captured
+                    # and the driver is owed their contribution.
+                    models.BookingStatus.cancelled,
                 ]),
                 models.PayoutItem.id == None,  # noqa: E711 — no payout item yet
             )
@@ -960,6 +969,311 @@ def _run_send_driver_payouts() -> None:
 _fuel_price_last_refreshed: datetime | None = None
 _FUEL_REFRESH_INTERVAL_H   = 23   # refresh once per day; capped at 7-day cache
 
+# ── Licence expiry monitoring ─────────────────────────────────────────────────
+_licence_expiry_last_run_date: "_dt_module.date | None" = None
+
+
+def _run_licence_expiry_check() -> None:
+    """
+    Daily licence expiry sweep.  Runs once per UTC calendar day.
+
+    Actions
+    -------
+    1. 30-day warning  — driver's licence expires in ≤30 days and no warning
+                         has been sent in the last 25 days.  Sends a warning
+                         email and records licence_expiry_warned_at.
+    2. Expired         — licence_expiry is today or in the past.  Resets
+                         license_verification → unverified, sets posting_suspended,
+                         and emails the driver asking them to re-verify.
+    """
+    global _licence_expiry_last_run_date
+    today = _dt_module.datetime.utcnow().date()
+    if _licence_expiry_last_run_date == today:
+        return
+    _licence_expiry_last_run_date = today
+
+    db = SessionLocal()
+    try:
+        warn_threshold = today + timedelta(days=30)
+
+        # ── 1. Send 30-day warnings ────────────────────────────────────────────
+        # Drivers whose licence expires within 30 days, who haven't been warned
+        # recently (> 25 days since last warning or never warned).
+        warn_cutoff = datetime.utcnow() - timedelta(days=25)
+        drivers_to_warn = (
+            db.query(models.User)
+            .filter(
+                models.User.licence_expiry != None,
+                models.User.licence_expiry >  today,          # not yet expired
+                models.User.licence_expiry <= warn_threshold,
+                models.User.license_verification == models.VerificationStatus.approved,
+                models.User.is_active == True,
+                models.User.deleted_at == None,
+                (
+                    (models.User.licence_expiry_warned_at == None) |
+                    (models.User.licence_expiry_warned_at < warn_cutoff)
+                ),
+            )
+            .all()
+        )
+        for driver in drivers_to_warn:
+            days_left = (driver.licence_expiry - today).days
+            try:
+                mailer.licence_expiry_warning(driver, days_left)
+                driver.licence_expiry_warned_at = datetime.utcnow()
+                log.info(
+                    "Licence expiry: warned user %s — %d day(s) remaining.",
+                    driver.id, days_left,
+                )
+            except Exception as exc:
+                log.warning("Licence expiry warning email failed for user %s: %s", driver.id, exc)
+
+        # ── 2. Suspend expired licences ────────────────────────────────────────
+        expired_drivers = (
+            db.query(models.User)
+            .filter(
+                models.User.licence_expiry != None,
+                models.User.licence_expiry <= today,
+                models.User.license_verification == models.VerificationStatus.approved,
+                models.User.is_active == True,
+                models.User.deleted_at == None,
+            )
+            .all()
+        )
+        for driver in expired_drivers:
+            driver.license_verification = models.VerificationStatus.unverified
+            if not driver.posting_suspended:
+                driver.posting_suspended  = True
+                driver.suspension_reason  = (
+                    f"Driver's licence expired on {driver.licence_expiry}. "
+                    f"Re-verification required before posting new trips."
+                )
+            try:
+                mailer.licence_expired_suspension(driver)
+                log.info(
+                    "Licence expiry: suspended user %s — licence expired %s.",
+                    driver.id, driver.licence_expiry,
+                )
+            except Exception as exc:
+                log.warning("Licence expired email failed for user %s: %s", driver.id, exc)
+
+        db.commit()
+
+    except Exception as exc:
+        log.exception("Licence expiry check failed: %s", exc)
+        db.rollback()
+    finally:
+        db.close()
+
+
+# ── AML monitoring ─────────────────────────────────────────────────────────────
+# Runs once per calendar day (UTC).  Checks for red-flag patterns across
+# bookings and trips created in the previous 24 hours and emails the admin
+# inbox if anything hits.  No alert = clean day; silent otherwise.
+_aml_last_run_date: "_dt_module.date | None" = None
+
+
+def _run_aml_monitoring() -> None:
+    """
+    Nightly AML transaction-monitoring sweep.
+
+    Red flags checked
+    -----------------
+    1. High booking volume     — any passenger with >5 bookings created in 24 h.
+    2. Cancellation cycling    — any passenger with ≥3 cancellations in 24 h and 0
+                                 completions (book-and-cancel fraud signal).
+    3. Abnormal trip pricing   — any trip posted in 24 h with a price-per-seat
+                                 more than 3× the 30-day platform average.
+    4. Driver no-show repeat   — any driver with no_shows_confirmed > 1 who is
+                                 still active (suspension logic covers 1; this
+                                 catches any edge-case that slipped through).
+
+    Fires once per UTC calendar day regardless of how many 10-minute ticks
+    have elapsed since midnight.  Only sends an email when ≥1 flag is raised.
+    """
+    global _aml_last_run_date
+    today = _dt_module.datetime.utcnow().date()
+    if _aml_last_run_date == today:
+        return
+    _aml_last_run_date = today
+
+    db = SessionLocal()
+    try:
+        now   = datetime.utcnow()
+        since = now - timedelta(hours=24)
+        flags: list[dict] = []
+
+        # ── 1. High booking volume — any passenger with >5 bookings in 24 h ──
+        high_volume = (
+            db.query(models.User, func.count(models.Booking.id).label("n"))
+            .join(models.Booking, models.Booking.passenger_id == models.User.id)
+            .filter(
+                models.Booking.created_at >= since,
+                models.Booking.status.notin_([models.BookingStatus.cancelled]),
+            )
+            .group_by(models.User.id)
+            .having(func.count(models.Booking.id) > 5)
+            .all()
+        )
+        for user, n in high_volume:
+            flags.append({
+                "flag":    "High booking volume",
+                "user_id": user.id,
+                "name":    user.full_name,
+                "detail":  f"{n} active bookings created in the last 24 h",
+            })
+
+        # ── 2. Cancellation cycling — ≥3 cancels, 0 completions in 24 h ─────
+        is_cancelled = func.cast(
+            models.Booking.status == models.BookingStatus.cancelled, Integer
+        )
+        is_completed = func.cast(
+            models.Booking.status == models.BookingStatus.completed, Integer
+        )
+        cycling_rows = (
+            db.query(
+                models.User,
+                func.sum(is_cancelled).label("n_cancel"),
+                func.sum(is_completed).label("n_complete"),
+            )
+            .join(models.Booking, models.Booking.passenger_id == models.User.id)
+            .filter(models.Booking.created_at >= since)
+            .group_by(models.User.id)
+            .having(func.sum(is_cancelled) >= 3)
+            .all()
+        )
+        for user, n_cancel, n_complete in cycling_rows:
+            if (n_complete or 0) == 0:
+                flags.append({
+                    "flag":    "Cancellation cycling",
+                    "user_id": user.id,
+                    "name":    user.full_name,
+                    "detail":  f"{n_cancel} cancellations, 0 completions in 24 h",
+                })
+
+        # ── 3. Abnormal trip pricing — >3× 30-day platform average ───────────
+        avg_price = db.query(func.avg(models.Trip.price_per_seat)).filter(
+            models.Trip.created_at >= now - timedelta(days=30),
+            models.Trip.status != models.TripStatus.cancelled,
+        ).scalar()
+        platform_avg = float(avg_price or 0)
+
+        if platform_avg > 0:
+            odd_trips = (
+                db.query(models.Trip)
+                .filter(
+                    models.Trip.created_at >= since,
+                    models.Trip.price_per_seat > platform_avg * 3,
+                    models.Trip.status != models.TripStatus.cancelled,
+                )
+                .all()
+            )
+            for trip in odd_trips:
+                flags.append({
+                    "flag":    "Abnormal trip price",
+                    "user_id": trip.driver_id,
+                    "name":    trip.driver.full_name if trip.driver else "—",
+                    "detail":  (
+                        f"Trip #{trip.id}: {trip.price_per_seat:,} ISK/seat "
+                        f"({trip.price_per_seat / platform_avg:.1f}× avg {platform_avg:,.0f} ISK) "
+                        f"— {trip.origin} → {trip.destination}"
+                    ),
+                })
+
+        # ── 4. Repeat no-show driver still active ─────────────────────────────
+        for user in (
+            db.query(models.User)
+            .filter(
+                models.User.no_shows_confirmed > 1,
+                models.User.is_active == True,
+                models.User.deleted_at == None,
+            )
+            .all()
+        ):
+            flags.append({
+                "flag":    "Repeat no-show driver — account still active",
+                "user_id": user.id,
+                "name":    user.full_name,
+                "detail":  (
+                    f"{user.no_shows_confirmed} confirmed no-shows; "
+                    f"posting_suspended={user.posting_suspended}"
+                ),
+            })
+
+        if flags:
+            mailer.aml_monitoring_alert(flags, today)
+            log.info("AML monitoring: %d flag(s) for %s — alert sent.", len(flags), today)
+        else:
+            log.info("AML monitoring: clean sweep for %s.", today)
+
+    except Exception as exc:
+        log.exception("AML monitoring task failed: %s", exc)
+    finally:
+        db.close()
+
+
+# ── 90-day counter reset ───────────────────────────────────────────────────────
+# Runs once per calendar day (UTC).  Resets cancellations_90d and
+# late_cancellations_90d to 0 for any driver whose most recent cancelled trip
+# is more than 90 days old, so a bad patch doesn't haunt them forever.
+_counter_reset_last_run_date: "_dt_module.date | None" = None
+
+
+def _run_counter_reset() -> None:
+    """
+    Daily counter reset.  Runs once per UTC calendar day.
+
+    For every driver with a non-zero 90-day cancellation counter, check
+    whether they have cancelled any trip within the last 90 days.  If not,
+    zero both counters.  posting_suspended is intentionally left unchanged —
+    reinstatement is a manual admin decision.
+    """
+    global _counter_reset_last_run_date
+    today = _dt_module.datetime.utcnow().date()
+    if _counter_reset_last_run_date == today:
+        return
+    _counter_reset_last_run_date = today
+
+    cutoff = _dt_module.datetime.utcnow() - timedelta(days=90)
+    db = SessionLocal()
+    try:
+        # Drivers with at least one non-zero 90-day counter
+        drivers = (
+            db.query(models.User)
+            .filter(
+                (models.User.cancellations_90d > 0) |
+                (models.User.late_cancellations_90d > 0),
+            )
+            .all()
+        )
+
+        reset_count = 0
+        for driver in drivers:
+            recent_cancel = (
+                db.query(models.Trip)
+                .filter(
+                    models.Trip.driver_id == driver.id,
+                    models.Trip.status    == models.TripStatus.cancelled,
+                    models.Trip.updated_at >= cutoff,
+                )
+                .first()
+            )
+            if recent_cancel is None:
+                # No cancellations in the past 90 days — clear the counters
+                driver.cancellations_90d      = 0
+                driver.late_cancellations_90d = 0
+                reset_count += 1
+
+        if reset_count:
+            db.commit()
+            log.info("Counter reset: cleared 90-day counters for %d driver(s)", reset_count)
+
+    except Exception as exc:
+        log.exception("Counter reset task failed: %s", exc)
+        db.rollback()
+    finally:
+        db.close()
+
 
 def _run_refresh_fuel_price() -> None:
     """
@@ -1020,3 +1334,7 @@ async def auto_complete_loop() -> None:
         _run_send_driver_payouts()      # batch and submit (no-op until PAYOUT_ENABLED=true)
         # ── Pricing data ────────────────────────────────────────────────────────
         _run_refresh_fuel_price()       # cache apis.is p80 petrol price (once/day)
+        # ── Daily once-per-day checks ────────────────────────────────────────────
+        _run_licence_expiry_check()     # 30-day warning + suspend expired licences
+        _run_aml_monitoring()           # red-flag sweep; emails admin if anything hits
+        _run_counter_reset()            # zero 90-day cancel counters when window has cleared

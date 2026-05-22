@@ -76,6 +76,12 @@ class PaymentStatus(_StrEnum):
     auth_expired   = "auth_expired"        # authorisation lapsed before capture
     # Case B retry
     retry_pending  = "retry_pending"       # MIT failed; passenger has 2 h to update card (+5 % fee)
+    # Blikk (P2P bank transfer) payment states
+    blikk_fee_pending = "blikk_fee_pending"  # service-fee P2P created, passenger redirected to Blikk
+    blikk_fee_paid    = "blikk_fee_paid"     # passenger completed fee payment
+    blikk_fare_pending = "blikk_fare_pending"  # driver requested fare, passenger notified in Blikk app
+    blikk_fare_paid   = "blikk_fare_paid"    # passenger completed fare payment at ride time
+    blikk_refunded    = "blikk_refunded"     # service fee refunded (platform → passenger)
 
 
 class ReviewType(_StrEnum):
@@ -97,6 +103,11 @@ class VerificationStatus(_StrEnum):
     pending    = "pending"
     approved   = "approved"
     rejected   = "rejected"
+
+
+class TripPaymentMethod(_StrEnum):
+    card  = "card"   # Rapyd card / wallet payment (default)
+    blikk = "blikk"  # Blikk P2P bank transfer (IS passengers only)
 
 
 class PayoutMethod(_StrEnum):
@@ -204,6 +215,46 @@ class User(Base):
     id_rejection_reason      = Column(Text)
     license_rejection_reason = Column(Text)
 
+    # Didit KYC session IDs — set when a Didit session is created, cleared on retry.
+    # ⚠️  AML RETENTION — DO NOT NULL THESE OUT ON ACCOUNT DELETION.
+    # Act no. 140/2018 Art. 24 requires retention of KYC session references for 5 years
+    # from account closure.  The session IDs must remain in the row after soft-delete.
+    # See aml_retain_until below for the computed expiry date.
+    didit_identity_session_id = Column(String(64), nullable=True)
+    didit_licence_session_id  = Column(String(64), nullable=True)
+
+    # Licence expiry tracking — extracted from the Didit document data at approval time.
+    # Null for users who verified before this field was introduced, or for identity-only
+    # verifications (passengers).  The daily cron uses these to send warnings and suspend.
+    # licence_expiry_warned_at: set when the 30-day warning email is sent; prevents
+    # re-sending the same warning email on every subsequent daily tick.
+    licence_expiry          = Column(Date, nullable=True)
+    licence_expiry_warned_at = Column(DateTime, nullable=True)
+
+    # AML record-keeping deadline — set to deleted_at + 5 years when an account is
+    # soft-deleted.  Null for active accounts.  No personal data may be purged from
+    # this row (including the Didit session IDs above) before this date has passed.
+    aml_retain_until          = Column(DateTime, nullable=True)
+
+    # ── Driver accountability ──────────────────────────────────────────────────
+    # cancellations_90d:      trips cancelled by this driver in the current 90-day window.
+    #                         Incremented in trips.cancel_trip(); reset manually by admin
+    #                         when reinstating a suspended driver.
+    # late_cancellations_90d: subset of above where cancellation happened after T−24h
+    #                         (when passengers already had a pre-auth on their card).
+    # no_shows_confirmed:     lifetime count of confirmed driver no-shows (reported by
+    #                         passengers and confirmed by the system or admin).
+    # posting_suspended:      when True the driver may not post new trips.
+    #                         Set automatically when thresholds are hit; cleared by admin.
+    # Thresholds (aligned with the cancellation policy in the T&C):
+    #   ≥ 3 cancellations in 90 days → suspend pending admin review
+    #   ≥ 2 late cancellations (post T−24h) → immediate suspend
+    #   ≥ 1 confirmed no-show → immediate suspend (zero tolerance)
+    cancellations_90d      = Column(Integer, nullable=False, default=0)
+    late_cancellations_90d = Column(Integer, nullable=False, default=0)
+    no_shows_confirmed     = Column(Integer, nullable=False, default=0)
+    posting_suspended      = Column(Boolean, nullable=False, default=False)
+
     trips           = relationship("Trip",    back_populates="driver",
                                    cascade="all, delete-orphan")
     bookings        = relationship("Booking", back_populates="passenger",
@@ -252,6 +303,27 @@ class User(Base):
     def total_trips_as_driver(self) -> int:
         return sum(1 for t in self.trips if t.status == TripStatus.completed)
 
+    @property
+    def total_cancellations_as_driver(self) -> int:
+        return sum(1 for t in self.trips if t.status == TripStatus.cancelled)
+
+    @property
+    def cancellation_rate(self) -> float | None:
+        """
+        Fraction of this driver's trips that were cancelled (0.0–1.0).
+        Returns None when the driver has fewer than 3 completed-or-cancelled trips
+        (not enough data to be meaningful).  All cancelled trips count as
+        driver-initiated since only drivers can cancel a trip via the cancel endpoint.
+        """
+        total = sum(
+            1 for t in self.trips
+            if t.status in (TripStatus.completed, TripStatus.cancelled)
+        )
+        if total < 3:
+            return None
+        cancelled = sum(1 for t in self.trips if t.status == TripStatus.cancelled)
+        return round(cancelled / total, 2)
+
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email!r}>"
 
@@ -292,6 +364,11 @@ class Trip(Base):
     reminder_sent      = Column(Boolean, nullable=False, default=False)  # day-before SMS reminder fired
     status             = Column(Enum(TripStatus), nullable=False, default=TripStatus.active)
     created_at         = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    # Payment method the driver accepts (Rapyd card or Blikk P2P bank transfer).
+    # NULL / 'card' → legacy Rapyd flow; 'blikk' → Blikk-only trip.
+    payment_method = Column(Enum(TripPaymentMethod), nullable=True,
+                            default=TripPaymentMethod.card)
 
     # ── Pricing module ─────────────────────────────────────────────────────────
     # fuel_type: petrol/diesel/electric/hybrid — used by the cost estimator.
@@ -461,6 +538,12 @@ class Payment(Base):
     rapyd_customer_id       = Column(String(255), nullable=True)  # customer ID (Case B)
     rapyd_payment_method_id = Column(String(255), nullable=True)  # saved PM token (Case B)
     rapyd_checkout_id       = Column(String(255), nullable=True)  # checkout page ID
+
+    # ── Blikk integration ────────────────────────────────────────────────────
+    # blikk_fee_payment_id  — Blikk payment ID for the service-fee P2P
+    # blikk_fare_payment_id — Blikk payment ID for the driver-fare P2P (set at ride time)
+    blikk_fee_payment_id  = Column(String(255), nullable=True)
+    blikk_fare_payment_id = Column(String(255), nullable=True)
 
     # Idempotency key — generated once per payment attempt, reused for retries
     idempotency_key         = Column(String(64), nullable=True)

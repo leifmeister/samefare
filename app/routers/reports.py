@@ -42,12 +42,26 @@ def report_form(
 
     booking_id = request.query_params.get("booking_id")
     booking = None
-    if booking_id:
-        booking = db.query(models.Booking).filter(
-            models.Booking.id == int(booking_id),
-            (models.Booking.passenger_id == current_user.id) |
-            (models.Booking.trip.has(models.Trip.driver_id == current_user.id)),
-        ).first()
+    if booking_id and booking_id.strip():
+        try:
+            bk_id_raw = int(booking_id.strip())
+        except ValueError:
+            bk_id_raw = None
+        if bk_id_raw is not None:
+            bk = (
+                db.query(models.Booking)
+                .options(joinedload(models.Booking.trip))
+                .filter(models.Booking.id == bk_id_raw)
+                .first()
+            )
+            if bk:
+                reporter_is_passenger = bk.passenger_id == current_user.id
+                reporter_is_driver    = bk.trip.driver_id == current_user.id
+                reported_is_passenger = bk.passenger_id == user_id
+                reported_is_driver    = bk.trip.driver_id == user_id
+                if (reporter_is_passenger or reporter_is_driver) and \
+                   (reported_is_passenger or reported_is_driver):
+                    booking = bk
 
     return templates.TemplateResponse("reports/new.html", {
         **ctx,
@@ -80,7 +94,31 @@ def submit_report(
     except ValueError:
         return RedirectResponse(f"/report/{user_id}", status_code=303)
 
-    bk_id = int(booking_id) if booking_id.strip() else None
+    # Validate the booking reference defensively.
+    # Parse the raw form value, then reload from DB and confirm the current
+    # user is a participant and the reported user is the other participant.
+    # Any mismatch silently drops the booking link — the report is still filed.
+    bk_id = None
+    if booking_id.strip():
+        try:
+            bk_id_raw = int(booking_id.strip())
+        except ValueError:
+            bk_id_raw = None
+        if bk_id_raw is not None:
+            bk = (
+                db.query(models.Booking)
+                .options(joinedload(models.Booking.trip))
+                .filter(models.Booking.id == bk_id_raw)
+                .first()
+            )
+            if bk:
+                reporter_is_passenger = bk.passenger_id == current_user.id
+                reporter_is_driver    = bk.trip.driver_id == current_user.id
+                reported_is_passenger = bk.passenger_id == user_id
+                reported_is_driver    = bk.trip.driver_id == user_id
+                if (reporter_is_passenger or reporter_is_driver) and \
+                   (reported_is_passenger or reported_is_driver):
+                    bk_id = bk.id
 
     report = models.UserReport(
         reporter_id = current_user.id,

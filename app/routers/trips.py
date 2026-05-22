@@ -15,7 +15,7 @@ from app.routers.alerts import notify_matching_alerts
 from app.routers.payments import _issue_rapyd_refund
 from app.estimator import estimate_trip_cost, route_lookup
 from app.fuel import active_policy, get_cached_petrol_price
-from app.utils import canonical_city, nearest_cities, build_route_graph, is_on_route, shortest_path_km, prorate_segment_price, resolve_segment, segments_overlap
+from app.utils import canonical_city, nearest_cities, build_route_graph, is_on_route, shortest_path_km, prorate_segment_price, resolve_segment, segments_overlap, seats_for_segment, recompute_seats_available
 
 settings = get_settings()
 
@@ -43,8 +43,9 @@ ICELANDIC_CITIES = [
     # (e.g. Kópavogur, Dalvík, Varmahlíð).
     "Akureyri", "Blönduós", "Borgarnes", "Egilsstaðir", "Hella",
     "Höfn", "Húsavík", "Hveragerði", "Ísafjörður", "Keflavík",
-    "Kirkjubæjarklaustur", "Mývatn", "Ólafsvík", "Reykjavík",
-    "Sauðárkrókur", "Selfoss", "Siglufjörður", "Stykkishólmur", "Vík",
+    "Kirkjubæjarklaustur", "Landeyjahöfn", "Landmannalaugar", "Mývatn", "Ólafsvík", "Reykjavík",
+    "Sauðárkrókur", "Selfoss", "Seyðisfjörður", "Siglufjörður", "Skógarfoss", "Stykkishólmur",
+    "Varmahlíð", "Vík",
 ]
 
 
@@ -234,24 +235,27 @@ def _find_segment_trips(
     if seg_km is None:
         return []
 
-    # Candidate query — all active trips except direct matches
+    # Candidate query — all active trips except direct matches.
+    # Do NOT filter by seats_available here: that column is the whole-trip
+    # minimum and can be 0 even when the requested segment still has room
+    # (e.g. REY→SEL full but SEL→VÍK has seats).  Per-segment availability
+    # is checked in the loop below after route validation.
     q = (
         db.query(models.Trip)
         .options(
             joinedload(models.Trip.driver).joinedload(models.User.reviews_received),
             joinedload(models.Trip.driver).selectinload(models.User.trips),
+            selectinload(models.Trip.bookings),   # needed for seats_for_segment
         )
         .filter(
             models.Trip.status == models.TripStatus.active,
             models.Trip.departure_datetime >= datetime.utcnow(),
-            models.Trip.seats_available > 0,
+            models.Trip.seats_total > 0,
             models.Trip.allow_segments == True,  # noqa: E712
         )
     )
     if direct_ids:
         q = q.filter(~models.Trip.id.in_(direct_ids))
-    if seats:
-        q = q.filter(models.Trip.seats_available >= seats)
     if range_start and range_end:
         q = q.filter(
             models.Trip.departure_datetime >= range_start,
@@ -292,6 +296,19 @@ def _find_segment_trips(
         segment_price = prorate_segment_price(trip.price_per_seat, seg_km, total_km)
         if segment_price is None:
             continue
+
+        # Per-segment availability check — only count bookings that overlap
+        # the searched leg, not the whole-trip minimum.
+        active_bookings = [b for b in trip.bookings if b.status in _SEAT_HOLDING_STATUSES]
+        avail = seats_for_segment(
+            graph, trip.seats_total, active_bookings,
+            trip.origin, trip.destination, search_origin, search_dest,
+        )
+        if seats and avail < seats:
+            continue
+        if not seats and avail < 1:
+            continue
+
         results.append(SegmentedTrip(trip, search_origin, search_dest, segment_price))
 
     return results
@@ -506,6 +523,9 @@ def new_trip_page(
     if current_user.license_verification != models.VerificationStatus.approved:
         return RedirectResponse("/verify?next=driver", status_code=303)
 
+    if current_user.posting_suspended:
+        return RedirectResponse("/my-trips?tab=rides&posting_suspended=1", status_code=303)
+
     # Default vals and car details from user profile
     vals = {
         "origin": "", "destination": "",
@@ -517,6 +537,7 @@ def new_trip_page(
         "chattiness": None,
         "winter_ready": False, "child_seat": False, "flexible_pickup": False,
         "instant_book": True, "description": "",
+        "payment_method": "card",
     }
     defaults = {
         "car_make":  current_user.default_car_make  or "",
@@ -584,8 +605,7 @@ def create_trip(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 
-    origin:             str   = Form(...),
-    destination:        str   = Form(...),
+    origin:             str   = Form(...),    destination:        str   = Form(...),
     departure_date:     date  = Form(...),
     departure_time:     str   = Form(...),
     seats_total:        int   = Form(...),
@@ -609,9 +629,13 @@ def create_trip(
     flexible_pickup_raw: Optional[str] = Form(None),
     instant_book_raw:    Optional[str] = Form(None),
     allow_segments_raw:  Optional[str] = Form(None),
+    payment_method:      Optional[str] = Form(None),
 ):
     if current_user.license_verification != models.VerificationStatus.approved:
         return RedirectResponse("/verify?next=driver", status_code=303)
+
+    if current_user.posting_suspended:
+        return RedirectResponse("/my-trips?tab=rides&posting_suspended=1", status_code=303)
 
     allows_luggage  = allows_luggage_raw  is not None
     large_luggage   = large_luggage_raw   is not None
@@ -623,6 +647,10 @@ def create_trip(
     flexible_pickup = flexible_pickup_raw is not None
     instant_book    = instant_book_raw    is not None
     allow_segments  = allow_segments_raw  is not None
+    try:
+        payment_method_val = models.TripPaymentMethod(payment_method) if payment_method else models.TripPaymentMethod.card
+    except ValueError:
+        payment_method_val = models.TripPaymentMethod.card
 
     # Resolve fuel type (None is fine — estimator infers from car_type)
     try:
@@ -741,6 +769,7 @@ def create_trip(
         flexible_pickup=flexible_pickup,
         instant_book=instant_book,
         allow_segments=allow_segments,
+        payment_method=payment_method_val,
     )
     db.add(trip)
 
@@ -814,6 +843,7 @@ def edit_trip_page(
             "allow_segments":  trip.allow_segments,
             "description":     trip.description or "",
             "fuel_type":       str(trip.fuel_type) if trip.fuel_type else "",
+            "payment_method":  str(trip.payment_method) if trip.payment_method else "card",
         },
         "defaults": {
             "car_make":  trip.car_make  or "",
@@ -857,6 +887,7 @@ def update_trip(
     flexible_pickup_raw:  Optional[str] = Form(None),
     instant_book_raw:     Optional[str] = Form(None),
     allow_segments_raw:   Optional[str] = Form(None),
+    payment_method:       Optional[str] = Form(None),
 ):
     trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
     if not trip or trip.driver_id != current_user.id:
@@ -874,6 +905,10 @@ def update_trip(
     flexible_pickup = flexible_pickup_raw is not None
     instant_book    = instant_book_raw    is not None
     allow_segments  = allow_segments_raw  is not None
+    try:
+        payment_method_val = models.TripPaymentMethod(payment_method) if payment_method else models.TripPaymentMethod.card
+    except ValueError:
+        payment_method_val = models.TripPaymentMethod.card
 
     try:
         fuel_type_val = models.FuelType(fuel_type_raw) if fuel_type_raw else None
@@ -955,21 +990,32 @@ def update_trip(
                 "This cap ensures passengers only cover their share of trip costs."
             )}, status_code=400)
 
-    # seats_total can't drop below seats that are already held.
+    # seats_total can't drop below peak concurrent occupancy.
     # awaiting_payment, confirmed, and card_saved all hold seats; pending does
     # not (no seats are deducted until the driver approves the request).
-    held_seats = sum(
-        b.seats_booked for b in trip.bookings
-        if b.status in _SEAT_HOLDING_STATUSES
+    # Use peak-occupancy (not a simple sum) so non-overlapping segment bookings
+    # are not double-counted when the driver lowers the seat count.
+    _graph_edit  = build_route_graph(db)
+    _active_edit = [b for b in trip.bookings if b.status in _SEAT_HOLDING_STATUSES]
+    # Compute raw peak occupancy using a large synthetic seats_total so the
+    # floor isn't clamped by whatever the current (or requested) seats_total is.
+    _BIG         = 9999
+    _peak_occ    = _BIG - recompute_seats_available(
+        _graph_edit, _BIG, _active_edit, trip.origin, trip.destination
     )
-    if seats_total < held_seats:
+    if seats_total < _peak_occ:
         return templates.TemplateResponse("trips/edit.html",
-            {**err_ctx, "error": f"Can't reduce seats below {held_seats} — {held_seats} seat(s) are already reserved."}, status_code=400)
+            {**err_ctx, "error": (
+                f"Can't reduce seats below {_peak_occ} — that's the peak concurrent "
+                f"occupancy across all active bookings on this trip."
+            )}, status_code=400)
 
     trip.origin             = origin.strip()
     trip.destination        = destination.strip()
     trip.departure_datetime = departure_dt
-    trip.seats_available    = seats_total - held_seats
+    trip.seats_available    = recompute_seats_available(
+        _graph_edit, seats_total, _active_edit, trip.origin, trip.destination
+    )
     trip.seats_total        = seats_total
     trip.price_per_seat     = price_per_seat
     trip.car_make           = car_make  or None
@@ -991,6 +1037,7 @@ def update_trip(
     trip.flexible_pickup    = flexible_pickup
     trip.instant_book       = instant_book
     trip.allow_segments     = allow_segments
+    trip.payment_method     = payment_method_val
 
     db.commit()
     return RedirectResponse(f"/trips/{trip.id}", status_code=303)
@@ -1136,19 +1183,35 @@ def trip_detail(
     # Validate and price the segment using the same logic as the booking flow.
     # Any invalid or out-of-route segment is silently dropped so the page
     # falls back to full-trip context rather than showing a contradictory price.
+    _detail_graph = build_route_graph(db)
     segment_pickup, segment_dropoff, segment_price, _ = resolve_segment(
-        build_route_graph(db), trip, pickup or "", dropoff or ""
+        _detail_graph, trip, pickup or "", dropoff or ""
     )
+
+    # When a segment is requested, compute seats available for that specific
+    # segment (peak-occupancy scoped to the leg) so the booking CTA is shown
+    # even when the trip-level seats_available counter has dropped to 0 due to
+    # non-overlapping bookings on other legs.
+    segment_available_seats: Optional[int] = None
+    if segment_pickup and segment_dropoff:
+        _detail_active = [b for b in trip.bookings if b.status in _SEAT_HOLDING_STATUSES]
+        segment_available_seats = seats_for_segment(
+            _detail_graph,
+            trip.seats_total,
+            _detail_active,
+            trip.origin,
+            trip.destination,
+            segment_pickup,
+            segment_dropoff,
+        )
 
     # Occupancy timeline — driver-only: shows seat usage per leg when segments are allowed.
     occupancy_timeline = []
     if current_user and current_user.id == trip.driver_id and trip.allow_segments:
         _graph = build_route_graph(db)
-        _active = [b for b in trip.bookings
-                   if b.status in (models.BookingStatus.awaiting_payment,
-                                   models.BookingStatus.card_saved,
-                                   models.BookingStatus.confirmed,
-                                   models.BookingStatus.pending)]
+        # pending bookings do not hold seats anywhere else in the booking
+        # logic — exclude them so the timeline shows true reserved capacity.
+        _active = [b for b in trip.bookings if b.status in _SEAT_HOLDING_STATUSES]
         _waypoints = sorted(
             {b.pickup_city  or trip.origin      for b in _active} |
             {b.dropoff_city or trip.destination for b in _active} |
@@ -1200,9 +1263,10 @@ def trip_detail(
         "driver_summary": driver_summary,
         "current_user_booking": current_user_booking,
         "structured_data": structured_data,
-        "segment_pickup":  segment_pickup,
-        "segment_dropoff": segment_dropoff,
-        "segment_price":   segment_price,
+        "segment_pickup":           segment_pickup,
+        "segment_dropoff":          segment_dropoff,
+        "segment_price":            segment_price,
+        "segment_available_seats":  segment_available_seats,
         "trip_polyline":      trip_polyline,
         "occupancy_timeline": occupancy_timeline,
     })
@@ -1264,6 +1328,28 @@ def cancel_trip(
                     db, b, b.payment.passenger_total, reason="driver_cancelled"
                 )
         affected.append(b)
+
+    # ── Driver accountability: track cancellations and enforce suspension thresholds ──
+    driver = current_user
+    driver.cancellations_90d += 1
+    # A cancellation is "late" when it happens within 24 h of departure — at that
+    # point passengers have already had a pre-auth placed on their cards.
+    if trip.departure_datetime <= datetime.utcnow() + timedelta(hours=24):
+        driver.late_cancellations_90d += 1
+
+    # Suspension thresholds (see User model docstring for rationale):
+    #   ≥ 3 total cancellations in 90 days  → suspend pending admin review
+    #   ≥ 2 late cancellations              → immediate suspend (passengers were pre-authed)
+    # Note: these counters are reset manually by admin when reinstating a driver.
+    # A future cron job should reset them every 90 days automatically.
+    if not driver.posting_suspended:
+        if driver.late_cancellations_90d >= 2 or driver.cancellations_90d >= 3:
+            driver.posting_suspended  = True
+            driver.suspension_reason  = (
+                f"Cancellation threshold exceeded: "
+                f"{driver.cancellations_90d} cancellation(s), "
+                f"{driver.late_cancellations_90d} late (post T−24h)."
+            )
 
     db.commit()
     for b in affected:

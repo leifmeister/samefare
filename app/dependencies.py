@@ -92,6 +92,8 @@ def _pending_reviews(user: models.User, db: Session) -> list:
 
 def get_template_context(request: Request, db: Session = Depends(get_db)):
     from datetime import datetime
+    from app.i18n import get_translations, detect_lang
+    lang = detect_lang(request)
     user = get_current_user_optional(request, db)
     unread_count = 0
     pending_reviews = []
@@ -135,4 +137,6 @@ def get_template_context(request: Request, db: Session = Depends(get_db)):
         "timedelta":                timedelta,
         "email_unverified":         email_unverified,
         "is_newsletter_subscriber": is_newsletter_subscriber,
+        "lang":                     lang,
+        "_t":                       get_translations(lang),
     }

@@ -17,8 +17,9 @@ if TYPE_CHECKING:
 _CANONICAL_CITIES: tuple[str, ...] = (
     "Akureyri", "Blönduós", "Borgarnes", "Egilsstaðir", "Hella",
     "Höfn", "Húsavík", "Hveragerði", "Ísafjörður", "Keflavík",
-    "Kirkjubæjarklaustur", "Mývatn", "Ólafsvík", "Reykjavík",
-    "Sauðárkrókur", "Selfoss", "Siglufjörður", "Stykkishólmur", "Vík",
+    "Kirkjubæjarklaustur", "Landeyjahöfn", "Landmannalaugar", "Mývatn", "Ólafsvík", "Reykjavík",
+    "Sauðárkrókur", "Selfoss", "Seyðisfjörður", "Siglufjörður", "Skógarfoss", "Stykkishólmur",
+    "Varmahlíð", "Vík",
 )
 
 
@@ -290,18 +291,59 @@ def seats_for_segment(
 ) -> int:
     """Return available seats for a new booking on [new_pickup, new_dropoff].
 
-    Counts only existing bookings whose segment overlaps the new one.
+    Uses peak-occupancy logic (same as recompute_seats_available) scoped to
+    the requested segment, so non-overlapping passengers that both fall inside
+    the requested span are not double-counted.
+
+    Example: seats_total=3, bookings A→B(1 seat) and C→D(1 seat).
+    Requesting A→D: both overlap the span, but peak concurrent occupancy is
+    only 1 (they share no leg), so 2 seats remain — not 1.
     """
-    used = sum(
-        b.seats_booked for b in active_bookings
+    # 1. Only consider bookings that actually share at least one road leg
+    #    with the new segment.
+    overlapping = [
+        b for b in active_bookings
         if segments_overlap(
             graph, trip_origin,
             b.pickup_city  or trip_origin,
             b.dropoff_city or trip_destination,
             new_pickup, new_dropoff,
         )
-    )
-    return max(0, seats_total - used)
+    ]
+    if not overlapping:
+        return seats_total
+
+    # 2. Collect every boarding/alighting waypoint that falls inside (or at the
+    #    boundary of) the requested segment and sort by distance from trip origin.
+    dist = lambda c: shortest_path_km(graph, trip_origin, c) or 0.0
+    seg_start = dist(new_pickup)
+    seg_end   = dist(new_dropoff)
+
+    waypoints: set[str] = {new_pickup, new_dropoff}
+    for b in overlapping:
+        bp, bd = b.pickup_city or trip_origin, b.dropoff_city or trip_destination
+        if seg_start <= dist(bp) <= seg_end:
+            waypoints.add(bp)
+        if seg_start <= dist(bd) <= seg_end:
+            waypoints.add(bd)
+
+    sorted_wps = sorted(waypoints, key=dist)
+
+    # 3. Peak occupancy across every consecutive sub-leg inside the segment.
+    max_occ = 0
+    for i in range(len(sorted_wps) - 1):
+        occ = sum(
+            b.seats_booked for b in overlapping
+            if segments_overlap(
+                graph, trip_origin,
+                b.pickup_city  or trip_origin,
+                b.dropoff_city or trip_destination,
+                sorted_wps[i], sorted_wps[i + 1],
+            )
+        )
+        max_occ = max(max_occ, occ)
+
+    return max(0, seats_total - max_occ)
 
 
 def recompute_seats_available(

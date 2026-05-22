@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="{{ lang }}" class="h-full">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -61,20 +61,20 @@
           </a>
 
           <div class="navbar__nav">
-            <a href="/">Home</a>
-            <a href="/trips">Find a ride</a>
-            <a href="{% if current_user %}/trips/new{% else %}/offer-ride{% endif %}" class="nav-highlight">Offer a ride</a>
+            <a href="/">{{ _t('nav_home') }}</a>
+            <a href="/trips">{{ _t('nav_find_ride') }}</a>
+            <a href="{% if current_user %}/trips/new{% else %}/offer-ride{% endif %}" class="nav-highlight">{{ _t('nav_offer_ride') }}</a>
             {% if current_user %}
-              <a href="/my-trips">My trips</a>
-              <a href="/my-alerts">Alerts</a>
+              <a href="/my-trips">{{ _t('nav_my_trips') }}</a>
+              <a href="/my-alerts">{{ _t('nav_alerts') }}</a>
               <a href="/messages" class="nav-messages-link">
-                Messages
+                {{ _t('nav_messages') }}
                 {% if unread_message_count %}
                   <span class="nav-badge">{{ unread_message_count }}</span>
                 {% endif %}
               </a>
               {% if current_user.is_admin %}
-                <a href="/admin">Admin</a>
+                <a href="/admin">{{ _t('nav_admin') }}</a>
               {% endif %}
             {% endif %}
           </div>
@@ -89,11 +89,24 @@
                 </svg>
                 {{ current_user.full_name.split()[0] }}
               </a>
-              <a href="/logout" class="btn btn-outline btn-sm">Log out</a>
+              <a href="/logout" class="btn btn-outline btn-sm">{{ _t('nav_logout') }}</a>
             {% else %}
-              <a href="/login" class="btn btn-ghost btn-sm">Log in</a>
-              <a href="/register" class="btn btn-primary btn-sm">Join free</a>
+              <a href="/login" class="btn btn-ghost btn-sm">{{ _t('nav_login') }}</a>
+              <a href="/register" class="btn btn-primary btn-sm">{{ _t('nav_join') }}</a>
             {% endif %}
+
+            <!-- Language switcher -->
+            <div class="lang-switcher" aria-label="Language selector">
+              {% if lang == 'is' %}
+                <a href="/lang/set/en?redirect_to={{ request.url.path | urlencode }}" class="lang-switcher__btn" aria-label="Switch to English">{{ _t('lang_switcher_en') }}</a>
+                <span class="lang-switcher__sep">|</span>
+                <span class="lang-switcher__btn lang-switcher__btn--active" aria-current="true">{{ _t('lang_switcher_is') }}</span>
+              {% else %}
+                <span class="lang-switcher__btn lang-switcher__btn--active" aria-current="true">{{ _t('lang_switcher_en') }}</span>
+                <span class="lang-switcher__sep">|</span>
+                <a href="/lang/set/is?redirect_to={{ request.url.path | urlencode }}" class="lang-switcher__btn" aria-label="Skipta yfir í Íslensku">{{ _t('lang_switcher_is') }}</a>
+              {% endif %}
+            </div>
 
             <!-- Mobile burger -->
             <button class="navbar__burger" x-data
@@ -124,27 +137,39 @@
          x-transition:enter-start="opacity-0 -translate-y-2"
          x-transition:enter-end="opacity-100 translate-y-0"
          x-cloak>
-      <a href="/">Home</a>
-      <a href="/trips">Find a ride</a>
+      <a href="/">{{ _t('nav_home') }}</a>
+      <a href="/trips">{{ _t('nav_find_ride') }}</a>
       {% if current_user %}
-        <a href="/trips/new">Offer a ride</a>
-        <a href="/my-trips">My trips</a>
-        <a href="/my-alerts">Alerts</a>
+        <a href="/trips/new">{{ _t('nav_offer_ride') }}</a>
+        <a href="/my-trips">{{ _t('nav_my_trips') }}</a>
+        <a href="/my-alerts">{{ _t('nav_alerts') }}</a>
         <a href="/messages">
-          Messages
+          {{ _t('nav_messages') }}
           {% if unread_message_count %}
             <span class="nav-badge">{{ unread_message_count }}</span>
           {% endif %}
         </a>
-        <a href="/profile">Profile</a>
+        <a href="/profile">{{ _t('nav_profile') }}</a>
         {% if current_user.is_admin %}
-          <a href="/admin/users">Admin</a>
+          <a href="/admin/users">{{ _t('nav_admin') }}</a>
         {% endif %}
-        <a href="/logout" class="mobile-logout">Log out</a>
+        <a href="/logout" class="mobile-logout">{{ _t('nav_logout') }}</a>
       {% else %}
-        <a href="/login">Log in</a>
-        <a href="/register" class="mobile-join">Join free</a>
+        <a href="/login">{{ _t('nav_login') }}</a>
+        <a href="/register" class="mobile-join">{{ _t('nav_join') }}</a>
       {% endif %}
+      <!-- Mobile language switcher -->
+      <div class="lang-switcher lang-switcher--mobile">
+        {% if lang == 'is' %}
+          <a href="/lang/set/en?redirect_to={{ request.url.path | urlencode }}" class="lang-switcher__btn">{{ _t('lang_switcher_en') }}</a>
+          <span class="lang-switcher__sep">|</span>
+          <span class="lang-switcher__btn lang-switcher__btn--active">{{ _t('lang_switcher_is') }}</span>
+        {% else %}
+          <span class="lang-switcher__btn lang-switcher__btn--active">{{ _t('lang_switcher_en') }}</span>
+          <span class="lang-switcher__sep">|</span>
+          <a href="/lang/set/is?redirect_to={{ request.url.path | urlencode }}" class="lang-switcher__btn">{{ _t('lang_switcher_is') }}</a>
+        {% endif %}
+      </div>
     </div>
   </header>
 
@@ -152,9 +177,9 @@
   {% if email_unverified and not beta_mode and request.path not in ['/check-your-email', '/verify-email'] %}
   <div class="verify-email-banner" role="alert">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
-    <span>Please verify your email address to unlock booking.</span>
+    <span>{{ _t('banner_verify_email') }}</span>
     <form method="post" action="/resend-verification" style="display:inline;">
-      <button type="submit" class="verify-email-banner__btn">Resend email</button>
+      <button type="submit" class="verify-email-banner__btn">{{ _t('banner_resend_email') }}</button>
     </form>
   </div>
   {% endif %}
@@ -165,7 +190,7 @@
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true">
       <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
     </svg>
-    <strong>Beta mode</strong> — This is a test build for friends &amp; testers. No real payments are processed.
+    <strong>{{ _t('banner_beta') }}</strong> — {{ _t('banner_beta_sub') }}
   </div>
   {% endif %}
 
@@ -176,12 +201,12 @@
       <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
     </svg>
     <span>
-      You have
+      {{ _t('banner_review_nudge_pre') }}
       <strong>{{ pending_reviews|length }} completed trip{{ 's' if pending_reviews|length != 1 }}</strong>
-      waiting for a review.
+      {{ _t('banner_review_nudge_post') }}
     </span>
     <a href="/reviews/new/{{ pending_reviews[0] }}" class="review-nudge__btn">
-      Rate now →
+      {{ _t('banner_review_rate') }}
     </a>
   </div>
   {% endif %}
@@ -194,7 +219,7 @@
   {% endif %}
   {% if request.query_params.get('subscribed') %}
   <div class="container" style="margin-top:1rem">
-    <div class="alert alert--success" role="alert">✓ You're on the list — your first ride service fee is waived!</div>
+    <div class="alert alert--success" role="alert">{{ _t('banner_subscribed') }}</div>
   </div>
   {% endif %}
 
@@ -208,13 +233,13 @@
   {% if not is_newsletter_subscriber and not request.query_params.get('subscribed') %}
   <div class="newsletter-strip">
     <div class="container newsletter-strip__inner">
-      <p class="newsletter-strip__label">Subscribe and get your <strong>first ride fee-free</strong> — plus Iceland travel updates</p>
+      <p class="newsletter-strip__label">{{ _t('newsletter_label') }} <strong>{{ _t('newsletter_label_bold') }}</strong> {{ _t('newsletter_label_end') }}</p>
       <form class="newsletter-strip__form" method="post" action="/newsletter/subscribe">
         <input type="hidden" name="source" value="footer">
         <input type="email" name="email" class="input newsletter-strip__input"
                placeholder="your@email.com" required
                {% if current_user %}value="{{ current_user.email }}"{% endif %}>
-        <button type="submit" class="btn btn-primary newsletter-strip__btn">Subscribe</button>
+        <button type="submit" class="btn btn-primary newsletter-strip__btn">{{ _t('newsletter_subscribe') }}</button>
       </form>
     </div>
   </div>
@@ -228,39 +253,39 @@
       <div class="footer__grid">
         <div>
           <div class="footer__brand">SameFare</div>
-          <p class="footer__tagline">Share the journey across Iceland.</p>
-          <p class="footer__sub">Connecting travellers on Iceland's roads since 2026.</p>
+          <p class="footer__tagline">{{ _t('footer_tagline') }}</p>
+          <p class="footer__sub">{{ _t('footer_sub') }}</p>
         </div>
         <div>
-          <p class="footer__col-title">Explore</p>
+          <p class="footer__col-title">{{ _t('footer_explore') }}</p>
           <nav class="footer__links" aria-label="Explore SameFare">
-            <a href="/trips">Find a ride</a>
-            <a href="/trips/new">Offer a ride</a>
+            <a href="/trips">{{ _t('footer_find_ride') }}</a>
+            <a href="/trips/new">{{ _t('footer_offer_ride') }}</a>
             {% if not current_user %}
-              <a href="/register">Create account</a>
+              <a href="/register">{{ _t('footer_create_account') }}</a>
             {% endif %}
           </nav>
         </div>
         <div>
-          <p class="footer__col-title">Popular routes</p>
+          <p class="footer__col-title">{{ _t('footer_popular_routes') }}</p>
           <nav class="footer__links" aria-label="Popular routes">
             <a href="/trips?origin=Reykjav%C3%ADk&destination=Akureyri">Reykjavík → Akureyri</a>
             <a href="/trips?origin=Reykjav%C3%ADk&destination=Selfoss">Reykjavík → Selfoss</a>
             <a href="/trips?origin=Reykjav%C3%ADk&destination=V%C3%ADk">Reykjavík → Vík</a>
-            <a href="/trips?origin=Reykjav%C3%ADk&destination=Keflab%C3%ADk">Reykjavík → Keflavík</a>
+            <a href="/trips?origin=Reykjav%C3%ADk&destination=Keflav%C3%ADk">Reykjavík → Keflavík</a>
           </nav>
         </div>
         <div>
-          <p class="footer__col-title">Company</p>
+          <p class="footer__col-title">{{ _t('footer_company') }}</p>
           <nav class="footer__links" aria-label="Company">
-            <a href="/terms">Terms &amp; Conditions</a>
-            <a href="/privacy">Privacy Policy</a>
-            <a href="mailto:support@samefare.com">Contact us</a>
+            <a href="/terms">{{ _t('footer_terms') }}</a>
+            <a href="/privacy">{{ _t('footer_privacy') }}</a>
+            <a href="mailto:samefare@samefare.com">{{ _t('footer_contact') }}</a>
           </nav>
         </div>
       </div>
       <div class="footer__bar">
-        <span>© 2026 Wellfare ehf. — Iceland</span>
+        <span>{{ _t('footer_copyright') }}</span>
         <span class="footer__flag">🇮🇸</span>
       </div>
     </div>
@@ -393,13 +418,12 @@
   <div x-data="cookieConsent()" x-show="visible" x-cloak
        class="cookie-banner" role="dialog" aria-label="Cookie consent" aria-live="polite">
     <p class="cookie-banner__text">
-      We use essential cookies to keep you logged in and make the site work.
-      We'd also like to set optional analytics cookies to help us improve SameFare.
-      Read our <a href="/legal/privacy" class="cookie-banner__link">Privacy Policy</a>.
+      {{ _t('cookie_text') }}
+      {{ _t('cookie_read') }} <a href="/legal/privacy" class="cookie-banner__link">{{ _t('cookie_privacy') }}</a>.
     </p>
     <div class="cookie-banner__actions">
-      <button class="btn btn-primary btn-sm" @click="accept()">Accept all</button>
-      <button class="btn btn-outline btn-sm" @click="essential()">Essential only</button>
+      <button class="btn btn-primary btn-sm" @click="accept()">{{ _t('cookie_accept') }}</button>
+      <button class="btn btn-outline btn-sm" @click="essential()">{{ _t('cookie_essential') }}</button>
     </div>
   </div>
 
@@ -423,5 +447,38 @@
     };
   }
   </script>
+
+  <style>
+  /* Language switcher — minimal, inline with navbar */
+  .lang-switcher {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .03em;
+    color: var(--c-text-muted, #6B7280);
+  }
+  .lang-switcher__btn {
+    padding: .1rem .2rem;
+    text-decoration: none;
+    color: inherit;
+    border-radius: 3px;
+    transition: color .15s;
+  }
+  .lang-switcher__btn:hover { color: var(--c-text, #111); }
+  .lang-switcher__btn--active {
+    color: var(--c-text, #111);
+    cursor: default;
+    font-weight: 700;
+  }
+  .lang-switcher__sep { color: var(--c-border, #D1D5DB); }
+  .lang-switcher--mobile {
+    padding: .5rem 1rem;
+    border-top: 1px solid var(--c-border, #E5E7EB);
+    margin-top: .5rem;
+    font-size: .8rem;
+  }
+  </style>
 </body>
 </html>

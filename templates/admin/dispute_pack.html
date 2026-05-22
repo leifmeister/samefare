@@ -1,0 +1,465 @@
+{% extends "base.html" %}
+{% block title %}Dispute Evidence Pack — Booking #{{ booking.id }}{% endblock %}
+
+{% block content %}
+{# ── Print styles: hide nav/footer, full-width layout ─────────────────────── #}
+<style>
+@media print {
+  header, nav, footer, .nav, .site-header, .site-footer,
+  .dispute-noprint { display: none !important; }
+  body { background: #fff !important; }
+  .dispute-page { max-width: 100% !important; padding: 0 !important; }
+  .dispute-section { page-break-inside: avoid; }
+  a { color: inherit !important; text-decoration: none !important; }
+}
+.dispute-page {
+  max-width: 860px;
+  margin: 2rem auto 5rem;
+  padding: 0 1rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: .9375rem;
+  color: #1A2B3C;
+}
+.dispute-header {
+  border-bottom: 3px solid #006C5B;
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+}
+.dispute-header h1 {
+  margin: 0 0 .25rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #006C5B;
+}
+.dispute-header .meta {
+  font-size: .8125rem;
+  color: #64748B;
+}
+.dispute-section {
+  margin-bottom: 2rem;
+}
+.dispute-section h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #64748B;
+  margin: 0 0 .75rem;
+  padding-bottom: .35rem;
+  border-bottom: 1px solid #DDE8E5;
+}
+.dispute-grid {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: .35rem 1rem;
+}
+.dispute-grid .label {
+  color: #64748B;
+  font-size: .875rem;
+  padding: .3rem 0;
+}
+.dispute-grid .value {
+  font-weight: 500;
+  padding: .3rem 0;
+  word-break: break-word;
+}
+.dispute-grid .value.mono {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: .8125rem;
+  color: #334155;
+}
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: .78125rem;
+  font-weight: 600;
+}
+.badge--green  { background: #DCFCE7; color: #166534; }
+.badge--red    { background: #FEE2E2; color: #991B1B; }
+.badge--amber  { background: #FEF9C3; color: #854D0E; }
+.badge--grey   { background: #F1F5F9; color: #475569; }
+.dispute-messages {
+  border: 1px solid #DDE8E5;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.dispute-message {
+  padding: .75rem 1rem;
+  border-bottom: 1px solid #DDE8E5;
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: .5rem 1rem;
+  font-size: .875rem;
+}
+.dispute-message:last-child { border-bottom: none; }
+.dispute-message .msg-meta {
+  color: #64748B;
+  font-size: .8125rem;
+  line-height: 1.5;
+}
+.dispute-message .msg-body {
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.dispute-noprint-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .5rem 1.25rem;
+  background: #006C5B;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: .875rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+.dispute-noprint-btn:hover { background: #005548; }
+.caveat {
+  background: #FFF7ED;
+  border: 1px solid #FED7AA;
+  border-radius: 6px;
+  padding: .75rem 1rem;
+  font-size: .8125rem;
+  color: #92400E;
+  line-height: 1.6;
+}
+</style>
+
+<div class="dispute-page">
+
+  {# ── Print / back controls ──────────────────────────────────────────────── #}
+  <div class="dispute-noprint" style="margin-bottom:1.5rem;display:flex;gap:.75rem;align-items:center;">
+    <a href="/admin/dashboard" style="font-size:.875rem;color:#006C5B;">← Admin dashboard</a>
+    <button class="dispute-noprint-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+    <span style="font-size:.8125rem;color:#64748B;">Use browser print → Save as PDF to share with Slize or acquirer.</span>
+  </div>
+
+  {# ── Document header ────────────────────────────────────────────────────── #}
+  <div class="dispute-header">
+    <h1>Chargeback Evidence Pack — Booking #{{ booking.id }}</h1>
+    <p class="meta">
+      Generated: {{ generated_at.strftime("%-d %B %Y at %H:%M UTC") }} &nbsp;·&nbsp;
+      Prepared by: Wellfare ehf. (SameFare) &nbsp;·&nbsp;
+      Admin: {{ current_user.full_name }}
+    </p>
+  </div>
+
+  {# ── 1. Booking summary ─────────────────────────────────────────────────── #}
+  <div class="dispute-section">
+    <h2>1. Booking Summary</h2>
+    <div class="dispute-grid">
+      <span class="label">Booking ID</span>
+      <span class="value">#{{ booking.id }}</span>
+
+      <span class="label">Status</span>
+      <span class="value">
+        {% if booking.status.value in ('completed',) %}
+          <span class="badge badge--green">{{ booking.status.value }}</span>
+        {% elif booking.status.value in ('cancelled',) %}
+          <span class="badge badge--red">{{ booking.status.value }}</span>
+        {% else %}
+          <span class="badge badge--grey">{{ booking.status.value }}</span>
+        {% endif %}
+      </span>
+
+      <span class="label">Created at (UTC)</span>
+      <span class="value">{{ booking.created_at.strftime("%-d %B %Y %H:%M:%S") }}</span>
+
+      <span class="label">Last updated (UTC)</span>
+      <span class="value">{{ booking.updated_at.strftime("%-d %B %Y %H:%M:%S") }}</span>
+
+      <span class="label">Seats booked</span>
+      <span class="value">{{ booking.seats_booked }}</span>
+
+      <span class="label">Passenger paid (total)</span>
+      <span class="value">{{ "{:,}".format(booking.total_price) }} ISK</span>
+
+      <span class="label">Cost contribution (driver)</span>
+      <span class="value">{{ "{:,}".format(booking.subtotal) }} ISK</span>
+
+      <span class="label">Platform service fee</span>
+      <span class="value">{{ "{:,}".format(booking.service_fee) }} ISK</span>
+
+      <span class="label">Pickup point</span>
+      <span class="value">{{ booking.pickup_city or booking.trip.origin }}</span>
+
+      <span class="label">Dropoff point</span>
+      <span class="value">{{ booking.dropoff_city or booking.trip.destination }}</span>
+
+      <span class="label">Booking message</span>
+      <span class="value">{{ booking.message or "—" }}</span>
+    </div>
+  </div>
+
+  {# ── 2. Trip details ────────────────────────────────────────────────────── #}
+  <div class="dispute-section">
+    <h2>2. Trip Details</h2>
+    <div class="dispute-grid">
+      <span class="label">Trip ID</span>
+      <span class="value">#{{ booking.trip.id }}</span>
+
+      <span class="label">Route</span>
+      <span class="value">{{ booking.trip.origin }} → {{ booking.trip.destination }}</span>
+
+      <span class="label">Scheduled departure (UTC)</span>
+      <span class="value"><strong>{{ booking.trip.departure_datetime.strftime("%-d %B %Y %H:%M:%S") }}</strong></span>
+
+      <span class="label">Trip status</span>
+      <span class="value">
+        {% if booking.trip.status.value == 'completed' %}
+          <span class="badge badge--green">{{ booking.trip.status.value }}</span>
+        {% elif booking.trip.status.value == 'cancelled' %}
+          <span class="badge badge--red">{{ booking.trip.status.value }}</span>
+        {% else %}
+          <span class="badge badge--grey">{{ booking.trip.status.value }}</span>
+        {% endif %}
+      </span>
+
+      <span class="label">Driver no-show flag</span>
+      <span class="value">
+        {% if booking.trip.driver_no_show %}
+          <span class="badge badge--red">YES — reported by passenger</span>
+        {% else %}
+          <span class="badge badge--green">No</span>
+        {% endif %}
+      </span>
+
+      <span class="label">Price per seat</span>
+      <span class="value">{{ "{:,}".format(booking.trip.price_per_seat) }} ISK</span>
+
+      <span class="label">Vehicle</span>
+      <span class="value">
+        {{ booking.trip.car_year or "" }}
+        {{ booking.trip.car_make or "" }}
+        {{ booking.trip.car_model or "" }}
+        {% if not booking.trip.car_make and not booking.trip.car_model %}—{% endif %}
+      </span>
+
+      <span class="label">Trip created at (UTC)</span>
+      <span class="value">{{ booking.trip.created_at.strftime("%-d %B %Y %H:%M:%S") }}</span>
+    </div>
+  </div>
+
+  {# ── 3. Passenger identity ──────────────────────────────────────────────── #}
+  <div class="dispute-section">
+    <h2>3. Passenger Identity</h2>
+    <div class="dispute-grid">
+      <span class="label">Platform user ID</span>
+      <span class="value">{{ booking.passenger.id }}</span>
+
+      <span class="label">Name</span>
+      <span class="value">{{ booking.passenger.full_name }}</span>
+
+      <span class="label">Email</span>
+      <span class="value mono">{{ booking.passenger.email }}</span>
+
+      <span class="label">Account created (UTC)</span>
+      <span class="value">{{ booking.passenger.created_at.strftime("%-d %B %Y %H:%M:%S") if booking.passenger.created_at else "—" }}</span>
+
+      <span class="label">Identity verification</span>
+      <span class="value">
+        {% if booking.passenger.id_verification.value == 'approved' %}
+          <span class="badge badge--green">Approved</span>
+        {% elif booking.passenger.id_verification.value == 'rejected' %}
+          <span class="badge badge--red">Rejected</span>
+        {% elif booking.passenger.id_verification.value == 'pending' %}
+          <span class="badge badge--amber">Pending</span>
+        {% else %}
+          <span class="badge badge--grey">{{ booking.passenger.id_verification.value }}</span>
+        {% endif %}
+      </span>
+
+      <span class="label">Didit session ID (identity)</span>
+      <span class="value mono">{{ booking.passenger.didit_identity_session_id or "—" }}</span>
+
+      <span class="label">Account deleted</span>
+      <span class="value">{{ booking.passenger.deleted_at.strftime("%-d %B %Y") if booking.passenger.deleted_at else "No" }}</span>
+    </div>
+  </div>
+
+  {# ── 4. Driver identity ─────────────────────────────────────────────────── #}
+  <div class="dispute-section">
+    <h2>4. Driver Identity</h2>
+    {% set driver = booking.trip.driver %}
+    <div class="dispute-grid">
+      <span class="label">Platform user ID</span>
+      <span class="value">{{ driver.id }}</span>
+
+      <span class="label">Name</span>
+      <span class="value">{{ driver.full_name }}</span>
+
+      <span class="label">Email</span>
+      <span class="value mono">{{ driver.email }}</span>
+
+      <span class="label">Account created (UTC)</span>
+      <span class="value">{{ driver.created_at.strftime("%-d %B %Y %H:%M:%S") if driver.created_at else "—" }}</span>
+
+      <span class="label">Licence verification</span>
+      <span class="value">
+        {% if driver.license_verification.value == 'approved' %}
+          <span class="badge badge--green">Approved</span>
+        {% elif driver.license_verification.value == 'rejected' %}
+          <span class="badge badge--red">Rejected</span>
+        {% elif driver.license_verification.value == 'pending' %}
+          <span class="badge badge--amber">Pending</span>
+        {% else %}
+          <span class="badge badge--grey">{{ driver.license_verification.value }}</span>
+        {% endif %}
+      </span>
+
+      <span class="label">Didit session ID (licence)</span>
+      <span class="value mono">{{ driver.didit_licence_session_id or "—" }}</span>
+
+      <span class="label">Confirmed no-shows</span>
+      <span class="value">
+        {% if driver.no_shows_confirmed > 0 %}
+          <span class="badge badge--red">{{ driver.no_shows_confirmed }}</span>
+        {% else %}
+          <span class="badge badge--green">0</span>
+        {% endif %}
+      </span>
+
+      <span class="label">Posting suspended</span>
+      <span class="value">
+        {% if driver.posting_suspended %}
+          <span class="badge badge--red">Yes</span>
+        {% else %}
+          <span class="badge badge--green">No</span>
+        {% endif %}
+      </span>
+
+      <span class="label">Account deleted</span>
+      <span class="value">{{ driver.deleted_at.strftime("%-d %B %Y") if driver.deleted_at else "No" }}</span>
+    </div>
+  </div>
+
+  {# ── 5. Payment record ──────────────────────────────────────────────────── #}
+  <div class="dispute-section">
+    <h2>5. Payment Record</h2>
+    {% if booking.payment %}
+    {% set p = booking.payment %}
+    <div class="dispute-grid">
+      <span class="label">Payment ID</span>
+      <span class="value">#{{ p.id }}</span>
+
+      <span class="label">Payment status</span>
+      <span class="value">
+        {% if p.status.value == 'captured' %}
+          <span class="badge badge--green">{{ p.status.value }}</span>
+        {% elif p.status.value in ('refunded', 'void') %}
+          <span class="badge badge--amber">{{ p.status.value }}</span>
+        {% elif p.status.value == 'failed' %}
+          <span class="badge badge--red">{{ p.status.value }}</span>
+        {% else %}
+          <span class="badge badge--grey">{{ p.status.value }}</span>
+        {% endif %}
+      </span>
+
+      <span class="label">Payment case</span>
+      <span class="value">Case {{ p.payment_case or "—" }}</span>
+
+      <span class="label">Passenger total charged</span>
+      <span class="value"><strong>{{ "{:,}".format(p.passenger_total) }} ISK</strong></span>
+
+      <span class="label">Driver payout</span>
+      <span class="value">{{ "{:,}".format(p.driver_payout) }} ISK</span>
+
+      <span class="label">Platform fee</span>
+      <span class="value">{{ "{:,}".format(p.platform_fee) }} ISK</span>
+
+      <span class="label">Refund amount</span>
+      <span class="value">{{ "{:,}".format(p.refund_amount) }} ISK</span>
+
+      <span class="label">Card (masked)</span>
+      <span class="value mono">
+        {{ p.card_brand or "" }} •••• {{ p.card_last4 or "——" }}
+      </span>
+
+      <span class="label">PSP payment ID</span>
+      <span class="value mono">{{ p.rapyd_payment_id or "—" }}</span>
+
+      <span class="label">Pre-auth scheduled for (UTC)</span>
+      <span class="value">{{ p.auth_scheduled_for.strftime("%-d %B %Y %H:%M:%S") if p.auth_scheduled_for else "—" }}</span>
+
+      <span class="label">Capture scheduled for (UTC)</span>
+      <span class="value">{{ p.capture_at.strftime("%-d %B %Y %H:%M:%S") if p.capture_at else "—" }}</span>
+
+      <span class="label">Auth expires at (UTC)</span>
+      <span class="value">{{ p.auth_expires_at.strftime("%-d %B %Y %H:%M:%S") if p.auth_expires_at else "—" }}</span>
+
+      <span class="label">Payment record created (UTC)</span>
+      <span class="value">{{ p.created_at.strftime("%-d %B %Y %H:%M:%S") }}</span>
+
+      <span class="label">Payment record updated (UTC)</span>
+      <span class="value">{{ p.updated_at.strftime("%-d %B %Y %H:%M:%S") }}</span>
+    </div>
+    {% else %}
+    <p style="color:#64748B;font-size:.875rem;">No payment record linked to this booking.</p>
+    {% endif %}
+  </div>
+
+  {# ── 6. Policy acknowledgement ──────────────────────────────────────────── #}
+  <div class="dispute-section">
+    <h2>6. Policy Acknowledgement</h2>
+    <div class="caveat">
+      <strong>Note:</strong> SameFare's checkout flow requires passengers to tick a mandatory checkbox
+      confirming they have read and accepted the cancellation and refund policy (including the no-refund
+      clause for post T−24h cancellations) before payment is processed. This acknowledgement is enforced
+      at the UI level — no booking can be confirmed without it. A separate per-booking database flag is
+      not currently stored; the booking record itself (created_at above) is evidence that checkout
+      was completed.
+    </div>
+    <div class="dispute-grid" style="margin-top:.75rem;">
+      <span class="label">Checkout completed</span>
+      <span class="value"><span class="badge badge--green">Yes — booking exists</span></span>
+      <span class="label">Policy version in force</span>
+      <span class="value">Terms &amp; Conditions effective 7 May 2026 — <a href="/terms" style="color:#006C5B;">/terms</a></span>
+    </div>
+  </div>
+
+  {# ── 7. Communication log ───────────────────────────────────────────────── #}
+  <div class="dispute-section">
+    <h2>7. In-Platform Communication Log</h2>
+    {% if booking.messages %}
+    <div class="dispute-messages">
+      {% for msg in booking.messages %}
+      <div class="dispute-message">
+        <div class="msg-meta">
+          <strong>{{ msg.sender.full_name }}</strong><br>
+          {% if msg.sender_id == booking.passenger_id %}
+            <span class="badge badge--grey" style="font-size:.7rem;">Passenger</span>
+          {% else %}
+            <span class="badge badge--grey" style="font-size:.7rem;">Driver</span>
+          {% endif %}<br>
+          {{ msg.created_at.strftime("%-d %b %Y %H:%M UTC") }}
+        </div>
+        <div class="msg-body">{{ msg.body }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p style="color:#64748B;font-size:.875rem;">No in-platform messages on this booking.</p>
+    {% endif %}
+  </div>
+
+  {# ── 8. Submission notes ────────────────────────────────────────────────── #}
+  <div class="dispute-section">
+    <h2>8. Submission Notes</h2>
+    <div class="dispute-grid">
+      <span class="label">Prepared by</span>
+      <span class="value">Wellfare ehf., Reykjavík, Iceland — samefare@samefare.com</span>
+      <span class="label">Document generated (UTC)</span>
+      <span class="value">{{ generated_at.strftime("%-d %B %Y %H:%M:%S") }}</span>
+      <span class="label">For disputes against</span>
+      <span class="value">Driver sub-merchant account (Slize marketplace model) — contact Slize for sub-merchant account details</span>
+      <span class="label">For disputes against SameFare fee</span>
+      <span class="value">SameFare acquirer account via Slize — service fee portion only ({{ "{:,}".format(booking.service_fee) }} ISK)</span>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,24 +1,24 @@
 {% extends "base.html" %}
 {% from "partials/avatar.html" import avatar %}
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
-{% block title %}Messages — SameFare{% endblock %}
+{% block title %}{{ _t('messages_title') }} — SameFare{% endblock %}
 
 {% set _status_labels = {
-  'pending':          'Pending',
-  'awaiting_payment': 'Needs payment',
-  'card_saved':       'Seat held',
-  'confirmed':        'Confirmed',
-  'cancelled':        'Cancelled',
-  'rejected':         'Declined',
-  'completed':        'Completed',
-  'no_show':          'No-show',
+  'pending':          _t('messages_status_pending'),
+  'awaiting_payment': _t('messages_status_awaiting'),
+  'card_saved':       _t('messages_status_card_saved'),
+  'confirmed':        _t('messages_status_confirmed'),
+  'cancelled':        _t('messages_status_cancelled'),
+  'rejected':         _t('messages_status_rejected'),
+  'completed':        _t('messages_status_completed'),
+  'no_show':          _t('messages_status_no_show'),
 } %}
 
 {% block content %}
 <div class="container" style="margin-top:2rem; margin-bottom:4rem;">
 
   <div class="page-section-header">
-    <h1 class="page-title">Messages</h1>
+    <h1 class="page-title">{{ _t('messages_title') }}</h1>
   </div>
 
   {% if not conversations %}
@@ -30,11 +30,11 @@
                 d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
         </svg>
       </div>
-      <p class="empty-state__text">No conversations yet.</p>
-      <p class="empty-state__sub">When you book a seat or a passenger books yours, you can message each other here to coordinate pickup, luggage, and anything else.</p>
+      <p class="empty-state__text">{{ _t('messages_empty_title') }}</p>
+      <p class="empty-state__sub">{{ _t('messages_empty_body') }}</p>
       <div style="display:flex; gap:var(--space-3); justify-content:center; margin-top:1rem; flex-wrap:wrap;">
-        <a href="/trips" class="btn btn-primary">Find a ride</a>
-        <a href="/trips/new" class="btn btn-outline">Post a ride</a>
+        <a href="/trips" class="btn btn-primary">{{ _t('mytrips_find_ride') }}</a>
+        <a href="/trips/new" class="btn btn-outline">{{ _t('messages_post_ride') }}</a>
       </div>
     </div>
   {% else %}
@@ -72,10 +72,10 @@
             </p>
             <p class="msg-conv__snippet">
               {% if last %}
-                {% if last.sender_id == current_user.id %}<span class="msg-conv__you">You: </span>{% endif %}
+                {% if last.sender_id == current_user.id %}<span class="msg-conv__you">{{ _t('messages_you') }}</span>{% endif %}
                 {{ last.body | truncate(60, true, '…') }}
               {% else %}
-                <span class="msg-conv__empty">No messages yet — say hello!</span>
+                <span class="msg-conv__empty">{{ _t('messages_no_messages') }}</span>
               {% endif %}
             </p>
           </div>

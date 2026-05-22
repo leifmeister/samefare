@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% from "partials/phone_select.html" import phone_select %}
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
-{% block title %}Join SameFare — Create account{% endblock %}
+{% block title %}{{ _t('register_btn') }} — SameFare{% endblock %}
 
 {% block content %}
 <div class="auth-page">
   <div class="auth-card">
     <div class="auth-card__header">
       <a href="/" class="auth-card__logo">SameFare</a>
-      <h1 class="auth-card__title">Join the community</h1>
-      <p class="auth-card__sub">Free to join — offer rides or find a seat anywhere in Iceland</p>
+      <h1 class="auth-card__title">{{ _t('register_title') }}</h1>
+      <p class="auth-card__sub">{{ _t('register_sub') }}</p>
     </div>
 
     {% if error %}
@@ -18,20 +18,20 @@
 
     <form method="post" action="/register" class="auth-form">
       <div class="form-group">
-        <label for="full_name" class="label">Full name <span class="required">*</span></label>
+        <label for="full_name" class="label">{{ _t('register_full_name') }} <span class="required">*</span></label>
         <input id="full_name" name="full_name" type="text" class="input" required
                autocomplete="name" placeholder="Jón Jónsson" />
       </div>
 
       <div class="form-group">
-        <label for="email" class="label">Email address <span class="required">*</span></label>
+        <label for="email" class="label">{{ _t('register_email') }} <span class="required">*</span></label>
         <input id="email" name="email" type="email" class="input" required
                autocomplete="email" placeholder="you@example.is" />
       </div>
 
       <div class="form-group"
            x-data="{ code: '+354', local: '', get full(){ return this.local.trim() ? this.code + ' ' + this.local.trim() : '' } }">
-        <label class="label">Phone number <span class="optional">(optional)</span></label>
+        <label class="label">{{ _t('register_phone') }} <span class="optional">{{ _t('register_optional') }}</span></label>
         <!-- Hidden field submitted to backend -->
         <input type="hidden" name="phone" :value="full" />
         <div class="phone-input">
@@ -44,19 +44,19 @@
       </div>
 
       <div class="form-group">
-        <label for="password" class="label">Password <span class="required">*</span></label>
+        <label for="password" class="label">{{ _t('register_password') }} <span class="required">*</span></label>
         <input id="password" name="password" type="password" class="input" required
-               autocomplete="new-password" placeholder="At least 8 characters" minlength="8" />
+               autocomplete="new-password" placeholder="{{ _t('register_password_hint') }}" minlength="8" />
       </div>
 
       <div class="form-group">
-        <label for="confirm_password" class="label">Confirm password <span class="required">*</span></label>
+        <label for="confirm_password" class="label">{{ _t('register_confirm_password') }} <span class="required">*</span></label>
         <input id="confirm_password" name="confirm_password" type="password" class="input" required
                autocomplete="new-password" placeholder="••••••••" minlength="8" />
       </div>
 
       <div class="form-group">
-        <label for="birth_year" class="label">Birth year <span class="required">*</span></label>
+        <label for="birth_year" class="label">{{ _t('register_birth_year') }} <span class="required">*</span></label>
         <input id="birth_year" name="birth_year" type="number" class="input"
                required min="1900" max="{{ current_year }}"
                placeholder="e.g. 1990" autocomplete="bday-year" />
@@ -64,13 +64,13 @@
 
       <label class="checkbox-opt-in checkbox-opt-in--required">
         <input type="checkbox" name="age_confirmed" value="1" required />
-        <span>I confirm I am 18 or older</span>
+        <span>{{ _t('register_age_confirm') }}</span>
       </label>
 
       <label class="checkbox-opt-in">
         <input type="checkbox" name="newsletter" value="1" checked />
         <span>
-          Get my <strong>first ride fee-free</strong> — subscribe to Iceland travel updates &amp; SameFare offers
+          {{ _t('register_newsletter_pre') }} <strong>{{ _t('register_newsletter_bold') }}</strong> {{ _t('register_newsletter_post') }}
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
                width="14" height="14" aria-hidden="true" class="checkbox-opt-in__icon">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/>
@@ -79,17 +79,17 @@
       </label>
 
       <p class="auth-terms">
-        By joining you agree to our <a href="/terms" class="link">Terms of Service</a> and
-        <a href="/privacy" class="link">Privacy Policy</a>.
+        {{ _t('register_terms_pre') }} <a href="/terms" class="link">{{ _t('register_terms_link') }}</a> {{ _t('register_terms_and') }}
+        <a href="/privacy" class="link">{{ _t('register_privacy_link') }}</a>.
       </p>
 
       <button type="submit" class="btn btn-primary btn-block btn-lg">
-        Create free account
+        {{ _t('register_btn') }}
       </button>
     </form>
 
     <p class="auth-card__footer">
-      Already have an account? <a href="/login" class="link">Log in</a>
+      {{ _t('register_have_account') }} <a href="/login" class="link">{{ _t('register_login') }}</a>
     </p>
   </div>
 </div>

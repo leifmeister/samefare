@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # Email via Resend (https://resend.com)
     resend_api_key: str = Field(default="", alias="RESEND_API_KEY")
-    email_from:     str = Field(default="SameFare <noreply@samefare.com>", alias="EMAIL_FROM")
+    email_from:     str = Field(default="SameFare <samefare@samefare.com>", alias="EMAIL_FROM")
     base_url:       str = Field(default="https://samefare.com", alias="BASE_URL")
 
     # SMS via Twilio (https://twilio.com)
@@ -36,6 +36,22 @@ class Settings(BaseSettings):
     # While False the ledger runs in full (items are created and advanced) but the
     # background task that submits outbound transfers is skipped so no money moves.
     payout_enabled: bool = Field(default=False, alias="PAYOUT_ENABLED")
+
+    # Blikk P2P bank transfers (https://blikk.tech)
+    # blikk_api_key         — from Blikk partner dashboard (Api-Key header)
+    # blikk_platform_phone  — Samefare's own Blikk phone number (receives service fees)
+    blikk_api_key:        str = Field(default="", alias="BLIKK_API_KEY")
+    blikk_platform_phone: str = Field(default="+3546257175", alias="BLIKK_PLATFORM_PHONE")
+
+    # Didit KYC/AML (https://didit.me)
+    # didit_api_key             — from Business Console → API & Webhooks
+    # didit_webhook_secret      — HMAC secret for X-Signature-V2 verification
+    # didit_workflow_id_identity — workflow for passport / national ID (identity only)
+    # didit_workflow_id_licence  — workflow for driver's licence (identity + driving)
+    didit_api_key:              str = Field(default="", alias="DIDIT_API_KEY")
+    didit_webhook_secret:       str = Field(default="", alias="DIDIT_WEBHOOK_SECRET")
+    didit_workflow_id_identity: str = Field(default="", alias="DIDIT_WORKFLOW_ID_IDENTITY")
+    didit_workflow_id_licence:  str = Field(default="", alias="DIDIT_WORKFLOW_ID_LICENCE")
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", populate_by_name=True)
 

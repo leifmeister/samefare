@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% block title %}SAR &amp; AML Internal Procedure — Wellfare ehf.{% endblock %}
+
+{% block content %}
+<div class="container container--narrow" style="margin-top:2.5rem; margin-bottom:5rem;">
+
+  <div class="legal-header">
+    <h1 class="legal-title">Suspicious Activity Reporting &amp; AML Internal Procedure</h1>
+    <p class="legal-meta">
+      Version: <strong>1.0</strong> &nbsp;·&nbsp;
+      Adopted: <strong>7 May 2026</strong> &nbsp;·&nbsp;
+      Wellfare ehf., Iceland &nbsp;·&nbsp;
+      <strong>INTERNAL — NOT FOR PUBLIC DISTRIBUTION</strong>
+    </p>
+  </div>
+
+  <nav class="legal-toc">
+    <p class="legal-toc__title">Contents</p>
+    <ol class="legal-toc__list">
+      <li><a href="#s1">Purpose &amp; Legal Basis</a></li>
+      <li><a href="#s2">Designated Compliance Officer (MLRO)</a></li>
+      <li><a href="#s3">What Triggers a Review</a></li>
+      <li><a href="#s4">Internal Reporting — How to Escalate</a></li>
+      <li><a href="#s5">Decision-Making Process</a></li>
+      <li><a href="#s6">Filing a SAR with the Authorities</a></li>
+      <li><a href="#s7">Tipping-Off Prohibition</a></li>
+      <li><a href="#s8">Account &amp; Payment Holds Pending Review</a></li>
+      <li><a href="#s9">Record-Keeping</a></li>
+      <li><a href="#s10">Staff Awareness &amp; Training</a></li>
+      <li><a href="#s11">Policy Review</a></li>
+    </ol>
+  </nav>
+
+  <div class="legal-body">
+
+    <section id="s1" class="legal-section">
+      <h2>1. Purpose &amp; Legal Basis</h2>
+      <p>Wellfare ehf. ("<strong>SameFare</strong>") is subject to Icelandic Act no. 140/2018 on Measures against Money Laundering and Terrorist Financing (<em>Lög um aðgerðir gegn peningaþvætti og fjármögnun hryðjuverka</em>), as amended, and to the EU Anti-Money Laundering Directives as incorporated into Icelandic law through the EEA Agreement.</p>
+      <p>This document sets out the internal procedure that SameFare follows to:</p>
+      <ul>
+        <li>Identify transactions or account activity that may constitute money laundering or terrorist financing.</li>
+        <li>Escalate concerns internally to the designated compliance officer.</li>
+        <li>Decide whether to file a Suspicious Activity Report (SAR) with the relevant Icelandic authority.</li>
+        <li>Maintain the required records of all reviews and filings.</li>
+      </ul>
+      <p>Compliance with this procedure is mandatory for all personnel of Wellfare ehf. who have access to platform data, payment records, or user accounts.</p>
+    </section>
+
+    <section id="s2" class="legal-section">
+      <h2>2. Designated Compliance Officer (MLRO)</h2>
+      <p>Wellfare ehf. designates a <strong>Money Laundering Reporting Officer (MLRO)</strong> who is the sole person authorised to make the decision to file — or not file — a SAR with the relevant authority.</p>
+
+      <table class="legal-table">
+        <thead>
+          <tr><th>Role</th><th>Name</th><th>Contact</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>MLRO / Designated Compliance Officer</td>
+            <td>Leifur Þorsteinsson — Director, Wellfare ehf.</td>
+            <td><a href="mailto:samefare@samefare.com">samefare@samefare.com</a></td>
+          </tr>
+          <tr>
+            <td>Deputy MLRO (if MLRO is unavailable)</td>
+            <td>Ástþór Arnórsson — Director, Wellfare ehf.</td>
+            <td><a href="mailto:samefare@samefare.com">samefare@samefare.com</a></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>The MLRO is responsible for:</p>
+      <ul>
+        <li>Receiving all internal suspicion reports.</li>
+        <li>Evaluating whether a SAR filing is required.</li>
+        <li>Filing SARs with the relevant authority where required.</li>
+        <li>Maintaining the SAR decision log described in section 9.</li>
+        <li>Ensuring this procedure is kept current and is reviewed annually.</li>
+      </ul>
+      <p>In the event the MLRO is personally involved in or connected to a suspicious transaction, the matter must be escalated directly to the Deputy MLRO or, if no deputy is designated, to the company's legal counsel without involving the MLRO.</p>
+    </section>
+
+    <section id="s3" class="legal-section">
+      <h2>3. What Triggers a Review</h2>
+      <p>Any of the following should prompt an internal report to the MLRO. The list is indicative, not exhaustive — any genuine suspicion, however it arises, must be escalated.</p>
+
+      <h3>3.1 Platform-level red flags</h3>
+      <ul>
+        <li>A single account posting or booking an unusually high number of trips in a short period with no plausible personal travel explanation.</li>
+        <li>Trip prices significantly above or below platform norms for the route — particularly if the same driver–passenger pair repeats.</li>
+        <li>Repeated booking and immediate cancellation cycles with no completed trips from the same account or device.</li>
+        <li>Multiple accounts sharing the same device fingerprint, IP address, or payment method with no obvious household/family explanation.</li>
+        <li>Payments originating from cards issued in jurisdictions on the FATF high-risk or monitored list.</li>
+        <li>A verified driver with a PEP (Politically Exposed Person) flag or adverse media hit identified during KYC screening.</li>
+      </ul>
+
+      <h3>3.2 Verification red flags</h3>
+      <ul>
+        <li>A user submitting multiple different identity documents before one is accepted.</li>
+        <li>Inconsistency between a user's stated personal details and their identity document.</li>
+        <li>A user who is unusually reluctant to complete identity verification, or who queries why it is required.</li>
+        <li>A KYC screening hit against a sanctions list, PEP database, or adverse media that is not clearly a false positive.</li>
+      </ul>
+
+      <h3>3.3 Payment red flags</h3>
+      <ul>
+        <li>A cardholder disputing a charge as "not authorised" after completing a verified booking, where the booking record clearly shows their participation.</li>
+        <li>Multiple chargebacks linked to the same driver sub-merchant account within a short period.</li>
+        <li>A driver account accumulating disbursements from a high volume of low-value or same-day bookings that do not correspond to plausible routes.</li>
+      </ul>
+
+      <h3>3.4 Behavioural red flags</h3>
+      <ul>
+        <li>A user contacting support to ask how payment tracking works, how long records are kept, or whether transactions are reported to authorities.</li>
+        <li>A user offering to pay extra to avoid the identity verification requirement.</li>
+        <li>Any communication suggesting that a trip or payment is being arranged to conceal the origin of funds.</li>
+      </ul>
+    </section>
+
+    <section id="s4" class="legal-section">
+      <h2>4. Internal Reporting — How to Escalate</h2>
+      <p>Any person with access to SameFare systems who observes a red flag listed in section 3, or who has a genuine suspicion for any other reason, must report it to the MLRO as follows:</p>
+      <ol>
+        <li>Send an email to <a href="mailto:samefare@samefare.com">samefare@samefare.com</a> with the subject line: <strong>"INTERNAL AML REPORT — [date]"</strong>.</li>
+        <li>Include: the user ID(s) and/or booking ID(s) concerned; a factual description of what was observed; the date and time of the observation; any supporting screenshots or data.</li>
+        <li>Do <strong>not</strong> discuss the concern with the user, other platform users, or anyone outside the MLRO chain. See section 7 (tipping-off prohibition).</li>
+        <li>Do <strong>not</strong> take any action on the account (suspension, payment hold, or otherwise) before speaking with the MLRO unless the situation is urgent, in which case apply a temporary payment hold and notify the MLRO immediately.</li>
+      </ol>
+      <p>The MLRO will acknowledge receipt within <strong>24 hours</strong> on business days.</p>
+    </section>
+
+    <section id="s5" class="legal-section">
+      <h2>5. Decision-Making Process</h2>
+      <p>On receiving an internal report, the MLRO will:</p>
+      <ol>
+        <li><strong>Review the report</strong> — examine the account history, booking records, payment data, and KYC/screening results within <strong>48 hours</strong> of receipt (or immediately if a payment is pending).</li>
+        <li><strong>Classify the suspicion</strong> — one of three outcomes:
+          <ul>
+            <li><strong>No further action</strong> — the concern can be clearly explained by legitimate behaviour. Document the reasoning and close.</li>
+            <li><strong>Enhanced monitoring</strong> — the concern is ambiguous. Place the account under enhanced manual monitoring for 30 days. Document the reasoning and review date.</li>
+            <li><strong>SAR required</strong> — there are reasonable grounds to suspect money laundering or terrorist financing. Proceed to section 6.</li>
+          </ul>
+        </li>
+        <li><strong>Document the decision</strong> in the SAR Decision Log (section 9) regardless of outcome.</li>
+      </ol>
+      <p>The standard for filing is <strong>reasonable suspicion</strong> — not certainty, not proof. If, after consideration, a reasonable person in the MLRO's position could suspect that the activity relates to money laundering or terrorist financing, a SAR should be filed. Erring on the side of filing is always preferable to erring on the side of not filing.</p>
+    </section>
+
+    <section id="s6" class="legal-section">
+      <h2>6. Filing a SAR with the Authorities</h2>
+
+      <h3>6.1 Filing authority</h3>
+      <p>SARs must be filed with the competent Icelandic authority under Act no. 140/2018. <strong>Legal counsel should confirm the correct recipient before any live filing.</strong> The likely candidates are:</p>
+      <ul>
+        <li><strong>Fjármálaeftirlitið (FME)</strong> — the Icelandic Financial Supervisory Authority, which supervises obliged entities under the AML Act.</li>
+        <li><strong>Embætti ríkislögreglustjóra (National Police Commissioner)</strong> — which operates the Financial Intelligence Unit (FIU) function in Iceland.</li>
+      </ul>
+      <p>Until legal confirmation is obtained, the MLRO should contact FME directly at <a href="https://www.fme.is" target="_blank" rel="noopener">fme.is</a> to confirm the correct SAR submission channel prior to the first filing.</p>
+
+      <h3>6.2 What to include in the SAR</h3>
+      <p>A SAR should contain at minimum:</p>
+      <ul>
+        <li>The identity of the subject (name, date of birth, address, and ID document reference from the KYC record).</li>
+        <li>A factual description of the suspicious activity — what was observed, when, and why it gives rise to suspicion.</li>
+        <li>The transaction amounts and dates involved.</li>
+        <li>Any action already taken (e.g. payment hold, account suspension).</li>
+        <li>The date of filing and the name of the person filing.</li>
+      </ul>
+
+      <h3>6.3 Consent to proceed</h3>
+      <p>Where a transaction is pending at the time of filing, the MLRO may seek <strong>consent from the authority</strong> to proceed with the transaction rather than hold it indefinitely. If consent is not received within 7 working days of filing, the transaction may proceed unless the authority has applied for a restraint order.</p>
+
+      <h3>6.4 After filing</h3>
+      <ul>
+        <li>Record the filing in the SAR Decision Log (section 9) immediately.</li>
+        <li>Do not inform the subject that a SAR has been filed — see section 7.</li>
+        <li>Retain all records used to prepare the SAR for a minimum of 5 years from the date of filing.</li>
+      </ul>
+    </section>
+
+    <section id="s7" class="legal-section">
+      <h2>7. Tipping-Off Prohibition</h2>
+      <p>Under Act no. 140/2018, it is a criminal offence to disclose — directly or indirectly — that a SAR has been filed or that an AML investigation is underway. This is known as the <strong>tipping-off prohibition</strong>.</p>
+      <p>Practically, this means:</p>
+      <ul>
+        <li>Do <strong>not</strong> tell the user that their account is under AML review.</li>
+        <li>Do <strong>not</strong> tell the user that a SAR has been or may be filed.</li>
+        <li>Do <strong>not</strong> explain to the user why their payment has been held or their account suspended if the reason relates to an AML investigation.</li>
+        <li>If asked why an account is suspended, the approved response is: <em>"Your account is under review. We are not able to provide further information at this time. If you believe this is in error, please contact samefare@samefare.com."</em></li>
+        <li>Do <strong>not</strong> discuss the SAR or the investigation with colleagues who do not need to know, or with anyone outside the company.</li>
+      </ul>
+      <p>The tipping-off prohibition applies even after the investigation is closed. A SAR and its contents remain confidential indefinitely.</p>
+    </section>
+
+    <section id="s8" class="legal-section">
+      <h2>8. Account &amp; Payment Holds Pending Review</h2>
+      <p>Where an account is under AML review, the MLRO may instruct one or more of the following measures:</p>
+      <ul>
+        <li><strong>Payment hold</strong> — driver disbursements withheld pending the outcome of the review. The user is notified that their payment is under review without being given AML-related reasons.</li>
+        <li><strong>Booking suspension</strong> — the account may not post new trips or make new bookings while the review is open.</li>
+        <li><strong>Account suspension</strong> — the account is deactivated pending outcome.</li>
+      </ul>
+      <p>These measures may be applied before or after a SAR is filed. If applied before, they must not themselves constitute tipping-off — the user may be told only that a routine review is taking place.</p>
+      <p>If the review concludes with no further action, any holds should be released promptly and the account restored, unless there are independent grounds for suspension (e.g. driver accountability thresholds).</p>
+    </section>
+
+    <section id="s9" class="legal-section">
+      <h2>9. Record-Keeping</h2>
+      <p>The MLRO must maintain a <strong>SAR Decision Log</strong> — a private, dated record of every internal AML report received and every decision made. The log must be stored securely and retained for a minimum of <strong>5 years</strong> from the date of each entry, in accordance with Act no. 140/2018 Art. 24.</p>
+
+      <table class="legal-table">
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>What to record</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Reference number</td>
+            <td>Sequential internal reference (e.g. SAR-2026-001)</td>
+          </tr>
+          <tr>
+            <td>Date received</td>
+            <td>Date the internal report was submitted to the MLRO</td>
+          </tr>
+          <tr>
+            <td>Subject(s)</td>
+            <td>User ID(s) and/or booking ID(s) — not full names in the log index</td>
+          </tr>
+          <tr>
+            <td>Nature of suspicion</td>
+            <td>Brief factual description of the red flag(s) observed</td>
+          </tr>
+          <tr>
+            <td>Decision</td>
+            <td>No action / Enhanced monitoring / SAR filed</td>
+          </tr>
+          <tr>
+            <td>Date of decision</td>
+            <td>Date the MLRO reached a conclusion</td>
+          </tr>
+          <tr>
+            <td>SAR reference (if filed)</td>
+            <td>Reference number or acknowledgement from the authority</td>
+          </tr>
+          <tr>
+            <td>Outcome</td>
+            <td>Any feedback from the authority; any action taken on the account</td>
+          </tr>
+          <tr>
+            <td>Retention expiry</td>
+            <td>Date after which this record may be deleted (date of entry + 5 years)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>The log may be maintained as a password-protected spreadsheet or secure document. It must not be stored on the same public-facing server as the SameFare application. A printed and signed copy of each SAR filed should be retained alongside the log.</p>
+    </section>
+
+    <section id="s10" class="legal-section">
+      <h2>10. Staff Awareness &amp; Training</h2>
+      <p>Every person with access to SameFare's platform data, payment records, or user accounts must:</p>
+      <ul>
+        <li>Read this procedure in full before being granted access.</li>
+        <li>Confirm in writing (email to the MLRO is sufficient) that they have read and understood it.</li>
+        <li>Re-confirm annually, or whenever a material update to this procedure is issued.</li>
+      </ul>
+      <p>The MLRO is responsible for ensuring all relevant personnel are aware of changes to this procedure and of any updates to Icelandic AML law that affect it.</p>
+    </section>
+
+    <section id="s11" class="legal-section">
+      <h2>11. Policy Review</h2>
+      <p>This procedure will be reviewed by the MLRO:</p>
+      <ul>
+        <li><strong>Annually</strong> — at minimum, on or before the anniversary of the adoption date.</li>
+        <li><strong>Following any SAR filing</strong> — to assess whether the procedure worked as intended.</li>
+        <li><strong>Following any material change</strong> to Icelandic AML law, FME guidance, or the structure of the SameFare platform.</li>
+      </ul>
+      <p>Version history must be maintained. Superseded versions must be retained for at least 5 years.</p>
+
+      <table class="legal-table">
+        <thead>
+          <tr><th>Version</th><th>Date</th><th>Summary of changes</th><th>Approved by</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1.0</td>
+            <td>7 May 2026</td>
+            <td>Initial adoption</td>
+            <td>Leifur Þorsteinsson</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+  </div>
+</div>
+{% endblock %}

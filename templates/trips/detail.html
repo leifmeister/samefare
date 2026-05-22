@@ -20,7 +20,10 @@
 
 {% set _is_driver = current_user and current_user.id == trip.driver_id %}
 {% set _display_price = segment_price if segment_price else trip.price_per_seat %}
-{% set _display_total = (_display_price * 1.18)|round|int %}
+{% set _raw_fee       = [(_display_price * 0.18)|round|int, 200]|max %}
+{% set _raw_total     = _display_price + _raw_fee %}
+{% set _display_total = ((_raw_total + 49) // 50 * 50)|int %}
+{% set _display_fee   = _display_total - _display_price %}
 
 {% block content %}
 <div class="container" style="margin-top:2rem; margin-bottom:4rem;">
@@ -28,17 +31,31 @@
   <div class="detail-topbar">
     <a href="/trips" class="back-link">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
-      Back to rides
+      {{ _t('detail_back') }}
     </a>
     <button type="button" class="share-btn" id="share-btn" onclick="doShare(this)">
       <svg id="share-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path d="M13 4.5a2.5 2.5 0 11.702 1.737L6.97 9.604a2.518 2.518 0 010 .792l6.733 3.367a2.5 2.5 0 11-.671 1.341l-6.733-3.367a2.5 2.5 0 110-3.475l6.733-3.366A2.52 2.52 0 0113 4.5z"/></svg>
       <svg id="check-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
-      <span id="share-label">Share</span>
+      <span id="share-label">{{ _t('detail_share') }}</span>
     </button>
   </div>
 
   {% if request.query_params.get('no_show') %}
-  <div class="alert alert--success" style="margin-bottom:1rem;">✓ Passenger marked as no-show.</div>
+  <div class="alert alert--success" style="margin-bottom:1rem;">{{ _t('detail_no_show_marked') }}</div>
+  {% endif %}
+
+  {% if request.query_params.get('blikk_fare_requested') %}
+  <div class="alert alert--success" style="margin-bottom:1rem;">Payment request sent — the passenger will be notified in their Blikk app.</div>
+  {% endif %}
+  {% if request.query_params.get('blikk_fare_done') %}
+  <div class="alert alert--success" style="margin-bottom:1rem;">Blikk payment completed.</div>
+  {% endif %}
+  {% if request.query_params.get('blikk_fare_error') %}
+  <div class="alert alert--warning" style="margin-bottom:1rem;">Could not send Blikk payment request. Please ensure the passenger has a registered Blikk phone number, or contact support.</div>
+  {% endif %}
+
+  {% if request.query_params.get('booking_closed') %}
+  <div class="alert alert--warning" style="margin-bottom:1rem;">{{ _t('detail_booking_closed') }}</div>
   {% endif %}
 
   {% if request.query_params.get('posted') and _is_driver and not has_return_trip %}
@@ -46,29 +63,29 @@
     <div class="return-trip-banner__left">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="20" height="20" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>
       <div>
-        <p class="return-trip-banner__title">Ride posted!</p>
-        <p class="return-trip-banner__sub">Heading back? Post the return trip in seconds.</p>
+        <p class="return-trip-banner__title">{{ _t('detail_ride_posted') }}</p>
+        <p class="return-trip-banner__sub">{{ _t('detail_post_return') }}</p>
       </div>
     </div>
-    <a href="/trips/new?return_of={{ trip.id }}" class="btn btn-primary btn-sm">⇄ Post return trip</a>
+    <a href="/trips/new?return_of={{ trip.id }}" class="btn btn-primary btn-sm">{{ _t('detail_post_return_btn') }}</a>
   </div>
   {% endif %}
 
   <div class="detail-layout">
 
-    <!-- ── Left: trip info ──────────────────────────────────── -->
+    <!-- ── Left: trip info ──────────────────────────────────────────────── -->
     <div class="detail-main">
 
       <!-- Route hero -->
       <div class="trip-hero">
         {% if trip.status != 'active' %}
         <div class="trip-status-banner trip-status-banner--{{ trip.status }}">
-          {% if trip.status == 'completed' %}✓ This trip has been completed.{% else %}This trip has been {{ trip.status }}.{% endif %}
+          {% if trip.status == 'completed' %}{{ _t('detail_trip_completed') }}{% else %}{{ _t('detail_trip_has_been') }} {{ trip.status }}.{% endif %}
         </div>
         {% endif %}
         {% if trip.driver_no_show %}
         <div class="trip-status-banner trip-status-banner--cancelled" style="margin-top:.5rem;">
-          ⚠ Driver did not appear — affected passengers have been fully refunded.
+          {{ _t('detail_driver_no_show_banner') }}
         </div>
         {% endif %}
 
@@ -112,17 +129,17 @@
         <div class="trip-hero__chips">
           <div class="chip{% if trip.seats_available == 1 %} chip--urgent{% endif %}">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
-            {% if trip.seats_available == 1 %}1 seat left{% else %}{{ trip.seats_available }} seats available{% endif %}
+            {% if trip.seats_available == 1 %}{{ _t('detail_1_seat_left') }}{% else %}{{ trip.seats_available }} {{ _t('detail_seats_available') }}{% endif %}
           </div>
           {% if trip.instant_book %}
           <div class="chip chip--instant">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
-            Instant book
+            {{ _t('detail_instant_book') }}
           </div>
           {% else %}
           <div class="chip chip--approval">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
-            Approval required
+            {{ _t('detail_approval_required') }}
           </div>
           {% endif %}
         </div>
@@ -130,7 +147,7 @@
 
       <!-- Route map -->
       <div class="route-map" id="route-map" aria-label="Route map"></div>
-      <p class="route-map__disclaimer">Route shown is illustrative — actual roads taken are at the driver's discretion.</p>
+      <p class="route-map__disclaimer">{{ _t('detail_route_disclaimer') }}</p>
 
       <div class="detail-cards">
 
@@ -142,7 +159,7 @@
         <div class="detail-card">
           <h3 class="detail-card__title">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true"><path stroke-linecap="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            What to expect
+            {{ _t('detail_what_to_expect') }}
           </h3>
           <div class="pref-grid">
             {% if trip.allows_luggage %}
@@ -180,7 +197,7 @@
         <div class="detail-card">
           <h3 class="detail-card__title">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true"><path d="M5 17H3a2 2 0 01-2-2V9a2 2 0 012-2h1l2-4h10l2 4h1a2 2 0 012 2v6a2 2 0 01-2 2h-2"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/></svg>
-            Vehicle
+            {{ _t('detail_vehicle') }}
           </h3>
           <p class="detail-card__body">
             {% if trip.car_make and trip.car_model %}{{ trip.car_year or '' }} {{ trip.car_make }} {{ trip.car_model }}{% endif %}
@@ -194,7 +211,7 @@
         <div class="detail-card">
           <h3 class="detail-card__title">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true"><path stroke-linecap="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-            Driver's note
+            {{ _t('detail_drivers_note') }}
           </h3>
           <p class="detail-card__body">{{ trip.description }}</p>
         </div>
@@ -207,7 +224,7 @@
           <div class="detail-card detail-card--requests">
             <h3 class="detail-card__title">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden="true"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
-              Pending requests ({{ pending_bookings|length }})
+              {{ _t('detail_pending_requests') }} ({{ pending_bookings|length }})
             </h3>
             <div class="pax-list">
               {% for booking in pending_bookings %}
@@ -221,12 +238,12 @@
                 </div>
                 <div class="pax-item__actions">
                   <form method="post" action="/bookings/{{ booking.id }}/confirm" style="display:inline;">
-                    <button type="submit" class="btn btn-primary btn-xs">Approve</button>
+                    <button type="submit" class="btn btn-primary btn-xs">{{ _t('detail_approve') }}</button>
                   </form>
                   <form method="post" action="/bookings/{{ booking.id }}/reject"
                         style="display:inline;"
                         onsubmit="return confirm('Decline this request?')">
-                    <button type="submit" class="btn btn-ghost btn-xs">Decline</button>
+                    <button type="submit" class="btn btn-ghost btn-xs">{{ _t('detail_decline') }}</button>
                   </form>
                 </div>
               </div>
@@ -239,7 +256,7 @@
           <div class="detail-card">
             <h3 class="detail-card__title">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>
-              Passengers ({{ confirmed_bookings|length }})
+              {{ _t('detail_passengers') }} ({{ confirmed_bookings|length }})
             </h3>
             <div class="pax-list">
               {% for booking in confirmed_bookings %}
@@ -251,13 +268,13 @@
                 </div>
                 <div class="pax-item__status">
                   {% if booking.status == 'confirmed' %}
-                  <span class="pax-badge pax-badge--confirmed">Confirmed</span>
+                  <span class="pax-badge pax-badge--confirmed">{{ _t('detail_confirmed_badge') }}</span>
                   {% elif booking.status == 'awaiting_payment' %}
-                  <span class="pax-badge pax-badge--awaiting">Awaiting payment</span>
+                  <span class="pax-badge pax-badge--awaiting">{{ _t('detail_awaiting_payment') }}</span>
                   {% elif booking.status == 'card_saved' %}
-                  <span class="pax-badge pax-badge--card">Card saved</span>
+                  <span class="pax-badge pax-badge--card">{{ _t('detail_card_saved') }}</span>
                   {% elif booking.status == 'completed' %}
-                  <span class="pax-badge pax-badge--done">Completed</span>
+                  <span class="pax-badge pax-badge--done">{{ _t('detail_completed_badge') }}</span>
                   {% endif %}
                 </div>
                 {% if booking.passenger.phone and booking.passenger.phone_verified and booking.status == 'confirmed' %}
@@ -270,8 +287,26 @@
                 <form method="post" action="/bookings/{{ booking.id }}/no-show"
                       style="display:inline; margin-left:auto;"
                       onsubmit="return confirm({{ ('Mark ' + booking.passenger.full_name.split()[0] + ' as a no-show? They will not receive a refund.')|tojson }})">
-                  <button type="submit" class="btn btn-xs btn-danger-outline">No-show</button>
+                  <button type="submit" class="btn btn-xs btn-danger-outline">{{ _t('detail_no_show_btn') }}</button>
                 </form>
+                {% endif %}
+                {# ── Blikk: driver requests fare at ride time ──────────────── #}
+                {% if booking.status == 'confirmed'
+                      and trip.payment_method == 'blikk'
+                      and (not booking.payment or booking.payment.status.value not in ('blikk_fare_pending','blikk_fare_paid')) %}
+                <form method="post" action="/bookings/{{ booking.id }}/blikk-request-fare"
+                      style="display:inline; margin-left:auto;"
+                      onsubmit="return confirm('Request Blikk payment from {{ booking.passenger.full_name.split()[0] }}? They will receive a notification in their Blikk app.')">
+                  <button type="submit" class="btn btn-xs btn-primary">Request payment</button>
+                </form>
+                {% elif booking.status == 'confirmed'
+                        and trip.payment_method == 'blikk'
+                        and booking.payment and booking.payment.status.value == 'blikk_fare_pending' %}
+                <span class="badge badge--warning" style="margin-left:auto; font-size:.75rem;">Blikk payment sent</span>
+                {% elif booking.status == 'confirmed'
+                        and trip.payment_method == 'blikk'
+                        and booking.payment and booking.payment.status.value == 'blikk_fare_paid' %}
+                <span class="badge badge--success" style="margin-left:auto; font-size:.75rem;">Paid via Blikk</span>
                 {% endif %}
                 {% if booking.status == 'completed' %}
                   {% set reviewed = namespace(done=false) %}
@@ -281,9 +316,9 @@
                     {% endif %}
                   {% endfor %}
                   {% if reviewed.done %}
-                  <span class="reviewed-badge" style="margin-left:auto;">✓ Reviewed</span>
+                  <span class="reviewed-badge" style="margin-left:auto;">{{ _t('detail_reviewed_badge') }}</span>
                   {% elif now < booking.trip.departure_datetime + timedelta(days=14) %}
-                  <a href="/reviews/new/{{ booking.id }}" class="btn btn-primary btn-xs" style="margin-left:auto;">★ Review</a>
+                  <a href="/reviews/new/{{ booking.id }}" class="btn btn-primary btn-xs" style="margin-left:auto;">{{ _t('detail_rate_review') }}</a>
                   {% endif %}
                 {% endif %}
               </div>
@@ -296,7 +331,7 @@
           <div class="detail-card">
             <h3 class="detail-card__title">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden="true"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
-              Seat occupancy by leg
+              {{ _t('detail_seat_occupancy') }}
             </h3>
             <div class="occ-timeline">
               {% for leg in occupancy_timeline %}
@@ -329,30 +364,30 @@
       <!-- Booking widget -->
       <div class="booking-widget">
 
-        {% if trip.status == 'active' and trip.seats_available > 0 %}
+        {% if trip.status == 'active' and ((segment_available_seats is not none and segment_available_seats > 0) or (segment_available_seats is none and trip.seats_available > 0)) %}
 
           {% if _is_driver %}
           <!-- Driver: trip management -->
           <div class="booking-widget__your-trip">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M3 10a1 1 0 100 2 1 1 0 000-2zm10 0a1 1 0 100 2 1 1 0 000-2zM1.5 7l1.5-3h9l1.5 3H1.5z"/></svg>
-            Your trip
+            {{ _t('detail_your_trip') }}
           </div>
-          <a href="/trips/{{ trip.id }}/edit" class="btn btn-outline btn-block" style="margin-bottom:var(--space-2);">✎ Edit ride</a>
+          <a href="/trips/{{ trip.id }}/edit" class="btn btn-outline btn-block" style="margin-bottom:var(--space-2);">{{ _t('detail_edit_ride') }}</a>
           {% if beta_mode %}
           <details style="margin-bottom:var(--space-2);">
-            <summary class="btn btn-ghost btn-block btn-sm" style="cursor:pointer; list-style:none; text-align:center; color:var(--c-text-muted);">··· Beta tools</summary>
+            <summary class="btn btn-ghost btn-block btn-sm" style="cursor:pointer; list-style:none; text-align:center; color:var(--c-text-muted);">{{ _t('detail_back_to_beta') }}</summary>
             <form method="post" action="/trips/{{ trip.id }}/complete-beta"
                   onsubmit="return confirm('Mark trip as completed? This cannot be undone.')"
                   style="margin-top:var(--space-2);">
               <button type="submit" class="btn btn-outline btn-block btn-sm" style="color:var(--c-text-muted); border-color:var(--c-border);">
-                ✓ Mark completed (Beta only)
+                {{ _t('detail_mark_completed') }}
               </button>
             </form>
           </details>
           {% endif %}
           <form method="post" action="/trips/{{ trip.id }}/cancel"
                 onsubmit="return confirm('Cancel this trip and notify all passengers?')">
-            <button type="submit" class="btn btn-danger btn-block btn-sm">Cancel trip</button>
+            <button type="submit" class="btn btn-danger btn-block btn-sm">{{ _t('detail_cancel_trip') }}</button>
           </form>
 
           {% elif current_user and current_user_booking %}
@@ -361,72 +396,72 @@
           <div class="booking-state booking-state--pending">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
             <div>
-              <p class="booking-state__label">Awaiting driver approval</p>
-              <p class="booking-state__sub">You'll be notified when the driver responds.</p>
+              <p class="booking-state__label">{{ _t('detail_awaiting_driver') }}</p>
+              <p class="booking-state__sub">{{ _t('detail_awaiting_driver_sub') }}</p>
             </div>
           </div>
-          <a href="/messages/{{ current_user_booking.id }}" class="btn btn-outline btn-block btn-sm">Message driver</a>
+          <a href="/messages/{{ current_user_booking.id }}" class="btn btn-outline btn-block btn-sm">{{ _t('detail_message_driver') }}</a>
 
           {% elif current_user_booking.status == 'awaiting_payment' %}
           <div class="booking-widget__price">
             <span class="booking-widget__amount">{{ "{:,}".format(_display_total) }}</span>
-            <span class="booking-widget__unit"> ISK total</span>
+            <span class="booking-widget__unit"> {{ _t('detail_isk_total') }}</span>
           </div>
-          <a href="/payments/checkout/{{ current_user_booking.id }}" class="btn btn-primary btn-block btn-lg">Complete payment →</a>
-          <p class="cta-hint">Your seat is held — pay now to confirm.</p>
+          <a href="/payments/checkout/{{ current_user_booking.id }}" class="btn btn-primary btn-block btn-lg">{{ _t('detail_complete_payment') }}</a>
+          <p class="cta-hint">{{ _t('detail_seat_held') }}</p>
 
           {% elif current_user_booking.status == 'card_saved' %}
           <div class="booking-state booking-state--confirmed">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>
             <div>
-              <p class="booking-state__label">You're booked</p>
-              <p class="booking-state__sub">Card saved — payment taken 24h before departure.</p>
+              <p class="booking-state__label">{{ _t('detail_youre_booked') }}</p>
+              <p class="booking-state__sub">{{ _t('detail_card_saved_sub') }}</p>
             </div>
           </div>
-          <a href="/payments/card-saved/{{ current_user_booking.id }}" class="btn btn-outline btn-block btn-sm">View booking</a>
+          <a href="/payments/card-saved/{{ current_user_booking.id }}" class="btn btn-outline btn-block btn-sm">{{ _t('detail_view_booking') }}</a>
 
           {% elif current_user_booking.status == 'confirmed' %}
           <div class="booking-state booking-state--confirmed">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>
             <div>
-              <p class="booking-state__label">You're on this trip!</p>
-              <p class="booking-state__sub">Seat confirmed and paid.</p>
+              <p class="booking-state__label">{{ _t('detail_youre_on_this_trip') }}</p>
+              <p class="booking-state__sub">{{ _t('detail_seat_confirmed') }}</p>
             </div>
           </div>
-          <a href="/messages/{{ current_user_booking.id }}" class="btn btn-outline btn-block btn-sm">Message driver</a>
+          <a href="/messages/{{ current_user_booking.id }}" class="btn btn-outline btn-block btn-sm">{{ _t('detail_message_driver_link') }}</a>
           {% endif %}
 
           {% elif current_user %}
           <!-- Logged in, new booking -->
           <div class="booking-widget__price">
             <span class="booking-widget__amount">{{ "{:,}".format(_display_price) }}</span>
-            <span class="booking-widget__unit"> ISK / seat</span>
+            <span class="booking-widget__unit"> {{ _t('detail_isk_seat') }}</span>
           </div>
 
           {% if segment_pickup and segment_dropoff %}
           <div class="segment-notice">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M9.69 18.933l.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 00.281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 103 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 002.273 1.765 11.842 11.842 0 00.976.544l.062.029.018.008.006.003zM10 11.25a2.25 2.25 0 100-4.5 2.25 2.25 0 000 4.5z" clip-rule="evenodd"/></svg>
-            Your segment: <strong>{{ segment_pickup }} → {{ segment_dropoff }}</strong>
+            {{ _t('detail_segment_notice') }} <strong>{{ segment_pickup }} → {{ segment_dropoff }}</strong>
           </div>
           {% endif %}
 
           {% if trip.instant_book %}
           <a href="/bookings/trip/{{ trip.id }}{% if segment_pickup and segment_dropoff %}?pickup={{ segment_pickup | urlencode }}&dropoff={{ segment_dropoff | urlencode }}{% endif %}"
              class="btn btn-primary btn-block btn-lg">
-            Book a seat — {{ "{:,}".format(_display_price) }} ISK
+            {{ _t('detail_book_seat_btn') }} {{ "{:,}".format(_display_price) }} ISK
           </a>
           <div class="what-next">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
-            Your seat is confirmed right away. Payment details collected at checkout.
+            {{ _t('detail_instant_book_note') }}
           </div>
           {% else %}
           <a href="/bookings/trip/{{ trip.id }}{% if segment_pickup and segment_dropoff %}?pickup={{ segment_pickup | urlencode }}&dropoff={{ segment_dropoff | urlencode }}{% endif %}"
              class="btn btn-primary btn-block btn-lg">
-            Request to book — {{ "{:,}".format(_display_price) }} ISK
+            {{ _t('detail_request_book_btn') }} {{ "{:,}".format(_display_price) }} ISK
           </a>
           <div class="what-next">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
-            The driver reviews your request. No payment until they approve.
+            {{ _t('detail_approval_note') }}
           </div>
           {% endif %}
 
@@ -434,79 +469,79 @@
           <!-- Not logged in -->
           <div class="booking-widget__price">
             <span class="booking-widget__amount">{{ "{:,}".format(_display_price) }}</span>
-            <span class="booking-widget__unit"> ISK / seat</span>
+            <span class="booking-widget__unit"> {{ _t('detail_isk_seat') }}</span>
           </div>
-          <a href="/login?next={{ request.url.path | urlencode }}" class="btn btn-primary btn-block btn-lg">Log in to book</a>
-          <p class="cta-hint">Don't have an account? <a href="/register">Join free</a></p>
+          <a href="/login?next={{ request.url.path | urlencode }}" class="btn btn-primary btn-block btn-lg">{{ _t('detail_login_to_book') }}</a>
+          <p class="cta-hint">{{ _t('detail_no_account') }} <a href="/register">{{ _t('detail_join_free') }}</a></p>
           {% endif %}
 
           <!-- Price breakdown (non-driver, non-booked states only) -->
           {% if not _is_driver and not (current_user_booking and current_user_booking.status in ('pending','card_saved','confirmed')) %}
           <div class="booking-widget__fees">
             <div class="price-row price-row--muted">
-              <span>Price per seat</span>
+              <span>{{ _t('detail_price_per_seat') }}</span>
               <span>{{ "{:,}".format(_display_price) }} ISK</span>
             </div>
             <div class="price-row price-row--muted">
-              <span>Service fee (18%)</span>
-              <span>{{ "{:,}".format((_display_price * 0.18)|round|int) }} ISK</span>
+              <span>{{ _t('detail_service_fee') }}</span>
+              <span>{{ "{:,}".format(_display_fee) }} ISK</span>
             </div>
             <div class="price-row price-row--total">
-              <span>Total per seat</span>
+              <span>{{ _t('detail_total_per_seat') }}</span>
               <span>{{ "{:,}".format(_display_total) }} ISK</span>
             </div>
           </div>
           {% endif %}
 
-        {% elif trip.seats_available == 0 %}
+        {% elif trip.status == 'active' and ((segment_available_seats is not none and segment_available_seats == 0) or (segment_available_seats is none and trip.seats_available == 0)) %}
         <div class="booking-state booking-state--full">
-          <p class="booking-state__label">Fully booked</p>
-          <p class="booking-state__sub">All seats on this trip are taken.</p>
+          <p class="booking-state__label">{{ _t('detail_fully_booked_title') }}</p>
+          <p class="booking-state__sub">{{ _t('detail_fully_booked_sub') }}</p>
         </div>
 
         {% else %}
         <div class="booking-state booking-state--inactive">
           <p class="booking-state__label">Trip {{ trip.status }}</p>
-          <p class="booking-state__sub">This trip is no longer available for booking.</p>
+          <p class="booking-state__sub">{{ _t('detail_trip_inactive_sub') }}</p>
         </div>
         {% endif %}
 
         {% if driver_summary %}
         <!-- Driver trip summary (completed ride) -->
         <div class="booking-widget__summary" style="margin-top:var(--space-4);">
-          <p class="price-breakdown__label">Trip results</p>
+          <p class="price-breakdown__label">{{ _t('detail_trip_results') }}</p>
           <div class="price-row">
-            <span>Passengers</span><span>{{ driver_summary.completed_count }}</span>
+            <span>{{ _t('detail_passengers_count') }}</span><span>{{ driver_summary.completed_count }}</span>
           </div>
           <div class="price-row price-row--muted">
-            <span>Seats filled</span><span>{{ driver_summary.seats_filled }} / {{ driver_summary.seats_total }}</span>
+            <span>{{ _t('detail_seats_filled') }}</span><span>{{ driver_summary.seats_filled }} / {{ driver_summary.seats_total }}</span>
           </div>
           {% if driver_summary.payout %}
           <div class="price-row price-row--total">
-            <span>Your payout</span><span>{{ "{:,}".format(driver_summary.payout) }} ISK</span>
+            <span>{{ _t('detail_your_payout') }}</span><span>{{ "{:,}".format(driver_summary.payout) }} ISK</span>
           </div>
           {% elif driver_summary.gross %}
           <div class="price-row price-row--total">
-            <span>Gross contribution</span><span>{{ "{:,}".format(driver_summary.gross) }} ISK</span>
+            <span>{{ _t('detail_gross_contribution') }}</span><span>{{ "{:,}".format(driver_summary.gross) }} ISK</span>
           </div>
           {% endif %}
           {% if driver_summary.cancelled_count %}
-          <div class="price-row price-row--muted"><span>Cancelled</span><span>{{ driver_summary.cancelled_count }}</span></div>
+          <div class="price-row price-row--muted"><span>{{ _t('detail_cancelled_count') }}</span><span>{{ driver_summary.cancelled_count }}</span></div>
           {% endif %}
           {% if driver_summary.no_show_count %}
-          <div class="price-row price-row--muted"><span>No-shows</span><span>{{ driver_summary.no_show_count }}</span></div>
+          <div class="price-row price-row--muted"><span>{{ _t('detail_no_show_count') }}</span><span>{{ driver_summary.no_show_count }}</span></div>
           {% endif %}
           {% if driver_summary.reviews_total > 0 %}
           <div class="price-row price-row--muted" style="margin-top:var(--space-2);">
-            <span>Passengers reviewed</span><span>{{ driver_summary.reviews_given }} / {{ driver_summary.reviews_total }}</span>
+            <span>{{ _t('detail_passengers_reviewed') }}</span><span>{{ driver_summary.reviews_given }} / {{ driver_summary.reviews_total }}</span>
           </div>
           {% if driver_summary.first_unreviewed %}
           <a href="/reviews/new/{{ driver_summary.first_unreviewed }}" class="btn btn-outline btn-block btn-sm" style="margin-top:var(--space-3);">
-            Rate your passengers →
+            {{ _t('detail_rate_passengers') }}
           </a>
           {% endif %}
           {% elif driver_summary.completed_count == 0 %}
-          <p style="font-size:.875rem; color:var(--c-text-muted); margin-top:var(--space-3); text-align:center;">No passengers completed this trip.</p>
+          <p style="font-size:.875rem; color:var(--c-text-muted); margin-top:var(--space-3); text-align:center;">{{ _t('detail_no_passengers_completed') }}</p>
           {% endif %}
         </div>
         {% endif %}
@@ -543,10 +578,33 @@
           {% set _driver_trips = trip.driver.total_trips_as_driver %}
           {% if _driver_trips > 0 %}
           <div class="driver-trust-signal driver-trust-signal--muted">
-            {{ _driver_trips }} trip{{ 's' if _driver_trips != 1 }} completed
+            {{ _driver_trips }} {{ _t('detail_trips_completed') }}
           </div>
           {% else %}
-          <div class="driver-trust-signal driver-trust-signal--muted">New driver</div>
+          <div class="driver-trust-signal driver-trust-signal--muted">{{ _t('detail_new_driver') }}</div>
+          {% endif %}
+          {# No-show warning #}
+          {% if trip.driver.no_shows_confirmed > 0 %}
+          <div class="driver-trust-signal" style="color:#DC2626;font-weight:600;"
+               title="A passenger has previously reported this driver as a no-show">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+            {{ trip.driver.no_shows_confirmed }} {{ _t('detail_confirmed_no_show') if trip.driver.no_shows_confirmed == 1 else _t('detail_confirmed_no_shows') }}
+          </div>
+          {% endif %}
+          {# Cancellation rate badge #}
+          {% set _cr       = trip.driver.cancellation_rate %}
+          {% set _n_cancel = trip.driver.total_cancellations_as_driver %}
+          {% if _cr is not none and _n_cancel >= 2 %}
+            {% if _cr > 0.15 %}
+            <div class="driver-trust-signal" style="color:#DC2626;" title="This driver has cancelled {{ _n_cancel }} trips ({{ (_cr * 100)|round|int }}% of their rides)">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+              {{ (_cr * 100)|round|int }}% {{ _t('detail_cancellation_rate') }}
+            </div>
+            {% elif _cr > 0.05 %}
+            <div class="driver-trust-signal driver-trust-signal--muted" style="color:#D97706;" title="This driver has cancelled {{ _n_cancel }} trips ({{ (_cr * 100)|round|int }}% of their rides)">
+              {{ (_cr * 100)|round|int }}% {{ _t('detail_cancellation_rate') }}
+            </div>
+            {% endif %}
           {% endif %}
         </div>
 
@@ -555,7 +613,7 @@
         {% endif %}
 
         <a href="/users/{{ trip.driver_id }}" class="driver-trust-card__profile-link">
-          View profile
+          {{ _t('detail_view_profile') }}
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
         </a>
       </div>
@@ -571,9 +629,6 @@
 (function () {
   var polyline = {{ trip_polyline | tojson }};
 
-  // Fallback city-coordinate table for routes without a stored polyline
-  // Ring Road order (clockwise from Reykjavík). Any two cities can be routed
-  // by taking the shorter arc of this ring.
   var RING = [
     ['Reykjavík',           [64.135,-21.895]],
     ['Hveragerði',          [63.991,-21.184]],
@@ -588,7 +643,6 @@
     ['Blönduós',            [65.662,-20.291]],
     ['Borgarnes',           [64.537,-21.914]],
   ];
-  // Branch cities: connect to the ring at their junction city.
   var BRANCH = {
     'Keflavík':      { via: 'Reykjavík',   coords: [63.985,-22.556] },
     'Sauðárkrókur':  { via: 'Blönduós',    coords: [65.746,-19.639] },
@@ -608,7 +662,6 @@
     var oi = RING.findIndex(function(r){ return r[0]===fromRing; });
     var di = RING.findIndex(function(r){ return r[0]===toRing; });
     if (oi === -1 || di === -1) return null;
-    // Build clockwise and counter-clockwise arcs
     var cw = [], i = oi;
     do { cw.push(RING[i][1]); i = (i+1)%n; } while (i !== di);
     cw.push(RING[di][1]);
@@ -624,13 +677,12 @@
   var origin      = {{ trip.origin      | tojson }};
   var destination = {{ trip.destination | tojson }};
 
-  // Use stored polyline when available; otherwise build from ring road topology.
   var coords = polyline;
   if (!coords || coords.length < 2) {
     coords = ringRoute(origin, destination);
   }
 
-  if (!coords) return;   // unknown cities, skip map
+  if (!coords) return;
 
   var map = L.map('route-map', { zoomControl: true, scrollWheelZoom: true });
 
@@ -640,15 +692,13 @@
   }).addTo(map);
 
   var line = L.polyline(coords, { color: '#10B981', weight: 4, opacity: 0.85 }).addTo(map);
-  map.fitBounds(line.getBounds(), { padding: [24, 24] });
+  map.fitBounds(line.getBounds(), { padding: [40, 40], maxZoom: 9 });
 
-  // Origin marker (green)
   var greenIcon = L.divIcon({
     className: '',
     html: '<div class="map-marker map-marker--from"></div>',
     iconSize: [14, 14], iconAnchor: [7, 7],
   });
-  // Destination marker (dark)
   var darkIcon = L.divIcon({
     className: '',
     html: '<div class="map-marker map-marker--to"></div>',
@@ -665,16 +715,18 @@ function doShare(btn) {
   const label = document.getElementById('share-label');
   const shareIcon = document.getElementById('share-icon');
   const checkIcon = document.getElementById('check-icon');
+  const copiedText = {{ _t('detail_link_copied') | tojson }};
+  const shareText  = {{ _t('detail_share') | tojson }};
   function markCopied() {
     btn.classList.add('share-btn--copied');
     shareIcon.style.display = 'none';
     checkIcon.style.display = '';
-    label.textContent = 'Link copied!';
+    label.textContent = copiedText;
     setTimeout(() => {
       btn.classList.remove('share-btn--copied');
       shareIcon.style.display = '';
       checkIcon.style.display = 'none';
-      label.textContent = 'Share';
+      label.textContent = shareText;
     }, 2500);
   }
   if (navigator.share) {

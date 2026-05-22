@@ -43,8 +43,13 @@ templates = Jinja2Templates(directory="templates")
 router    = APIRouter(prefix="/payments", tags=["payments"])
 log       = logging.getLogger(__name__)
 
-# How many days out before we switch from Case A (auth now) to Case B (save card)
-CASE_B_THRESHOLD_DAYS = 7
+# Threshold for Case A vs Case B:
+# Case A — departure is ≤24 hours away → pre-authorise the card immediately at booking.
+# Case B — departure is >24 hours away → save the card token at booking, fire a
+#           merchant-initiated pre-auth exactly 24 hours before departure.
+# The 24-hour boundary matches the cancellation cut-off: once the pre-auth fires, the
+# seat is reserved and the passenger forfeits the full amount on cancellation.
+CASE_B_THRESHOLD_HOURS = 24
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -72,19 +77,31 @@ def _expire_booking(db: Session, booking: models.Booking) -> None:
             )
 
 
-def service_fee_rate(contribution: int, retry_surcharge: bool = False) -> float:
-    """18 % normally; 23 % when a passenger retries after a failed MIT."""
-    return 0.23 if retry_surcharge else 0.18
+_SERVICE_FEE_RATE        = 0.18
+_SERVICE_FEE_RATE_RETRY  = 0.23
+_SERVICE_FEE_FLOOR       = 200   # ISK — minimum fee regardless of fare
+_ROUNDING_UNIT           = 50    # ISK — passenger total rounded up to nearest 50
 
 
 def calc_fees(
     contribution: int,
     retry_surcharge: bool = False,
 ) -> tuple[int, int, int]:
-    """Return (service_fee, passenger_total, driver_payout)."""
-    rate    = service_fee_rate(contribution, retry_surcharge)
-    fee     = round(contribution * rate)
-    return fee, contribution + fee, contribution
+    """Return (service_fee, passenger_total, driver_payout).
+
+    Logic:
+      1. raw_fee  = round(contribution × rate)
+      2. fee      = max(raw_fee, SERVICE_FEE_FLOOR)
+      3. total    = ceil((contribution + fee) / ROUNDING_UNIT) × ROUNDING_UNIT
+      4. service_fee absorbs the rounding delta so driver_payout stays clean.
+    """
+    rate     = _SERVICE_FEE_RATE_RETRY if retry_surcharge else _SERVICE_FEE_RATE
+    raw_fee  = round(contribution * rate)
+    fee      = max(raw_fee, _SERVICE_FEE_FLOOR)
+    raw_total = contribution + fee
+    total    = -(-raw_total // _ROUNDING_UNIT) * _ROUNDING_UNIT  # ceiling div
+    service_fee = total - contribution
+    return service_fee, total, contribution
 
 
 def _payment_case(departure_datetime: datetime) -> str:
@@ -95,7 +112,7 @@ def _payment_case(departure_datetime: datetime) -> str:
     counted correctly — e.g. 7 days 23 hours is >7 days and must use Case B,
     because a Case A authorisation would expire before the trip departs.
     """
-    return "A" if (departure_datetime - datetime.utcnow()) <= timedelta(days=CASE_B_THRESHOLD_DAYS) else "B"
+    return "A" if (departure_datetime - datetime.utcnow()) <= timedelta(hours=CASE_B_THRESHOLD_HOURS) else "B"
 
 
 def _get_or_create_payment(

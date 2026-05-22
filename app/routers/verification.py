@@ -7,7 +7,9 @@ Drivers must have an approved driver's licence before posting a trip.
 Admin routes (is_admin=True) let staff review and approve / reject documents.
 """
 
+import logging
 import os
+import urllib.error
 import uuid
 from datetime import datetime, timedelta, date
 
@@ -17,10 +19,12 @@ from sqlalchemy import or_, func
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 
-from app import models
+from app import models, didit as didit_client, email as mailer
 from app.config import get_settings
 from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
+
+log = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -56,8 +60,126 @@ def verify_page(
     ctx: dict = Depends(get_template_context),
     current_user: models.User = Depends(get_current_user),
 ):
+    s = get_settings()
     return templates.TemplateResponse("verification/index.html", {
-        **ctx, "error": None, "success": None,
+        **ctx,
+        "error":         None,
+        "success":       None,
+        "didit_enabled": bool(s.didit_api_key),
+    })
+
+
+# ── Didit-powered verification ─────────────────────────────────────────────────
+
+@router.post("/verify/didit/start", response_class=HTMLResponse)
+def start_didit_verification(
+    request:      Request,
+    ctx:          dict         = Depends(get_template_context),
+    current_user: models.User  = Depends(get_current_user),
+    db:           Session      = Depends(get_db),
+    doc_type:     str          = Form(...),   # 'license' | 'passport' | 'national_id'
+):
+    """
+    Create a Didit verification session and redirect the user to the hosted flow.
+    doc_type=license   → licence workflow (covers identity + driving in one step)
+    doc_type=passport  → identity workflow (identity only)
+    doc_type=national_id → identity workflow (identity only)
+    """
+    s = get_settings()
+
+    def _error(msg: str):
+        return templates.TemplateResponse("verification/index.html", {
+            **ctx,
+            "error":         msg,
+            "success":       None,
+            "didit_enabled": bool(s.didit_api_key),
+        }, status_code=400)
+
+    if not s.didit_api_key:
+        return _error("Verification service is not configured. Please contact support.")
+
+    is_licence = doc_type == "license"
+
+    if is_licence:
+        if not s.didit_workflow_id_licence:
+            return _error("Licence verification workflow is not configured.")
+        # Already in a pending/approved state — no need to restart
+        if current_user.license_verification == models.VerificationStatus.pending:
+            return RedirectResponse("/verify", status_code=303)
+        workflow_id = s.didit_workflow_id_licence
+        vtype       = "licence"
+    else:
+        if not s.didit_workflow_id_identity:
+            return _error("Identity verification workflow is not configured.")
+        if current_user.id_verification == models.VerificationStatus.pending:
+            return RedirectResponse("/verify", status_code=303)
+        workflow_id = s.didit_workflow_id_identity
+        vtype       = "identity"
+
+    callback_url = f"{s.base_url}/verify/didit/callback"
+
+    try:
+        session = didit_client.create_session(
+            api_key=s.didit_api_key,
+            workflow_id=workflow_id,
+            user_id=current_user.id,
+            verification_type=vtype,
+            callback_url=callback_url,
+        )
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")[:200]
+        log.error("Didit session creation failed for user %s: %s %s", current_user.id, exc.code, body)
+        return _error("Could not start verification — please try again in a moment.")
+    except Exception as exc:
+        log.error("Didit session creation error for user %s: %s", current_user.id, exc)
+        return _error("Could not start verification — please try again in a moment.")
+
+    session_id = session.get("session_id", "")
+
+    # Persist session ID and set status to pending
+    if is_licence:
+        current_user.didit_licence_session_id  = session_id
+        current_user.license_verification      = models.VerificationStatus.pending
+        current_user.license_rejection_reason  = None
+        # Licence covers identity — pre-set identity to pending too
+        current_user.didit_identity_session_id = session_id
+        current_user.id_verification           = models.VerificationStatus.pending
+        current_user.id_rejection_reason       = None
+    else:
+        current_user.didit_identity_session_id = session_id
+        current_user.id_verification           = models.VerificationStatus.pending
+        current_user.id_rejection_reason       = None
+
+    db.commit()
+
+    didit_url = session.get("url", "")
+    if not didit_url:
+        log.error("Didit session %s returned no url for user %s", session_id, current_user.id)
+        return _error("Verification session created but no redirect URL returned. Please contact support.")
+
+    return RedirectResponse(didit_url, status_code=303)
+
+
+@router.get("/verify/didit/callback", response_class=HTMLResponse)
+def didit_callback(
+    request:      Request,
+    ctx:          dict        = Depends(get_template_context),
+    current_user: models.User = Depends(get_current_user),
+):
+    """
+    Landing page after the user completes the Didit hosted flow.
+    Didit sends the actual result via webhook — this page just reassures the user.
+    """
+    s = get_settings()
+    return templates.TemplateResponse("verification/index.html", {
+        **ctx,
+        "success": (
+            "Your documents have been submitted. "
+            "Verification usually completes within a few minutes — "
+            "we'll send you an email as soon as it's done."
+        ),
+        "error":         None,
+        "didit_enabled": bool(s.didit_api_key),
     })
 
 
@@ -87,6 +209,7 @@ def upload_identity(
     except ValueError as e:
         return templates.TemplateResponse("verification/index.html", {
             **ctx, "error": str(e), "success": None,
+            "didit_enabled": bool(get_settings().didit_api_key),
         }, status_code=400)
 
     is_licence = doc_type == "license"
@@ -387,6 +510,23 @@ def admin_users(
     })
 
 
+@router.post("/admin/users/{user_id}/reinstate-posting", response_class=HTMLResponse)
+def reinstate_posting(
+    user_id: int,
+    admin:   models.User = Depends(_require_admin),
+    db:      Session     = Depends(get_db),
+):
+    """Clear posting_suspended and reset 90-day cancellation counters for a driver."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user and not user.deleted_at:
+        user.posting_suspended      = False
+        user.cancellations_90d      = 0
+        user.late_cancellations_90d = 0
+        # no_shows_confirmed is a lifetime counter — intentionally not reset here
+        db.commit()
+    return RedirectResponse("/admin/users", status_code=303)
+
+
 @router.post("/admin/users/{user_id}/toggle-admin", response_class=HTMLResponse)
 def toggle_admin(
     user_id: int,
@@ -585,3 +725,41 @@ def admin_test_email(
             "/admin/users?flash=Error:+" + str(exc)[:120].replace(" ", "+"),
             status_code=303,
         )
+
+
+@router.get("/admin/bookings/{booking_id}/dispute-pack", response_class=HTMLResponse)
+def admin_dispute_pack(
+    booking_id: int,
+    request:    Request,
+    ctx:        dict        = Depends(get_template_context),
+    admin:      models.User = Depends(_require_admin),
+    db:         Session     = Depends(get_db),
+):
+    """
+    Chargeback evidence package for a single booking.
+    Renders all fields relevant to a dispute in a clean, printable layout.
+    Cmd+P / Ctrl+P → Save as PDF to send to Slize or the acquirer.
+    """
+    booking = (
+        db.query(models.Booking)
+        .options(
+            joinedload(models.Booking.passenger),
+            joinedload(models.Booking.payment),
+            joinedload(models.Booking.messages).joinedload(models.Message.sender),
+            joinedload(models.Booking.trip).joinedload(models.Trip.driver),
+        )
+        .filter(models.Booking.id == booking_id)
+        .first()
+    )
+    if not booking:
+        raise __import__("fastapi").HTTPException(status_code=404, detail="Booking not found")
+
+    generated_at = datetime.utcnow()
+    return templates.TemplateResponse(
+        "admin/dispute_pack.html",
+        {
+            **ctx,
+            "booking":      booking,
+            "generated_at": generated_at,
+        },
+    )

@@ -1,60 +1,60 @@
 {% extends "base.html" %}
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
-{% block title %}Log in — SameFare{% endblock %}
+{% block title %}{{ _t('login_btn') }} — SameFare{% endblock %}
 
 {% block content %}
 <div class="auth-page">
   <div class="auth-card">
     <div class="auth-card__header">
       <a href="/" class="auth-card__logo">SameFare</a>
-      <h1 class="auth-card__title">Welcome back</h1>
-      <p class="auth-card__sub">Log in to manage your trips and bookings</p>
+      <h1 class="auth-card__title">{{ _t('login_title') }}</h1>
+      <p class="auth-card__sub">{{ _t('login_sub') }}</p>
     </div>
 
     {% if error == 'no_account' %}
       <div class="alert alert--error" role="alert">
-        No account found for <strong>{{ email }}</strong>.
-        <a href="/register" class="alert__link">Create one free →</a>
+        {{ _t('login_no_account') }} <strong>{{ email }}</strong>.
+        <a href="/register" class="alert__link">{{ _t('login_no_account_cta') }}</a>
       </div>
     {% elif error == 'wrong_password' %}
       <div class="alert alert--error" role="alert">
-        Wrong password.
-        <a href="/forgot-password" class="alert__link">Forgot it?</a>
+        {{ _t('login_wrong_password') }}
+        <a href="/forgot-password" class="alert__link">{{ _t('login_wrong_password_link') }}</a>
       </div>
     {% elif error == 'suspended' %}
       <div class="alert alert--error" role="alert">
-        Your account has been suspended. Contact us at <a href="mailto:support@samefare.com" class="alert__link">support@samefare.com</a> if you believe this is a mistake.
+        {{ _t('login_suspended') }} <a href="mailto:samefare@samefare.com" class="alert__link">samefare@samefare.com</a> {{ _t('login_suspended_mistake') }}
       </div>
     {% elif error == 'deleted' %}
       <div class="alert alert--error" role="alert">
-        This account has been deleted.
+        {{ _t('login_deleted') }}
       </div>
     {% endif %}
 
     <form method="post" action="/login" class="auth-form">
       <div class="form-group">
-        <label for="email" class="label">Email address</label>
+        <label for="email" class="label">{{ _t('login_email') }}</label>
         <input id="email" name="email" type="email" class="input" required
                autocomplete="email" placeholder="you@example.com"
                value="{{ email or '' }}" />
       </div>
 
       <div class="form-group">
-        <label for="password" class="label">Password</label>
+        <label for="password" class="label">{{ _t('login_password') }}</label>
         <input id="password" name="password" type="password" class="input" required
                autocomplete="current-password" placeholder="••••••••" />
       </div>
 
       <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top:1.5rem;">
-        Log in
+        {{ _t('login_btn') }}
       </button>
     </form>
 
     <p class="auth-card__footer" style="margin-top:.75rem;">
-      <a href="/forgot-password" class="link">Forgot password?</a>
+      <a href="/forgot-password" class="link">{{ _t('login_forgot') }}</a>
     </p>
     <p class="auth-card__footer">
-      Don't have an account? <a href="/register" class="link">Join SameFare free</a>
+      {{ _t('login_no_account_footer') }} <a href="/register" class="link">{{ _t('login_join_free') }}</a>
     </p>
   </div>
 </div>

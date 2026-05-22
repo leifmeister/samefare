@@ -34,7 +34,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, joinedload
 
-from app import models, email as mailer, sms as texter, rapyd as rapyd_client
+from app import models, email as mailer, sms as texter, rapyd as rapyd_client, didit as didit_client
 from app.config import get_settings
 from app.database import get_db
 from app.rapyd import verify_webhook, RapydError
@@ -547,6 +547,171 @@ def _handle_payment_failed(
         # Here we just log it (the task will have already updated the state)
         log.info("Booking %s: Case B payment failed (webhook)", booking_id)
         db.commit()
+
+
+# ── Didit webhook ─────────────────────────────────────────────────────────────
+
+@router.post("/didit", include_in_schema=False)
+async def didit_webhook(request: Request):
+    """
+    Receive Didit KYC/AML status updates.
+
+    Security: every request is validated with X-Signature-V2 (HMAC-SHA256
+    over the sorted-key JSON body) before any DB write occurs.
+
+    Handled status values
+    ---------------------
+    Approved   → set id_verification / license_verification to approved
+    Declined   → set to rejected; store rejection reason if available
+    In Review  → keep pending (Didit's human review team is looking at it)
+    Abandoned  → reset to unverified so the user can resubmit
+    Expired    → reset to unverified so the user can resubmit
+    """
+    body_bytes = await request.body()
+    s          = get_settings()
+
+    # ── 1. Signature verification ─────────────────────────────────────────────
+    signature = request.headers.get("x-signature-v2", "")
+    if not signature:
+        log.warning("Didit webhook missing X-Signature-V2 header — rejected")
+        return JSONResponse({"error": "missing signature"}, status_code=400)
+
+    if not s.didit_webhook_secret:
+        log.error("DIDIT_WEBHOOK_SECRET not configured — cannot verify webhook")
+        return JSONResponse({"error": "misconfigured"}, status_code=500)
+
+    try:
+        payload = didit_client.verify_webhook_signature(
+            payload_bytes=body_bytes,
+            signature=signature,
+            secret=s.didit_webhook_secret,
+        )
+    except ValueError as exc:
+        log.warning("Didit webhook signature/timestamp invalid: %s", exc)
+        return JSONResponse({"error": "invalid signature"}, status_code=401)
+
+    # ── 2. Filter to relevant event type ──────────────────────────────────────
+    webhook_type = payload.get("webhook_type", "")
+    if webhook_type != "status.updated":
+        log.debug("Didit webhook type %r — no handler, ignoring", webhook_type)
+        return JSONResponse({"status": "ignored"})
+
+    status      = payload.get("status", "")
+    vendor_data = payload.get("vendor_data", "")
+    session_id  = payload.get("session_id", "")
+
+    log.info("Didit webhook: session=%s status=%r vendor_data=%r",
+             session_id, status, vendor_data)
+
+    # ── 3. Parse vendor_data → user_id + verification_type ───────────────────
+    # vendor_data format: "{user_id}:identity" or "{user_id}:licence"
+    try:
+        user_id_str, vtype = vendor_data.split(":", 1)
+        user_id = int(user_id_str)
+    except (ValueError, AttributeError):
+        log.warning("Didit webhook: unparseable vendor_data %r (session=%s)",
+                    vendor_data, session_id)
+        return JSONResponse({"error": "bad vendor_data"}, status_code=400)
+
+    # ── 4. Load user ──────────────────────────────────────────────────────────
+    db: Session = next(get_db())
+    try:
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if not user:
+            log.warning("Didit webhook: unknown user_id %s (session=%s)",
+                        user_id, session_id)
+            return JSONResponse({"error": "user not found"}, status_code=404)
+
+        # ── 5. Map Didit status → VerificationStatus ──────────────────────────
+        approved  = models.VerificationStatus.approved
+        rejected  = models.VerificationStatus.rejected
+        pending   = models.VerificationStatus.pending
+        unverified = models.VerificationStatus.unverified
+
+        if status == didit_client.STATUS_APPROVED:
+            new_status = approved
+        elif status == didit_client.STATUS_DECLINED:
+            new_status = rejected
+        elif status == didit_client.STATUS_IN_REVIEW:
+            new_status = pending   # Didit human review; keep pending, no email yet
+        elif status in (didit_client.STATUS_ABANDONED, didit_client.STATUS_EXPIRED):
+            new_status = unverified   # allow retry
+        else:
+            # In Progress, Not Started — no state change needed
+            log.debug("Didit webhook: status %r requires no action", status)
+            return JSONResponse({"status": "ok"})
+
+        # ── 6. Extract rejection reason if declined ────────────────────────────
+        rejection_reason: str | None = None
+        if new_status == rejected:
+            decision = payload.get("decision") or {}
+            # Try to surface a human-readable reason from id_verifications
+            id_checks = decision.get("id_verifications") or []
+            if id_checks:
+                rejection_reason = id_checks[0].get("status") or None
+
+        # ── 7. Apply to the correct verification field(s) ─────────────────────
+        if vtype == "licence":
+            user.license_verification     = new_status
+            user.license_rejection_reason = rejection_reason
+            if new_status == unverified:
+                user.didit_licence_session_id = None
+            # Licence covers identity — propagate approval
+            if new_status == approved:
+                user.id_verification      = approved
+                user.id_rejection_reason  = None
+                # ── Extract document expiry date from Didit payload ────────────
+                # Didit returns document fields inside payload["decision"]["document"].
+                # Field name varies by document type; try all known variants.
+                try:
+                    decision = payload.get("decision") or {}
+                    doc      = decision.get("document") or {}
+                    expiry_raw = (
+                        doc.get("expiry_date")
+                        or doc.get("date_of_expiry")
+                        or doc.get("expiration_date")
+                        or doc.get("expires")
+                    )
+                    if expiry_raw:
+                        from datetime import date as _date
+                        expiry_str = str(expiry_raw).split("T")[0]   # handle ISO datetime
+                        user.licence_expiry          = _date.fromisoformat(expiry_str)
+                        user.licence_expiry_warned_at = None          # reset warning on re-verify
+                        log.info(
+                            "Didit: extracted licence expiry %s for user %s",
+                            user.licence_expiry, user_id,
+                        )
+                    else:
+                        log.info(
+                            "Didit: no expiry date in payload for user %s — "
+                            "decision keys: %s", user_id, list(doc.keys()),
+                        )
+                except Exception as exc:
+                    log.warning("Didit: failed to extract expiry date for user %s: %s", user_id, exc)
+            # On decline/unverified: only reset licence; identity keeps its state
+        else:
+            user.id_verification      = new_status
+            user.id_rejection_reason  = rejection_reason
+            if new_status == unverified:
+                user.didit_identity_session_id = None
+
+        db.commit()
+        log.info("Didit: user %s %s → %s", user_id, vtype, new_status)
+
+        # ── 8. Send notification email (non-blocking) ─────────────────────────
+        if new_status == approved:
+            mailer.verification_approved(user, vtype)
+        elif new_status == rejected:
+            mailer.verification_rejected(user, vtype, rejection_reason)
+
+    except Exception as exc:
+        log.exception("Didit webhook processing error (session=%s): %s", session_id, exc)
+        db.rollback()
+        return JSONResponse({"error": "processing_error"}, status_code=500)
+    finally:
+        db.close()
+
+    return JSONResponse({"status": "ok"})
 
 
 def _handle_payment_expired(

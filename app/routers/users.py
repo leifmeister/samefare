@@ -368,8 +368,13 @@ def delete_account(
         if booking.status in cancellable:
             booking.status = models.BookingStatus.cancelled
 
-    # Anonymise PII — trip/payment rows are retained for legal/tax compliance
+    # Anonymise PII — trip/payment rows are retained for legal/tax compliance.
+    # ⚠️  AML RETENTION: didit_identity_session_id, didit_licence_session_id,
+    # id_verification, and license_verification must NOT be cleared here — they
+    # are required by Icelandic Act no. 140/2018 Art. 24 for 5 years from account
+    # closure.  aml_retain_until records the expiry date of this obligation.
     uid = current_user.id
+    now = datetime.utcnow()
     current_user.full_name        = "Deleted User"
     current_user.email            = f"deleted_{uid}@deleted.invalid"
     current_user.phone            = None
@@ -379,7 +384,11 @@ def delete_account(
     current_user.birth_year       = None
     current_user.hashed_password  = ""
     current_user.is_active        = False
-    current_user.deleted_at       = datetime.utcnow()
+    current_user.deleted_at       = now
+    # Lock the AML retention clock: KYC session references may not be purged
+    # before this date even if the user requests erasure.
+    from datetime import timedelta
+    current_user.aml_retain_until = now + timedelta(days=5 * 365)
 
     db.commit()
 

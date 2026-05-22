@@ -1,13 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Find a ride — SameFare{% endblock %}
+{% block title %}{{ _t('list_title') }} — SameFare{% endblock %}
 {% block meta_description %}{% if origin and destination %}Find rideshares from {{ origin }} to {{ destination }} in Iceland. Browse available seats and book instantly on SameFare.{% elif origin %}Find rideshares departing from {{ origin }} across Iceland. Browse available seats on SameFare.{% elif destination %}Find rideshares to {{ destination }} in Iceland. Browse available seats and book your seat today.{% else %}Find rideshares across Iceland. Browse trips between Reykjavík, Akureyri, Selfoss, Vík and more — book your seat on SameFare.{% endif %}{% endblock %}
 
 {% block content %}
 <div class="page-header page-header--compact">
   <div class="container">
-    <h1 class="page-header__title">Find a ride</h1>
+    <h1 class="page-header__title">{{ _t('list_title') }}</h1>
     <!-- Search bar (refine search) -->
-    <form class="search-bar"
+    <form id="search-bar-form"
+          class="search-bar"
           hx-get="/trips"
           hx-target="#trips-results"
           hx-push-url="true"
@@ -20,16 +21,16 @@
             sameCityErr = false;
           ">
       <div x-show="sameCityErr" x-cloak class="search-bar__same-city-error" role="alert">
-        Origin and destination can't be the same city.
+        {{ _t('list_same_city_error') }}
       </div>
       <div class="search-bar__fields">
 
         <div class="search-bar__field">
           <label for="s-origin" class="search-bar__label">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="12" height="12" aria-hidden="true"><circle cx="10" cy="10" r="3"/><path d="M10 2a8 8 0 100 16A8 8 0 0010 2z" fill-opacity=".15"/></svg>
-            From
+            {{ _t('list_from') }}
           </label>
-          <input id="s-origin" name="origin" type="text" class="input" placeholder="Any city"
+          <input id="s-origin" name="origin" type="text" class="input" placeholder="{{ _t('list_any_city') }}"
                  value="{{ origin }}" list="cities-list" autocomplete="off" />
         </div>
 
@@ -47,16 +48,16 @@
         <div class="search-bar__field">
           <label for="s-dest" class="search-bar__label">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="12" height="12" aria-hidden="true"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
-            To
+            {{ _t('list_to') }}
           </label>
-          <input id="s-dest" name="destination" type="text" class="input" placeholder="Any city"
+          <input id="s-dest" name="destination" type="text" class="input" placeholder="{{ _t('list_any_city') }}"
                  value="{{ destination }}" list="cities-list" autocomplete="off" />
         </div>
 
         <div class="search-bar__field search-bar__field--date">
           <label class="search-bar__label">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="12" height="12" aria-hidden="true"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
-            Date
+            {{ _t('list_date') }}
           </label>
           <div class="search-bar__date-wrap">
             <!-- Trigger button — shows selected date + flex label -->
@@ -64,7 +65,7 @@
                     :class="{'date-trigger--has-value': dateLabel}"
                     @click="open = !open"
                     aria-haspopup="true" :aria-expanded="open">
-              <span x-text="dateLabel || 'Any date'"
+              <span x-text="dateLabel || '{{ _t('list_any_date') }}'"
                     :class="{'date-trigger__placeholder': !dateLabel}"></span>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
                    width="14" height="14" class="date-trigger__caret" aria-hidden="true">
@@ -91,13 +92,13 @@
               <div class="date-flex-seg" role="group" aria-label="Date flexibility">
                 <button type="button" class="date-flex-seg__btn"
                         :class="{'date-flex-seg__btn--active': flex === 'exact'}"
-                        @click="setFlex('exact')">Exact</button>
+                        @click="setFlex('exact')">{{ _t('list_exact') }}</button>
                 <button type="button" class="date-flex-seg__btn"
                         :class="{'date-flex-seg__btn--active': flex === 'plus_minus_1'}"
-                        @click="setFlex('plus_minus_1')">±1 day</button>
+                        @click="setFlex('plus_minus_1')">{{ _t('list_plus_minus_1') }}</button>
                 <button type="button" class="date-flex-seg__btn"
                         :class="{'date-flex-seg__btn--active': flex === 'this_week'}"
-                        @click="setFlex('this_week')">This week</button>
+                        @click="setFlex('this_week')">{{ _t('list_this_week') }}</button>
               </div>
 
               <!-- Native date picker — hidden for week/weekend flex modes -->
@@ -111,13 +112,13 @@
               <div class="date-chips date-popover__chips">
                 <button type="button" class="date-chip"
                         :class="{'date-chip--active': date === today && flex === 'exact'}"
-                        @click="setDate(today)">Today</button>
+                        @click="setDate(today)">{{ _t('list_today') }}</button>
                 <button type="button" class="date-chip"
                         :class="{'date-chip--active': date === tomorrow && flex === 'exact'}"
-                        @click="setDate(tomorrow)">Tomorrow</button>
+                        @click="setDate(tomorrow)">{{ _t('list_tomorrow') }}</button>
                 <button type="button" class="date-chip"
                         :class="{'date-chip--active': flex === 'weekend'}"
-                        @click="flex === 'weekend' ? clearDate() : setFlex('weekend')">Weekend</button>
+                        @click="flex === 'weekend' ? clearDate() : setFlex('weekend')">{{ _t('list_weekend') }}</button>
               </div>
             </div>
 
@@ -130,17 +131,17 @@
         <div class="search-bar__field search-bar__field--xs">
           <label for="s-seats" class="search-bar__label">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="12" height="12" aria-hidden="true"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
-            Seats
+            {{ _t('list_seats') }}
           </label>
           <select id="s-seats" name="seats" class="input">
-            <option value="1" {% if seats == 1 %}selected{% endif %}>1 seat</option>
-            <option value="2" {% if seats == 2 %}selected{% endif %}>2 seats</option>
-            <option value="3" {% if seats == 3 %}selected{% endif %}>3 seats</option>
+            <option value="1" {% if seats == 1 %}selected{% endif %}>{{ _t('list_1_seat') }}</option>
+            <option value="2" {% if seats == 2 %}selected{% endif %}>{{ _t('list_2_seats') }}</option>
+            <option value="3" {% if seats == 3 %}selected{% endif %}>{{ _t('list_3_seats') }}</option>
           </select>
         </div>
 
         <div class="search-bar__submit">
-          <button type="submit" class="btn btn-primary">Search</button>
+          <button type="submit" class="btn btn-primary">{{ _t('list_search_btn') }}</button>
         </div>
 
       </div>
@@ -179,41 +180,40 @@
     <aside class="sidebar" aria-label="Search filters">
       <div class="sidebar__section">
         <fieldset style="border:none; padding:0; margin:0;">
-          <legend class="sidebar__title">Sort by</legend>
+          <legend class="sidebar__title">{{ _t('list_sort_by') }}</legend>
           <div class="sidebar__options">
             <label class="radio-option">
               <input type="radio" name="sort" value="soonest" form="sort-form"
                      {% if sort == 'soonest' %}checked{% endif %} />
-              <span>Soonest first</span>
+              <span>{{ _t('list_soonest') }}</span>
             </label>
             <label class="radio-option">
               <input type="radio" name="sort" value="price_asc" form="sort-form"
                      {% if sort == 'price_asc' %}checked{% endif %} />
-              <span>Cheapest first</span>
+              <span>{{ _t('list_cheapest') }}</span>
             </label>
             <label class="radio-option">
               <input type="radio" name="sort" value="price_desc" form="sort-form"
                      {% if sort == 'price_desc' %}checked{% endif %} />
-              <span>Most expensive</span>
+              <span>{{ _t('list_most_expensive') }}</span>
             </label>
           </div>
         </fieldset>
       </div>
 
+      {# sort-form: no hidden filter fields — hx-include pulls live values
+         directly from the search bar so changing sort never submits stale
+         origin/destination/date/seats from a previous HTMX search. #}
       <form id="sort-form" method="get" action="/trips"
             hx-get="/trips" hx-target="#trips-results" hx-push-url="true"
-            hx-trigger="change from:[name=sort]">
-        <input type="hidden" name="origin"      value="{{ origin }}" />
-        <input type="hidden" name="destination" value="{{ destination }}" />
-        <input type="hidden" name="travel_date" value="{{ travel_date }}" />
-        <input type="hidden" name="date_flex"   value="{{ date_flex }}" />
-        <input type="hidden" name="seats"       value="{{ seats }}" />
+            hx-trigger="change from:[name=sort]"
+            hx-include="#search-bar-form">
       </form>
 
       <div class="sidebar__divider"></div>
 
       <a href="/trips/new" class="btn btn-primary btn-block" style="margin-top:.5rem">
-        + Offer a ride
+        {{ _t('list_offer_ride') }}
       </a>
     </aside>
 
@@ -227,4 +227,3 @@
   </div>
 </div>
 {% endblock %}
-

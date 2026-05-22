@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}
+  {% if success %}Booking confirmed{% elif pending %}Payment pending{% else %}Payment unsuccessful{% endif %}
+  — SameFare
+{% endblock %}
+
+{% block content %}
+<div class="container container--narrow" style="margin-top:3rem; margin-bottom:4rem;">
+
+  {% if success %}
+  {# ── Success ──────────────────────────────────────────────────────────────── #}
+  <div style="text-align:center; margin-bottom:2rem;">
+    <div style="width:64px; height:64px; border-radius:50%; background:var(--color-success,#22c55e);
+                display:inline-flex; align-items:center; justify-content:center; margin-bottom:1rem;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="32" height="32">
+        <path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 011.04-.207z" clip-rule="evenodd"/>
+      </svg>
+    </div>
+    <h1 style="font-size:1.5rem; font-weight:700; margin-bottom:.5rem;">You're confirmed!</h1>
+    <p style="color:var(--color-muted);">{{ message }}</p>
+  </div>
+
+  <div class="card" style="padding:1.25rem; margin-bottom:1.5rem;">
+    <div style="font-size:.875rem; color:var(--color-muted); margin-bottom:.25rem;">Trip</div>
+    <div style="font-weight:600;">
+      {{ booking.pickup_city or booking.trip.origin }}
+      <span style="color:var(--color-muted);">→</span>
+      {{ booking.dropoff_city or booking.trip.destination }}
+    </div>
+    <div style="font-size:.875rem; color:var(--color-muted); margin-top:.25rem;">
+      {{ booking.trip.departure_datetime.strftime("%A %-d %B, %H:%M") }}
+      &nbsp;·&nbsp;
+      {{ booking.seats_booked }} seat{% if booking.seats_booked != 1 %}s{% endif %}
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:.75rem;">
+    <a href="/my-trips?tab=bookings" class="btn btn-primary btn-block">View my bookings</a>
+    <a href="/trips" class="btn btn-outline btn-block">Browse more rides</a>
+  </div>
+
+  {% elif pending %}
+  {# ── Pending ──────────────────────────────────────────────────────────────── #}
+  <div style="text-align:center; margin-bottom:2rem;">
+    <div style="width:64px; height:64px; border-radius:50%; background:var(--color-warning,#f59e0b);
+                display:inline-flex; align-items:center; justify-content:center; margin-bottom:1rem;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="32" height="32">
+        <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" clip-rule="evenodd"/>
+      </svg>
+    </div>
+    <h1 style="font-size:1.5rem; font-weight:700; margin-bottom:.5rem;">Payment in progress</h1>
+    <p style="color:var(--color-muted);">{{ message }}</p>
+    <p style="color:var(--color-muted); font-size:.875rem; margin-top:.5rem;">
+      Open your Blikk app and complete the payment request. Your booking will be confirmed automatically once we receive it.
+    </p>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:.75rem;">
+    <a href="/my-trips?tab=bookings" class="btn btn-primary btn-block">Check my bookings</a>
+  </div>
+
+  {% else %}
+  {# ── Failed / cancelled ───────────────────────────────────────────────────── #}
+  <div style="text-align:center; margin-bottom:2rem;">
+    <div style="width:64px; height:64px; border-radius:50%; background:var(--color-danger,#ef4444);
+                display:inline-flex; align-items:center; justify-content:center; margin-bottom:1rem;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="32" height="32">
+        <path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 01-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z" clip-rule="evenodd"/>
+      </svg>
+    </div>
+    <h1 style="font-size:1.5rem; font-weight:700; margin-bottom:.5rem;">Payment unsuccessful</h1>
+    <p style="color:var(--color-muted);">{{ message }}</p>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:.75rem;">
+    {% if booking and booking.status.value in ('awaiting_payment',) %}
+      <a href="/bookings/{{ booking.id }}/blikk-pay" class="btn btn-primary btn-block">Try again</a>
+    {% endif %}
+    <a href="/my-trips?tab=bookings" class="btn btn-outline btn-block">Back to my bookings</a>
+    <a href="/trips/{{ booking.trip_id }}" class="btn btn-outline btn-block">Back to trip</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

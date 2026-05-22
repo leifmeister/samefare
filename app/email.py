@@ -96,7 +96,7 @@ def _wrap(body: str) -> str:
               You're receiving this because you have an account on
               <a href="{s.base_url}" style="color:#006C5B;">{s.base_url.replace('https://','')}</a>.
               Questions? Contact
-              <a href="mailto:support@samefare.com" style="color:#006C5B;">support@samefare.com</a>.
+              <a href="mailto:samefare@samefare.com" style="color:#006C5B;">samefare@samefare.com</a>.
             </p>
           </td>
         </tr>
@@ -198,6 +198,14 @@ def booking_confirmed_to_passenger(booking) -> None:
 def booking_approved_to_passenger(booking) -> None:
     s    = get_settings()
     trip = booking.trip
+    # Route the payment CTA to the appropriate checkout depending on payment rail
+    from app.models import TripPaymentMethod  # local import avoids circular
+    if trip.payment_method == TripPaymentMethod.blikk:
+        payment_url  = f"{s.base_url}/bookings/{booking.id}/blikk-pay"
+        payment_note = "Complete your payment via Blikk bank transfer"
+    else:
+        payment_url  = f"{s.base_url}/payments/checkout/{booking.id}"
+        payment_note = "Complete your payment"
     body = (
         _h1("Your request was approved!") +
         _p(f"<strong>{trip.driver.full_name}</strong> has accepted your booking request for:") +
@@ -208,9 +216,39 @@ def booking_approved_to_passenger(booking) -> None:
         _p(f"To confirm your seat, complete your payment of "
            f"<strong>{booking.total_price:,} ISK</strong> within 24 hours, "
            f"otherwise your spot may be released.") +
-        _btn("Complete payment", f"{s.base_url}/payments/checkout/{booking.id}")
+        _btn(payment_note, payment_url)
     )
     _send(booking.passenger.email, f"Request approved — {trip.origin} → {trip.destination}", _wrap(body))
+
+
+def booking_cancelled_charged(booking) -> None:
+    """
+    Notify the driver that a passenger cancelled within 24 hours of departure.
+    The pre-auth was already in place so the full amount will still be captured
+    and paid out — the driver keeps their contribution.
+    """
+    s    = get_settings()
+    trip = booking.trip
+    pax  = booking.passenger
+    amount = booking.subtotal
+    body = (
+        _h1("Passenger cancelled — you will still be paid") +
+        _p(f"<strong>{pax.full_name}</strong> cancelled their booking, but because "
+           f"the cancellation was made within 24 hours of departure the full amount "
+           f"will still be captured and your contribution paid out.") +
+        f'<div style="background:#F7FAF9;border:1px solid #DDE8E5;border-radius:8px;'
+        f'padding:16px;margin:8px 0;">'
+        f'{_route_line(trip.origin, trip.destination, trip.departure_datetime)}</div>' +
+        _p(f"Your contribution: <strong>{amount:,} ISK</strong>") +
+        _p("The seat has been released and will not be rebooked. "
+           "No action is required from you.") +
+        _btn("View trip", f"{s.base_url}/trips/{trip.id}")
+    )
+    _send(
+        trip.driver.email,
+        f"Passenger cancelled (you're still paid) — {trip.origin} → {trip.destination}",
+        _wrap(body),
+    )
 
 
 def booking_cancelled_to_driver(booking) -> None:
@@ -232,24 +270,38 @@ def booking_cancelled_to_driver(booking) -> None:
 def booking_cancelled_to_passenger(booking) -> None:
     s    = get_settings()
     trip = booking.trip
-    # card_saved cancellation: card was tokenized for MIT but nothing was charged.
-    # rapyd_payment_id is only set once an actual charge (auth or MIT) is created.
-    card_not_charged = (
-        booking.payment is not None
-        and not booking.payment.rapyd_payment_id
+    p    = booking.payment
+
+    # Determine whether the pre-auth was in place at the time of cancellation.
+    # If capture_at has been moved to now/past it means cancel_booking triggered
+    # an immediate capture (≤24h policy).
+    pre_auth_captured = (
+        p is not None
+        and p.status in (
+            models.PaymentStatus.authorised,
+            models.PaymentStatus.capture_requested,
+            models.PaymentStatus.captured,
+        )
     )
+    card_not_charged = not p or p.status in (
+        models.PaymentStatus.pending,
+        models.PaymentStatus.failed,
+    )
+
     if card_not_charged:
-        refund_line = _p(
+        charge_line = _p(
             "Your card was <strong>not charged</strong>. "
-            "Your seat reservation has been released and your saved card details discarded."
+            "Your seat has been released."
+        )
+    elif pre_auth_captured:
+        charge_line = _p(
+            f"Because you cancelled within 24 hours of departure, the full amount of "
+            f"<strong>{booking.total_price:,} ISK</strong> has been charged. "
+            "No refund applies — the seat reservation is considered fulfilled per our "
+            "<a href='https://samefare.com/terms' style='color:#006C5B;'>cancellation policy</a>."
         )
     else:
-        refund = booking.payment.refund_amount if booking.payment else 0
-        if refund > 0:
-            refund_line = _p(f"Refund of <strong>{refund:,} ISK</strong> will be returned to your "
-                             f"original payment method within 5–10 business days.")
-        else:
-            refund_line = _p("No refund applies for this cancellation.")
+        charge_line = _p("No charge applies for this cancellation.")
 
     body = (
         _h1("Booking cancelled") +
@@ -258,7 +310,7 @@ def booking_cancelled_to_passenger(booking) -> None:
         f'padding:16px;margin:8px 0;">'
         f'{_route_line(trip.origin, trip.destination, trip.departure_datetime)}</div>' +
         _divider() +
-        refund_line +
+        charge_line +
         _btn("Find another ride", f"{s.base_url}/trips?" + urllib.parse.urlencode({"origin": trip.origin, "destination": trip.destination}))
     )
     _send(booking.passenger.email, f"Booking cancelled — {trip.origin} → {trip.destination}", _wrap(body))
@@ -482,6 +534,65 @@ def trip_reminder_to_passenger(booking) -> None:
     )
 
 
+def verification_approved(user, verification_type: str) -> None:
+    """Notify a user that their identity or driver's licence has been approved."""
+    s = get_settings()
+    if verification_type == "licence":
+        title   = "Driver's licence verified ✓"
+        message = (
+            "Your driver's licence has been verified. "
+            "You can now post rides on SameFare."
+        )
+        if user.id_verification != "approved":
+            message = (
+                "Your driver's licence has been verified — this also confirms your identity. "
+                "You can now post and book rides on SameFare."
+            )
+    else:
+        title   = "Identity verified ✓"
+        message = (
+            "Your identity has been verified. "
+            "You can now book rides on SameFare."
+        )
+    body = (
+        _h1(title) +
+        _p(f"Hi {user.full_name.split()[0]},") +
+        _p(message) +
+        _btn("Go to SameFare", s.base_url)
+    )
+    _send(user.email, title, _wrap(body))
+
+
+def verification_rejected(user, verification_type: str, reason: str | None = None) -> None:
+    """Notify a user that their document submission was rejected."""
+    if verification_type == "licence":
+        title    = "Driver's licence could not be verified"
+        doc_name = "driver's licence"
+    else:
+        title    = "Identity document could not be verified"
+        doc_name = "identity document"
+
+    s = get_settings()
+    reason_line = (
+        f'<p style="margin:12px 0;padding:12px 16px;background:#FEF2F2;'
+        f'border-left:3px solid #DC2626;border-radius:4px;'
+        f'font-size:.875rem;color:#7F1D1D;">'
+        f'Reason: {html.escape(reason)}</p>'
+    ) if reason else ""
+
+    body = (
+        _h1(title) +
+        _p(f"Hi {user.full_name.split()[0]},") +
+        _p(
+            f"Unfortunately we were unable to verify your {doc_name}. "
+            "Please resubmit using a clear, unobstructed photo of a valid document."
+        ) +
+        reason_line +
+        _btn("Resubmit document", f"{s.base_url}/verify")
+    )
+    _send(user.email, title, _wrap(body))
+
+
 def password_reset(user, token: str) -> None:
     s    = get_settings()
     url  = f"{s.base_url}/reset-password?token={token}"
@@ -495,3 +606,180 @@ def password_reset(user, token: str) -> None:
            'your password won\'t change.')
     )
     _send(user.email, "Reset your SameFare password", _wrap(body))
+
+
+def licence_expiry_warning(user, days_left: int) -> None:
+    """
+    Warn a driver that their licence expires within 30 days.
+    Sent by the daily _run_licence_expiry_check() task.
+    """
+    import html as _html
+    name     = _html.escape(user.full_name.split()[0] if user.full_name else "there")
+    expiry   = user.licence_expiry.strftime("%-d %B %Y") if user.licence_expiry else "soon"
+    urgency  = "⚠️" if days_left > 14 else "🚨"
+
+    body = (
+        _h1(f"{urgency} Your driver's licence expires in {days_left} day{'s' if days_left != 1 else ''}") +
+        _p(f"Hi {name},") +
+        _p(
+            f"Your verified driver's licence on SameFare expires on <strong>{expiry}</strong>. "
+            f"Once it expires, your account will be automatically suspended from posting new trips "
+            f"until you re-verify with an updated licence."
+        ) +
+        _p(
+            f"To keep posting trips without interruption, please re-verify your licence "
+            f"before <strong>{expiry}</strong>."
+        ) +
+        _btn("Re-verify my licence", f"{get_settings().base_url}/verify") +
+        _divider() +
+        _p(
+            "Re-verification takes about 2 minutes. You'll need your current, valid driver's licence."
+        )
+    )
+    _send(
+        user.email,
+        f"Action required — your driver's licence expires in {days_left} day{'s' if days_left != 1 else ''}",
+        _wrap(body),
+    )
+
+
+def licence_expired_suspension(user) -> None:
+    """
+    Notify a driver that their licence has expired, their account has been
+    suspended from posting, and they must re-verify to continue.
+    Sent by the daily _run_licence_expiry_check() task.
+    """
+    import html as _html
+    name   = _html.escape(user.full_name.split()[0] if user.full_name else "there")
+    expiry = user.licence_expiry.strftime("%-d %B %Y") if user.licence_expiry else "recently"
+
+    body = (
+        _h1("🚫 Your driver's licence has expired — account suspended") +
+        _p(f"Hi {name},") +
+        _p(
+            f"Your verified driver's licence expired on <strong>{expiry}</strong>. "
+            f"Your account has been automatically suspended from posting new trips "
+            f"to comply with our driver verification requirements."
+        ) +
+        _p(
+            "To resume posting trips, please re-verify your licence with a valid, "
+            "current document. Re-verification takes about 2 minutes."
+        ) +
+        _btn("Re-verify my licence", f"{get_settings().base_url}/verify") +
+        _divider() +
+        _p(
+            "Your existing bookings as a passenger are not affected. "
+            "If you believe this is an error, please contact "
+            "<a href='mailto:samefare@samefare.com' style='color:#006C5B;'>samefare@samefare.com</a>."
+        )
+    )
+    _send(
+        user.email,
+        "Your SameFare account has been suspended — licence expired",
+        _wrap(body),
+    )
+
+
+def aml_monitoring_alert(flags: list[dict], report_date) -> None:
+    """
+    Daily AML monitoring digest — sent to the admin inbox only when ≥1 red flag
+    is raised by _run_aml_monitoring().  Each flag is a dict with keys:
+        flag     — short label (str)
+        user_id  — platform user ID (int)
+        name     — display name (str)
+        detail   — one-line human-readable detail (str)
+    """
+    import html as _html
+    s = get_settings()
+    date_str = report_date.strftime("%-d %B %Y") if hasattr(report_date, "strftime") else str(report_date)
+    n = len(flags)
+
+    rows_html = ""
+    for f in flags:
+        flag_label  = _html.escape(str(f.get("flag", "")))
+        user_id     = _html.escape(str(f.get("user_id", "")))
+        name        = _html.escape(str(f.get("name", "")))
+        detail      = _html.escape(str(f.get("detail", "")))
+        rows_html += (
+            f'<tr>'
+            f'<td style="padding:8px 10px;border-bottom:1px solid #DDE8E5;color:#DC2626;font-weight:600;">{flag_label}</td>'
+            f'<td style="padding:8px 10px;border-bottom:1px solid #DDE8E5;">{name} (ID {user_id})</td>'
+            f'<td style="padding:8px 10px;border-bottom:1px solid #DDE8E5;color:#475569;font-size:.85rem;">{detail}</td>'
+            f'</tr>'
+        )
+
+    body = (
+        _h1(f"⚠️ AML Monitoring Alert — {date_str}") +
+        _p(f"The nightly AML sweep raised <strong>{n} flag{'s' if n != 1 else ''}</strong> "
+           f"requiring review. Each item should be assessed against the SAR procedure.") +
+        _divider() +
+        f'<table style="width:100%;border-collapse:collapse;font-size:.875rem;">'
+        f'<thead>'
+        f'<tr style="background:#F7FAF9;">'
+        f'<th style="padding:8px 10px;text-align:left;color:#64748B;font-weight:600;border-bottom:2px solid #DDE8E5;">Flag</th>'
+        f'<th style="padding:8px 10px;text-align:left;color:#64748B;font-weight:600;border-bottom:2px solid #DDE8E5;">User</th>'
+        f'<th style="padding:8px 10px;text-align:left;color:#64748B;font-weight:600;border-bottom:2px solid #DDE8E5;">Detail</th>'
+        f'</tr>'
+        f'</thead>'
+        f'<tbody>{rows_html}</tbody>'
+        f'</table>' +
+        _divider() +
+        _p("Review each flag against your <strong>SAR &amp; AML Internal Procedure</strong>. "
+           "Document your decision in the SAR Decision Log regardless of outcome. "
+           "If reasonable suspicion exists, file a SAR before taking action on the account.")
+    )
+    _send(
+        s.email_from,
+        f"[AML Alert] {n} flag{'s' if n != 1 else ''} raised — {date_str}",
+        _wrap(body),
+    )
+
+
+def driver_no_show_admin_alert(booking, driver) -> None:
+    """
+    Notify the SameFare admin inbox when a passenger reports a driver no-show.
+    Sent immediately after the report is filed so admin can investigate and
+    process the payment void / refund via the payment provider dashboard.
+    """
+    import html as _html
+    s    = get_settings()
+    trip = booking.trip
+    passenger = booking.passenger
+
+    driver_name   = _html.escape(driver.full_name)
+    passenger_name = _html.escape(passenger.full_name)
+    route         = f"{_html.escape(trip.origin)} → {_html.escape(trip.destination)}"
+    dep           = trip.departure_datetime.strftime("%-d %b %Y at %H:%M")
+    amount        = f"{booking.total_price:,} ISK"
+
+    body = (
+        _h1("⚠️ Driver no-show reported") +
+        _p(f"A passenger has reported that the driver did not show up for their ride.") +
+        _divider() +
+        f'<table style="width:100%;border-collapse:collapse;font-size:.9rem;">'
+        f'<tr><td style="padding:6px 0;color:#64748B;width:40%;">Driver</td>'
+        f'<td style="padding:6px 0;font-weight:600;">{driver_name} (ID {driver.id})</td></tr>'
+        f'<tr><td style="padding:6px 0;color:#64748B;">Passenger</td>'
+        f'<td style="padding:6px 0;font-weight:600;">{passenger_name} (ID {passenger.id})</td></tr>'
+        f'<tr><td style="padding:6px 0;color:#64748B;">Route</td>'
+        f'<td style="padding:6px 0;">{route}</td></tr>'
+        f'<tr><td style="padding:6px 0;color:#64748B;">Departure</td>'
+        f'<td style="padding:6px 0;">{dep}</td></tr>'
+        f'<tr><td style="padding:6px 0;color:#64748B;">Booking ID</td>'
+        f'<td style="padding:6px 0;">#{booking.id}</td></tr>'
+        f'<tr><td style="padding:6px 0;color:#64748B;">Amount</td>'
+        f'<td style="padding:6px 0;">{amount}</td></tr>'
+        f'<tr><td style="padding:6px 0;color:#64748B;">Driver no-shows</td>'
+        f'<td style="padding:6px 0;color:#DC2626;font-weight:700;">{driver.no_shows_confirmed}</td></tr>'
+        f'</table>' +
+        _divider() +
+        _p(f'Driver account has been <strong>automatically suspended</strong> from posting new trips. '
+           f'Reinstate via the admin panel once investigation is complete.') +
+        _p(f'Action required: void or refund the pre-auth / capture for booking #{booking.id} '
+           f'via the payment provider dashboard.')
+    )
+    _send(
+        s.email_from,   # admin inbox — same address the platform sends from
+        f"[Action required] Driver no-show — {driver_name} — booking #{booking.id}",
+        _wrap(body),
+    )

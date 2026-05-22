@@ -109,6 +109,9 @@
                 <p style="font-size:.72rem; color:var(--c-text-muted); margin:.25rem 0 0; max-width:160px;">{{ u.suspension_reason }}</p>
               {% endif %}
             {% endif %}
+            {% if u.posting_suspended %}
+              <span class="badge badge--warning" style="margin-top:.25rem; display:inline-block;" title="Cancellations: {{ u.cancellations_90d }} | Late: {{ u.late_cancellations_90d }} | No-shows: {{ u.no_shows_confirmed }}">Posting suspended</span>
+            {% endif %}
           </td>
           <td>
             <div class="admin-row-actions">
@@ -118,6 +121,12 @@
                     {{ '★ Remove admin' if u.is_admin else '☆ Make admin' }}
                   </button>
                 </form>
+                {% if u.posting_suspended %}
+                <form method="post" action="/admin/users/{{ u.id }}/reinstate-posting"
+                      onsubmit="return confirm('Reinstate posting for {{ u.full_name }}? This clears the 90-day cancellation counters.')">
+                  <button class="btn btn-ghost btn-xs">↩ Reinstate posting</button>
+                </form>
+                {% endif %}
                 {% if u.is_active %}
                 <div x-data="{ open: false }">
                   <button class="btn btn-ghost btn-xs btn-danger-text" @click="open = !open">Suspend</button>

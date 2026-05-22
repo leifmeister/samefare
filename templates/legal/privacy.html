@@ -35,14 +35,18 @@
       <h2>2. Data We Collect</h2>
       <h3>Account data</h3>
       <p>Full name, email address, phone number, and hashed password when you register.</p>
-      <h3>Verification documents</h3>
-      <p>Government-issued photo ID and driver's licence images uploaded for verification. These are stored securely and accessed only by our verification team.</p>
+      <h3>Identity &amp; verification data</h3>
+      <p>When you verify your identity or driver's licence, you are directed to our identity verification provider's secure, hosted flow. Your government-issued document (passport, national ID card, or driver's licence) is captured and stored on the provider's infrastructure — not on SameFare servers. SameFare stores only the verification session reference and the outcome (approved, declined, or pending).</p>
+      <h3>Biometric data</h3>
+      <p>As part of the identity verification process, our provider performs a <strong>liveness check</strong> (confirming you are a real person present during verification) and a <strong>biometric face match</strong> (comparing the face in your document to your liveness capture). This constitutes processing of biometric data as defined under GDPR Article 4(14). The processing is carried out by our verification provider on our behalf and is necessary for identity authentication and fraud prevention. See section 3 for the applicable legal basis.</p>
       <h3>Profile data</h3>
       <p>Profile photo, bio text, and vehicle information you choose to add.</p>
       <h3>Trip &amp; booking data</h3>
       <p>Routes, dates, seats, prices, messages, and booking history.</p>
       <h3>Payment data</h3>
-      <p>We store transaction amounts and references. Full card details are processed by our payment provider and are never stored on SameFare servers.</p>
+      <p>We store transaction amounts, references, masked card details (last 4 digits and card brand only), and pre-authorisation records. Full card numbers and CVV codes are processed exclusively by our licensed payment processor and are never stored on SameFare servers.</p>
+      <h3>AML screening data</h3>
+      <p>As part of our anti-money laundering obligations, our verification provider performs automated sanctions and watchlist screening against your identity data during the verification process. Screening results (match, no-match, or flagged for review) are retained as required by law.</p>
       <h3>Usage data</h3>
       <p>Log data including IP address, browser type, pages visited, and timestamps, collected automatically when you use the Platform.</p>
     </section>
@@ -64,8 +68,16 @@
             <td>Contract (6(1)(b))</td>
           </tr>
           <tr>
-            <td>Reviewing ID and driver's licence documents</td>
+            <td>Reviewing ID and driver's licence documents; confirming document authenticity</td>
             <td>Contract (6(1)(b)); Legal obligation (6(1)(c))</td>
+          </tr>
+          <tr>
+            <td>Biometric processing — liveness verification and face matching to authenticate identity</td>
+            <td>Substantial public interest (Art. 9(2)(g)) in conjunction with Icelandic Act no. 140/2018 on Measures against Money Laundering and Terrorist Financing; Legal obligation (6(1)(c))</td>
+          </tr>
+          <tr>
+            <td>AML / sanctions screening against identity data</td>
+            <td>Legal obligation (6(1)(c)) — Icelandic Act no. 140/2018; Substantial public interest (Art. 9(2)(g))</td>
           </tr>
           <tr>
             <td>Sharing contact details with trip participants</td>
@@ -111,16 +123,16 @@
         </thead>
         <tbody>
           <tr>
-            <td>Payment processing &amp; disbursement</td>
-            <td>Our licensed payment processor</td>
-            <td>Card tokenisation, payment capture, driver disbursement</td>
-            <td>EEA / subject to processor's transfer safeguards</td>
+            <td>Payment processing &amp; driver sub-merchant registration</td>
+            <td>Licensed payment service provider (name to be disclosed on engagement)</td>
+            <td>Card tokenisation, SCA authentication, pre-authorisation, payment capture, split routing to driver sub-merchant accounts. SameFare never receives or stores raw card data.</td>
+            <td>EEA — subject to the provider's transfer safeguards and DPA</td>
           </tr>
           <tr>
             <td>Identity &amp; licence verification</td>
-            <td>Document verification provider</td>
-            <td>Automated document authenticity check and liveness verification for drivers and passengers</td>
-            <td>EEA / subject to provider's transfer safeguards</td>
+            <td>Didit Technologies (identity verification provider)</td>
+            <td>Automated document authenticity check, liveness detection, biometric face matching, and AML/sanctions screening. Documents are captured and stored on Didit's infrastructure; SameFare receives only the session reference and verification outcome.</td>
+            <td>EEA — subject to Didit's transfer safeguards and DPA</td>
           </tr>
           <tr>
             <td>Transactional email</td>
@@ -149,14 +161,15 @@
         <li><strong>EU Standard Contractual Clauses (SCCs)</strong> — adopted under Commission Decision 2021/914.</li>
         <li><strong>Adequacy decision</strong> — where the European Commission has determined the destination country provides adequate protection.</li>
       </ul>
-      <p>You may request a copy of the applicable transfer safeguards by contacting <a href="mailto:privacy@samefare.com">privacy@samefare.com</a>.</p>
+      <p>You may request a copy of the applicable transfer safeguards by contacting <a href="mailto:samefare@samefare.com">samefare@samefare.com</a>.</p>
 
       <p>We do not sell your personal data to third parties.</p>
+      <p>For full details of our identity verification and anti-money laundering procedures, see our <a href="/kyc-aml">KYC &amp; AML Policy</a>.</p>
     </section>
 
     <section id="p5" class="legal-section">
       <h2>5. Data Retention</h2>
-      <p>We retain your account data for as long as your account is active. Verification documents are deleted within <strong>90 days</strong> of approval or rejection. Trip and payment records are kept for <strong>6 years</strong> for legal and tax compliance purposes. You may request deletion of your account and associated data at any time (see section 6).</p>
+      <p>We retain your account data for as long as your account is active. <strong>Verification session records</strong> (session ID and outcome) held by SameFare are retained for <strong>5 years from account closure</strong> as required by Icelandic Act no. 140/2018 Art. 24 — this AML retention obligation applies regardless of account deletion requests and takes precedence over any right to erasure. The underlying document images and biometric data captured during verification are held by our provider Didit in accordance with Didit's own data retention policy; you may contact Didit directly regarding their retention periods. <strong>AML screening records</strong> are retained for <strong>5 years</strong> from the date of screening as required by Icelandic Act no. 140/2018. Trip and payment records are kept for <strong>6 years</strong> for legal and tax compliance purposes. You may request deletion of your account and associated data at any time (see section 6), subject to legally mandated retention obligations.</p>
     </section>
 
     <section id="p6" class="legal-section">
@@ -171,7 +184,7 @@
         <li><strong>Objection</strong> — object to processing based on legitimate interests.</li>
         <li><strong>Lodge a complaint</strong> — with the Icelandic Data Protection Authority (<a href="https://www.personuvernd.is" target="_blank" rel="noopener">Persónuvernd</a>).</li>
       </ul>
-      <p>To exercise any of these rights, contact <a href="mailto:privacy@samefare.com">privacy@samefare.com</a>. We will respond within <strong>30 days</strong>.</p>
+      <p>To exercise any of these rights, contact <a href="mailto:samefare@samefare.com">samefare@samefare.com</a>. We will respond within <strong>30 days</strong>.</p>
     </section>
 
     <section id="p7" class="legal-section">
@@ -181,7 +194,7 @@
 
     <section id="p8" class="legal-section">
       <h2>8. Security</h2>
-      <p>Passwords are stored using bcrypt hashing. Authentication tokens are stored in HTTP-only cookies. Verification documents are stored in a non-public directory. We use HTTPS for all data transmission. Despite these measures, no system is completely secure and we cannot guarantee absolute security.</p>
+      <p>Passwords are stored using bcrypt hashing. Authentication tokens are stored in HTTP-only cookies. Verification documents and biometric data are stored exclusively on our identity verification provider's infrastructure and are subject to their security controls. SameFare stores only the verification session reference and outcome in a secure, non-public database. We use HTTPS for all data transmission. Despite these measures, no system is completely secure and we cannot guarantee absolute security.</p>
     </section>
 
     <section id="p9" class="legal-section">
@@ -190,7 +203,7 @@
       <address class="legal-address">
         Wellfare ehf. — Privacy<br>
         Reykjavík, Iceland<br>
-        Email: <a href="mailto:privacy@samefare.com">privacy@samefare.com</a>
+        Email: <a href="mailto:samefare@samefare.com">samefare@samefare.com</a>
       </address>
     </section>
 

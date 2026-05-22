@@ -17,8 +17,9 @@ from sqlalchemy.orm import joinedload, selectinload, Session
 from app.config import get_settings
 from app.database import Base, engine, SessionLocal
 from app.dependencies import get_current_user_optional
+from app.i18n import get_translations, detect_lang
 from app import models  # noqa: F401 — register models before create_all
-from app.routers import alerts, auth, bookings, language, messages, newsletter, payments, phone, reports, reviews, trips, users, verification, webhooks
+from app.routers import alerts, auth, bookings, blikk as blikk_router, language, messages, newsletter, payments, phone, reports, reviews, trips, users, verification, webhooks
 from app.tasks import (
     auto_complete_loop,
     _run_auto_complete, _run_auto_ratings, _run_trip_reminders,
@@ -378,6 +379,21 @@ _MIGRATIONS = [
     # ── trips — pricing module columns ────────────────────────────────────────
     "ALTER TABLE trips ADD COLUMN IF NOT EXISTS fuel_type      fueltype",
     "ALTER TABLE trips ADD COLUMN IF NOT EXISTS price_snapshot TEXT",
+
+    # ── Blikk payment integration ─────────────────────────────────────────────
+    # trips.payment_method: which payment rail the driver accepts ('card' or 'blikk')
+    """DO $$ BEGIN CREATE TYPE trippaymentmethod AS ENUM ('card','blikk');
+       EXCEPTION WHEN duplicate_object THEN NULL; END $$""",
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS payment_method trippaymentmethod DEFAULT 'card'",
+    # payments — Blikk payment IDs
+    "ALTER TABLE payments ADD COLUMN IF NOT EXISTS blikk_fee_payment_id  VARCHAR(255)",
+    "ALTER TABLE payments ADD COLUMN IF NOT EXISTS blikk_fare_payment_id VARCHAR(255)",
+    # paymentstatus — Blikk lifecycle states
+    "ALTER TYPE paymentstatus ADD VALUE IF NOT EXISTS 'blikk_fee_pending'",
+    "ALTER TYPE paymentstatus ADD VALUE IF NOT EXISTS 'blikk_fee_paid'",
+    "ALTER TYPE paymentstatus ADD VALUE IF NOT EXISTS 'blikk_fare_pending'",
+    "ALTER TYPE paymentstatus ADD VALUE IF NOT EXISTS 'blikk_fare_paid'",
+    "ALTER TYPE paymentstatus ADD VALUE IF NOT EXISTS 'blikk_refunded'",
 
     # ── pricing_policy seed — 2026 Iceland baseline ───────────────────────────
     # Only inserts when the table is empty, so re-running migrations is safe.
@@ -776,6 +792,7 @@ app.include_router(auth.router)
 app.include_router(alerts.router)
 app.include_router(trips.router)
 app.include_router(bookings.router)
+app.include_router(blikk_router.router)
 app.include_router(payments.router)
 app.include_router(users.router)
 app.include_router(language.router)
@@ -819,8 +836,9 @@ def sitemap():
     static_urls = [
         ("", "daily",  "1.0"),
         ("/trips",  "hourly", "0.9"),
-        ("/terms",  "monthly","0.3"),
-        ("/privacy","monthly","0.3"),
+        ("/terms",   "monthly","0.3"),
+        ("/privacy", "monthly","0.3"),
+        ("/kyc-aml", "monthly","0.3"),
     ]
 
     lines = ['<?xml version="1.0" encoding="UTF-8"?>',
@@ -846,6 +864,12 @@ def sitemap():
     return Response("\n".join(lines), media_type="application/xml")
 
 
+def _lc(request: Request) -> dict:
+    """Return lang + _t context keys for routes that build their own context dict."""
+    lang = detect_lang(request)
+    return {"lang": lang, "_t": get_translations(lang)}
+
+
 @app.get("/terms", response_class=HTMLResponse)
 def terms(request: Request):
     db = SessionLocal()
@@ -853,7 +877,7 @@ def terms(request: Request):
         current_user = get_current_user_optional(request, db)
     finally:
         db.close()
-    return templates.TemplateResponse("legal/terms.html", {"request": request, "current_user": current_user})
+    return templates.TemplateResponse("legal/terms.html", {**_lc(request), "request": request, "current_user": current_user})
 
 
 @app.get("/privacy", response_class=HTMLResponse)
@@ -863,7 +887,37 @@ def privacy(request: Request):
         current_user = get_current_user_optional(request, db)
     finally:
         db.close()
-    return templates.TemplateResponse("legal/privacy.html", {"request": request, "current_user": current_user})
+    return templates.TemplateResponse("legal/privacy.html", {**_lc(request), "request": request, "current_user": current_user})
+
+
+@app.get("/kyc-aml", response_class=HTMLResponse)
+def kyc_aml(request: Request):
+    db = SessionLocal()
+    try:
+        current_user = get_current_user_optional(request, db)
+    finally:
+        db.close()
+    return templates.TemplateResponse("legal/kyc.html", {**_lc(request), "request": request, "current_user": current_user})
+
+
+@app.get("/merchant-pack", response_class=HTMLResponse)
+def merchant_pack(request: Request):
+    db = SessionLocal()
+    try:
+        current_user = get_current_user_optional(request, db)
+    finally:
+        db.close()
+    return templates.TemplateResponse("legal/merchant_pack.html", {**_lc(request), "request": request, "current_user": current_user})
+
+
+@app.get("/sar-procedure", response_class=HTMLResponse)
+def sar_procedure(request: Request):
+    db = SessionLocal()
+    try:
+        current_user = get_current_user_optional(request, db)
+    finally:
+        db.close()
+    return templates.TemplateResponse("legal/sar_procedure.html", {**_lc(request), "request": request, "current_user": current_user})
 
 
 @app.get("/offer-ride", response_class=HTMLResponse)
@@ -875,7 +929,7 @@ def offer_ride_page(request: Request):
             return RedirectResponse("/trips/new", status_code=303)
     finally:
         db.close()
-    return templates.TemplateResponse("offer_ride.html", {"request": request, "current_user": None})
+    return templates.TemplateResponse("offer_ride.html", {**_lc(request), "request": request, "current_user": None})
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -911,6 +965,7 @@ def home(request: Request):
         db.close()
 
     return templates.TemplateResponse("index.html", {
+        **_lc(request),
         "request":       request,
         "current_user":  current_user,
         "upcoming_trips": upcoming_trips,
@@ -922,7 +977,7 @@ def home(request: Request):
 async def not_found(request: Request, exc):
     return templates.TemplateResponse(
         "errors/404.html",
-        {"request": request, "current_user": None},
+        {**_lc(request), "request": request, "current_user": None},
         status_code=404,
     )
 
@@ -931,7 +986,7 @@ async def not_found(request: Request, exc):
 async def server_error(request: Request, exc):
     return templates.TemplateResponse(
         "errors/500.html",
-        {"request": request, "current_user": None},
+        {**_lc(request), "request": request, "current_user": None},
         status_code=500,
     )
 
@@ -942,7 +997,7 @@ async def rate_limit_handler(request: Request, exc):
     if "text/html" in accept:
         return templates.TemplateResponse(
             "errors/429.html",
-            {"request": request, "current_user": None, "retry_after": None},
+            {**_lc(request), "request": request, "current_user": None, "retry_after": None},
             status_code=429,
         )
     return Response(

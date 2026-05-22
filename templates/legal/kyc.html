@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}KYC & AML Policy — SameFare{% endblock %}
+
+{% block content %}
+<div class="container container--narrow" style="margin-top:2.5rem; margin-bottom:5rem;">
+
+  <div class="legal-header">
+    <h1 class="legal-title">KYC &amp; AML Policy</h1>
+    <p class="legal-meta">Effective date: <strong>7 May 2026</strong> &nbsp;·&nbsp; Wellfare ehf., Iceland</p>
+  </div>
+
+  <nav class="legal-toc">
+    <p class="legal-toc__title">Contents</p>
+    <ol class="legal-toc__list">
+      <li><a href="#k1">Overview &amp; Scope</a></li>
+      <li><a href="#k2">Customer Identification (KYC)</a></li>
+      <li><a href="#k3">Driver Vetting</a></li>
+      <li><a href="#k4">Biometric Processing</a></li>
+      <li><a href="#k5">AML &amp; Sanctions Screening</a></li>
+      <li><a href="#k6">Risk Assessment &amp; Transaction Monitoring</a></li>
+      <li><a href="#k7">Suspicious Activity Reporting</a></li>
+      <li><a href="#k8">Record-Keeping</a></li>
+      <li><a href="#k9">Ongoing Due Diligence</a></li>
+      <li><a href="#k10">Contact</a></li>
+    </ol>
+  </nav>
+
+  <div class="legal-body">
+
+    <section id="k1" class="legal-section">
+      <h2>1. Overview &amp; Scope</h2>
+      <p>Wellfare ehf. ("<strong>SameFare</strong>") operates a cost-sharing rideshare marketplace that facilitates payments between passengers and drivers. As an operator of a platform that processes payments, SameFare is subject to applicable Icelandic anti-money laundering (AML) and counter-terrorism financing (CTF) obligations, principally:</p>
+      <ul>
+        <li>Icelandic Act no. 140/2018 on Measures against Money Laundering and Terrorist Financing (<em>Lög um aðgerðir gegn peningaþvætti og fjármögnun hryðjuverka</em>), as amended.</li>
+        <li>The EU Anti-Money Laundering Directives (AMLD) as incorporated into Icelandic law through the EEA Agreement.</li>
+        <li>Regulations issued by Fjármálaeftirlitið (FME), the Icelandic Financial Supervisory Authority.</li>
+      </ul>
+      <p>This policy applies to all users of the SameFare platform — both drivers and passengers — and to all payments processed through the Platform. It supplements our <a href="/privacy">Privacy Policy</a> and <a href="/terms">Terms &amp; Conditions</a>.</p>
+    </section>
+
+    <section id="k2" class="legal-section">
+      <h2>2. Customer Identification (KYC)</h2>
+      <p>SameFare applies a <strong>Know Your Customer</strong> process to every user before they may make or receive payments through the Platform.</p>
+
+      <h3>2.1 Passenger identity verification</h3>
+      <p>Before completing a first booking, passengers must verify their identity by submitting one of the following government-issued documents:</p>
+      <ul>
+        <li>Icelandic or EEA national ID card</li>
+        <li>Passport (any nationality)</li>
+        <li>Driving licence valid in Iceland (Icelandic or EEA-issued)</li>
+      </ul>
+      <p>The submitted document is verified for authenticity by our identity verification provider. A liveness check and biometric face match are performed to confirm that the person submitting the document is its genuine holder. The verification outcome (approved, declined, or flagged for review) is recorded by SameFare.</p>
+
+      <h3>2.2 Driver identity and licence verification</h3>
+      <p>Before posting a first ride, drivers must submit a <strong>driving licence valid in Iceland</strong> for combined identity and driving eligibility verification. In addition to document authenticity and liveness checks, the licence is verified against the submitting person's face. This single submission satisfies both identity verification and driver vetting.</p>
+      <p>SameFare may require re-verification if:</p>
+      <ul>
+        <li>The driver's previously approved licence is approaching or has passed its expiry date.</li>
+        <li>There are reasonable grounds to question the continued validity of the licence.</li>
+        <li>Regulatory requirements mandate periodic re-verification.</li>
+      </ul>
+
+      <h3>2.3 Verification technology</h3>
+      <p>KYC checks are performed by <strong>Didit Technologies</strong>, an accredited identity verification provider. Didit performs:</p>
+      <ul>
+        <li>Document authenticity verification (MRZ, chip reading where available, security feature checks)</li>
+        <li>Liveness detection to confirm a real person is present</li>
+        <li>Biometric face matching against the document photograph</li>
+        <li>Automated sanctions and PEP screening (see section 5)</li>
+      </ul>
+      <p>Documents and biometric data are processed and stored on Didit's infrastructure. SameFare receives and stores only the verification session reference and the outcome. A full description of data processing is in our <a href="/privacy">Privacy Policy</a>.</p>
+    </section>
+
+    <section id="k3" class="legal-section">
+      <h2>3. Driver Vetting</h2>
+      <p>Drivers are subject to enhanced due diligence compared to passengers because they receive cost contributions from passengers through the Platform. In addition to identity verification (section 2.2), SameFare requires drivers to confirm:</p>
+      <ul>
+        <li>The vehicle is insured under a civil liability policy that covers cost-sharing passengers.</li>
+        <li>The vehicle holds a valid roadworthiness certificate (<em>skoðun</em>).</li>
+        <li>The driver holds a licence valid for the class of vehicle used.</li>
+      </ul>
+      <p>SameFare relies on driver self-declaration for the insurance and vehicle conditions listed above. Submission of a verified driver's licence is treated as confirmation that these conditions are met. SameFare does not independently verify insurance coverage but reserves the right to request documentary evidence at any time.</p>
+      <p>A driver whose account is flagged during AML screening, whose licence verification fails, or who accumulates adverse platform conduct indicators may have their posting privileges suspended pending investigation.</p>
+    </section>
+
+    <section id="k4" class="legal-section">
+      <h2>4. Biometric Processing</h2>
+      <p>The identity verification process involves the processing of <strong>biometric data</strong> as defined under GDPR Article 4(14), specifically:</p>
+      <ul>
+        <li><strong>Liveness detection</strong> — analysis of a real-time capture to confirm a live person is present.</li>
+        <li><strong>Biometric face matching</strong> — comparison of the liveness capture against the facial photograph in the submitted document.</li>
+      </ul>
+      <p>This processing is necessary for the purposes of fraud prevention, identity authentication, and compliance with anti-money laundering obligations. The legal basis is GDPR Article 9(2)(g) — processing necessary for reasons of substantial public interest, specifically the prevention of financial crime, identity fraud, and money laundering, in conjunction with Icelandic Act no. 140/2018.</p>
+      <p>Biometric data is processed solely by Didit Technologies as our data processor. SameFare does not receive, store, or independently process biometric data. Users who object to biometric processing cannot use the Platform's payment features, as identity verification is a non-waivable requirement of our AML compliance obligations.</p>
+    </section>
+
+    <section id="k5" class="legal-section">
+      <h2>5. AML &amp; Sanctions Screening</h2>
+      <p>All users are automatically screened against the following lists as part of the identity verification process:</p>
+      <ul>
+        <li><strong>UN Security Council sanctions lists</strong></li>
+        <li><strong>EU consolidated financial sanctions list</strong></li>
+        <li><strong>OFAC Specially Designated Nationals (SDN) list</strong></li>
+        <li><strong>Politically Exposed Persons (PEP) databases</strong></li>
+        <li><strong>Adverse media</strong> — automated screening for negative news coverage linked to financial crime, fraud, or terrorism</li>
+      </ul>
+      <p>Screening is performed by Didit Technologies at the point of identity verification and may be repeated periodically. A screening hit does not automatically result in account denial — results are reviewed in accordance with a risk-based approach. SameFare reserves the right to decline or suspend accounts where screening results indicate unacceptable risk.</p>
+      <p>Ongoing transaction monitoring (section 6) provides a supplementary layer of AML detection beyond the initial onboarding screen.</p>
+    </section>
+
+    <section id="k6" class="legal-section">
+      <h2>6. Risk Assessment &amp; Transaction Monitoring</h2>
+      <h3>6.1 Risk-based approach</h3>
+      <p>SameFare applies a risk-based approach to AML compliance. User and transaction risk is assessed based on factors including (but not limited to):</p>
+      <ul>
+        <li>Identity verification outcome and screening results</li>
+        <li>Booking frequency, route patterns, and price levels relative to platform norms</li>
+        <li>Payment method and card origin</li>
+        <li>Cancellation patterns or unusual booking behaviour</li>
+        <li>PEP or adverse media flags</li>
+      </ul>
+
+      <h3>6.2 Transaction monitoring</h3>
+      <p>Transactions on the Platform are subject to automated monitoring. The following patterns may trigger manual review:</p>
+      <ul>
+        <li>Unusually high booking volumes from a single account within a short period</li>
+        <li>Trip prices significantly above or below platform guidelines</li>
+        <li>Repeated booking and cancellation cycles with no completed trips</li>
+        <li>Multiple accounts booking the same trip from the same device or payment method</li>
+        <li>Payments from cards or accounts in high-risk jurisdictions</li>
+      </ul>
+      <p>Where a transaction or account is flagged, SameFare may delay or withhold driver disbursements, request additional information, or suspend the account pending investigation. Users will be notified where legally permissible.</p>
+    </section>
+
+    <section id="k7" class="legal-section">
+      <h2>7. Suspicious Activity Reporting</h2>
+      <p>SameFare is legally obliged to file a <strong>Suspicious Activity Report (SAR)</strong> with the relevant Icelandic authority under Act no. 140/2018 where we have knowledge or reasonable suspicion that a transaction may relate to money laundering or terrorist financing. <em>Note: the precise competent authority for SAR filing under Icelandic law (FME or the National Police Commissioner / Embætti ríkislögreglustjóra) should be confirmed with Icelandic legal counsel prior to any live SAR submission.</em></p>
+      <p>Where a SAR is filed, SameFare is <strong>prohibited by law from disclosing</strong> ("tipping off") the subject of the report that a report has been made or that an investigation is underway. Accordingly, affected users will not be informed when a SAR is filed, and SameFare will not provide reasons for account suspension or payment holds where disclosure would constitute tipping off.</p>
+      <p>Any internal suspicion of money laundering or terrorist financing should be reported to the SameFare compliance function at <a href="mailto:samefare@samefare.com">samefare@samefare.com</a>.</p>
+    </section>
+
+    <section id="k8" class="legal-section">
+      <h2>8. Record-Keeping</h2>
+      <p>In accordance with Icelandic Act no. 140/2018, SameFare retains the following records for a minimum of <strong>5 years</strong> from the date of the relevant activity:</p>
+      <table class="legal-table">
+        <thead>
+          <tr><th>Record type</th><th>Retention period</th><th>Legal basis</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>KYC verification outcomes (session references, status, date)</td>
+            <td>5 years from account closure</td>
+            <td>Act no. 140/2018, Art. 24</td>
+          </tr>
+          <tr>
+            <td>AML screening results</td>
+            <td>5 years from screening date</td>
+            <td>Act no. 140/2018, Art. 24</td>
+          </tr>
+          <tr>
+            <td>Transaction records (payments, refunds, disbursements)</td>
+            <td>6 years (tax compliance — Act no. 145/1994)</td>
+            <td>Icelandic Bookkeeping Act</td>
+          </tr>
+          <tr>
+            <td>SAR filing records</td>
+            <td>5 years from filing date</td>
+            <td>Act no. 140/2018, Art. 24</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Document images and biometric data are retained by Didit Technologies subject to their own retention policy. SameFare does not independently retain document images.</p>
+    </section>
+
+    <section id="k9" class="legal-section">
+      <h2>9. Ongoing Due Diligence</h2>
+      <p>KYC and AML obligations are not limited to onboarding. SameFare may request updated identity information or re-verification at any time where:</p>
+      <ul>
+        <li>A previously submitted document has expired or is approaching expiry.</li>
+        <li>Unusual activity is detected on an account.</li>
+        <li>New regulatory requirements mandate re-screening of existing customers.</li>
+        <li>There is reason to believe that previously submitted information was inaccurate or falsified.</li>
+      </ul>
+      <p>Failure to respond to a re-verification request within a reasonable timeframe will result in suspension of payment features and, if unresolved, account closure. Data collected during ongoing due diligence is subject to the same retention and processing rules described in this policy.</p>
+    </section>
+
+    <section id="k10" class="legal-section">
+      <h2>10. Contact</h2>
+      <p>For KYC or AML enquiries, to exercise your rights in relation to verification data, or to report an internal AML concern:</p>
+      <address class="legal-address">
+        Wellfare ehf.<br>
+        Reykjavík, Iceland<br>
+        Email: <a href="mailto:samefare@samefare.com">samefare@samefare.com</a>
+      </address>
+    </section>
+
+  </div>
+</div>
+{% endblock %}

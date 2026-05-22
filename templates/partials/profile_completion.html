@@ -2,6 +2,7 @@
   Profile completion card.
   Expects `completion` dict from profile_completion() helper.
   Pass `compact=true` for the slim my-trips banner variant.
+  Import with context so _t() is available.
 #}
 {% macro completion_card(completion, compact=false) %}
 {% if not completion.is_complete %}
@@ -14,11 +15,11 @@
       <div class="completion-banner__bar" style="width:{{ completion.percent }}%"></div>
     </div>
     <span class="completion-banner__label">
-      Profile {{ completion.percent }}% complete
+      Profile {{ completion.percent }}{{ _t('profile_completion_pct') }}
     </span>
   </div>
   <a href="/profile" class="completion-banner__link">
-    Finish your profile →
+    {{ _t('profile_completion_finish') }}
   </a>
 </div>
 
@@ -27,8 +28,8 @@
 <div class="completion-card">
   <div class="completion-card__header">
     <div>
-      <h3 class="completion-card__title">Complete your profile</h3>
-      <p class="completion-card__sub">{{ completion.completed }} of {{ completion.total }} steps done</p>
+      <h3 class="completion-card__title">{{ _t('profile_completion_title') }}</h3>
+      <p class="completion-card__sub">{{ completion.completed }} {{ _t('profile_completion_steps_of') }} {{ completion.total }} {{ _t('profile_completion_steps_done') }}</p>
     </div>
     <div class="completion-card__percent">{{ completion.percent }}%</div>
   </div>

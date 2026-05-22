@@ -5,7 +5,7 @@
 
 {% if request.query_params.get('verified') %}
 <div class="container" style="margin-top:1rem;">
-  <div class="alert alert--success">✓ Email verified — you're all set! You can now book rides.</div>
+  <div class="alert alert--success">{{ _t('email_verified') }}</div>
 </div>
 {% endif %}
 
@@ -16,8 +16,8 @@
   <div class="hero__aurora"></div>
   <div class="container hero__inner">
     <div class="hero__text">
-      <h1 class="hero__title">Share the journey<br><span class="hero__title-accent">across Iceland</span></h1>
-      <p class="hero__subtitle">Find affordable rideshares between Icelandic towns. Drivers earn back fuel costs, passengers travel for less.</p>
+      <h1 class="hero__title">{{ _t('hero_title_1') }}<br><span class="hero__title-accent">{{ _t('hero_title_2') }}</span></h1>
+      <p class="hero__subtitle">{{ _t('hero_subtitle') }}</p>
     </div>
 
     <!-- Search box -->
@@ -30,13 +30,13 @@
             sameCityErr = false;
           ">
       <div x-show="sameCityErr" x-cloak class="search-bar__same-city-error" role="alert">
-        Origin and destination can't be the same city.
+        {{ _t('hero_same_city_error') }}
       </div>
       <div class="search-box__fields">
         <div class="search-field">
           <label for="hero-origin" class="search-field__label">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><circle cx="10" cy="10" r="3"/><path d="M10 2a8 8 0 100 16A8 8 0 0010 2z" fill-opacity=".15"/></svg>
-            From
+            {{ _t('hero_from') }}
           </label>
           <input id="hero-origin" name="origin" type="text" class="search-field__input"
                  placeholder="Reykjavík" autocomplete="off" list="cities-list" />
@@ -56,7 +56,7 @@
         <div class="search-field">
           <label for="hero-dest" class="search-field__label">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
-            To
+            {{ _t('hero_to') }}
           </label>
           <input id="hero-dest" name="destination" type="text" class="search-field__input"
                  placeholder="Akureyri" autocomplete="off" list="cities-list" />
@@ -65,7 +65,7 @@
         <div class="search-field search-field--date">
           <label class="search-field__label">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
-            Date
+            {{ _t('hero_date') }}
           </label>
           <div class="search-bar__date-wrap">
             <!-- Trigger button -->
@@ -73,7 +73,7 @@
                     :class="{'date-trigger--has-value': dateLabel}"
                     @click="open = !open"
                     aria-haspopup="true" :aria-expanded="open">
-              <span x-text="dateLabel || 'Any date'"
+              <span x-text="dateLabel || '{{ _t('hero_any_date') }}'"
                     :class="{'date-trigger__placeholder': !dateLabel}"></span>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
                    width="14" height="14" class="date-trigger__caret" aria-hidden="true">
@@ -95,13 +95,13 @@
               <div class="date-flex-seg" role="group" aria-label="Date flexibility">
                 <button type="button" class="date-flex-seg__btn"
                         :class="{'date-flex-seg__btn--active': flex === 'exact'}"
-                        @click="setFlex('exact')">Exact</button>
+                        @click="setFlex('exact')">{{ _t('list_exact') }}</button>
                 <button type="button" class="date-flex-seg__btn"
                         :class="{'date-flex-seg__btn--active': flex === 'plus_minus_1'}"
-                        @click="setFlex('plus_minus_1')">±1 day</button>
+                        @click="setFlex('plus_minus_1')">{{ _t('list_plus_minus_1') }}</button>
                 <button type="button" class="date-flex-seg__btn"
                         :class="{'date-flex-seg__btn--active': flex === 'this_week'}"
-                        @click="setFlex('this_week')">This week</button>
+                        @click="setFlex('this_week')">{{ _t('list_this_week') }}</button>
               </div>
               <div x-show="flex !== 'this_week' && flex !== 'weekend'"
                    style="margin-top:.6rem;">
@@ -119,32 +119,32 @@
         <div class="search-field search-field--seats">
           <label for="hero-seats" class="search-field__label">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
-            Passengers
+            {{ _t('hero_passengers') }}
           </label>
           <select id="hero-seats" name="seats" class="search-field__input">
-            <option value="1">1 passenger</option>
-            <option value="2">2 passengers</option>
-            <option value="3">3 passengers</option>
+            <option value="1">{{ _t('list_1_passenger') }}</option>
+            <option value="2">{{ _t('list_2_passengers') }}</option>
+            <option value="3">{{ _t('list_3_passengers') }}</option>
           </select>
         </div>
       </div>
 
       <!-- Date quick-picks — separate row, doesn't affect grid alignment -->
       <div class="search-box__chips">
-        <span class="search-box__chips-label">Quick pick:</span>
+        <span class="search-box__chips-label">{{ _t('hero_quick_pick') }}</span>
         <button type="button" class="date-chip"
                 :class="{'date-chip--active': date === today && flex === 'exact'}"
-                @click="setDate(today)">Today</button>
+                @click="setDate(today)">{{ _t('hero_today') }}</button>
         <button type="button" class="date-chip"
                 :class="{'date-chip--active': date === tomorrow && flex === 'exact'}"
-                @click="setDate(tomorrow)">Tomorrow</button>
+                @click="setDate(tomorrow)">{{ _t('hero_tomorrow') }}</button>
         <button type="button" class="date-chip"
                 :class="{'date-chip--active': flex === 'weekend'}"
-                @click="flex === 'weekend' ? clearDate() : setFlex('weekend')">Weekend</button>
+                @click="flex === 'weekend' ? clearDate() : setFlex('weekend')">{{ _t('hero_weekend') }}</button>
       </div>
 
       <button type="submit" class="btn btn-primary btn-search">
-        Search rides
+        {{ _t('hero_search_btn') }}
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden="true">
           <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
         </svg>
@@ -164,6 +164,11 @@
       <option value="Hveragerði"/>
       <option value="Húsavík"/>
       <option value="Sauðárkrókur"/>
+      <option value="Landeyjahöfn"/>
+      <option value="Landmannalaugar"/>
+      <option value="Seyðisfjörður"/>
+      <option value="Skógarfoss"/>
+      <option value="Varmahlíð"/>
     </datalist>
   </div>
 </section>
@@ -178,11 +183,11 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0M13 17H9m10 0h1a1 1 0 001-1v-4a1 1 0 00-.293-.707L21 9.586A2 2 0 0019.586 9H17V7a2 2 0 00-2-2H5a2 2 0 00-2 2v9a1 1 0 001 1h1"/></svg>
       </div>
       <div class="driver-card-cta__text">
-        <h2 class="driver-card-cta__title">Offer your ride. Share the cost.</h2>
-        <p class="driver-card-cta__sub">Post your trip and let passengers cover part of your fuel. Iceland's roads are long — they don't have to be expensive.</p>
+        <h2 class="driver-card-cta__title">{{ _t('driver_cta_title') }}</h2>
+        <p class="driver-card-cta__sub">{{ _t('driver_cta_sub') }}</p>
       </div>
       <a href="{% if current_user %}/trips/new{% else %}/offer-ride{% endif %}" class="btn btn-primary driver-card-cta__btn">
-        Offer a ride
+        {{ _t('driver_cta_btn') }}
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
       </a>
     </div>
@@ -194,8 +199,8 @@
 ═══════════════════════════════════════ -->
 <section class="section section--light">
   <div class="container">
-    <h2 class="section-title">Popular routes</h2>
-    <p class="section-sub">The most travelled roads in Iceland</p>
+    <h2 class="section-title">{{ _t('popular_routes_title') }}</h2>
+    <p class="section-sub">{{ _t('popular_routes_sub') }}</p>
     <div class="routes-grid">
       <a href="/trips?origin=Reykjav%C3%ADk&destination=Akureyri" class="route-card">
         <div class="route-card__route">
@@ -230,7 +235,7 @@
           <span class="route-card__tag">South coast</span>
         </div>
       </a>
-      <a href="/trips?origin=Reykjav%C3%ADk&destination=Keflab%C3%ADk" class="route-card">
+      <a href="/trips?origin=Reykjav%C3%ADk&destination=Keflav%C3%ADk" class="route-card">
         <div class="route-card__route">
           <span class="route-card__city">Reykjavík</span>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18" class="route-card__arrow"><path stroke-linecap="round" d="M5 12h14M13 6l6 6-6 6"/></svg>
@@ -275,10 +280,10 @@
   <div class="container">
     <div class="section-header">
       <div>
-        <h2 class="section-title">Upcoming rides</h2>
-        <p class="section-sub">Recently posted trips looking for passengers</p>
+        <h2 class="section-title">{{ _t('upcoming_rides_title') }}</h2>
+        <p class="section-sub">{{ _t('upcoming_rides_sub') }}</p>
       </div>
-      <a href="/trips" class="btn btn-outline">See all rides</a>
+      <a href="/trips" class="btn btn-outline">{{ _t('upcoming_rides_see_all') }}</a>
     </div>
     <div class="trips-grid">
       {% for trip in upcoming_trips %}
@@ -294,29 +299,29 @@
 ═══════════════════════════════════════ -->
 <section class="section section--teal">
   <div class="container">
-    <h2 class="section-title section-title--light">How SameFare works</h2>
-    <p class="section-sub section-sub--light">Three simple steps to share your journey</p>
+    <h2 class="section-title section-title--light">{{ _t('how_title') }}</h2>
+    <p class="section-sub section-sub--light">{{ _t('how_sub') }}</p>
     <div class="how-grid">
       <div class="how-card">
         <div class="how-card__icon how-card__icon--1">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
         </div>
-        <h3 class="how-card__title">Find a ride</h3>
-        <p class="how-card__body">Search for trips by origin, destination and date. Filter by departure time, available seats, and preferences.</p>
+        <h3 class="how-card__title">{{ _t('how_step1_title') }}</h3>
+        <p class="how-card__body">{{ _t('how_step1_body') }}</p>
       </div>
       <div class="how-card">
         <div class="how-card__icon how-card__icon--2">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28"><path d="M20 12V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2h7"/><path stroke-linecap="round" d="M8 10h8M8 14h4m5 0v6m3-3h-6"/></svg>
         </div>
-        <h3 class="how-card__title">Book a seat</h3>
-        <p class="how-card__body">Request one or more seats and send a message to the driver. The driver confirms your booking.</p>
+        <h3 class="how-card__title">{{ _t('how_step2_title') }}</h3>
+        <p class="how-card__body">{{ _t('how_step2_body') }}</p>
       </div>
       <div class="how-card">
         <div class="how-card__icon how-card__icon--3">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28"><path stroke-linecap="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6-3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0L9 7"/></svg>
         </div>
-        <h3 class="how-card__title">Share the road</h3>
-        <p class="how-card__body">Meet at the departure point and enjoy the journey. Drivers cover fuel costs, passengers get affordable travel.</p>
+        <h3 class="how-card__title">{{ _t('how_step3_title') }}</h3>
+        <p class="how-card__body">{{ _t('how_step3_body') }}</p>
       </div>
     </div>
   </div>
@@ -330,19 +335,19 @@
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-card__num">{{ stats.trips }}</div>
-        <div class="stat-card__label">Trips posted</div>
+        <div class="stat-card__label">{{ _t('stats_trips') }}</div>
       </div>
       <div class="stat-card">
         <div class="stat-card__num">{{ stats.passengers }}</div>
-        <div class="stat-card__label">Passengers connected</div>
+        <div class="stat-card__label">{{ _t('stats_passengers') }}</div>
       </div>
       <div class="stat-card">
         <div class="stat-card__num">{{ stats.drivers }}</div>
-        <div class="stat-card__label">Community members</div>
+        <div class="stat-card__label">{{ _t('stats_drivers') }}</div>
       </div>
       <div class="stat-card">
         <div class="stat-card__num">20+</div>
-        <div class="stat-card__label">Icelandic towns covered</div>
+        <div class="stat-card__label">{{ _t('stats_towns') }}</div>
       </div>
     </div>
   </div>
@@ -356,12 +361,12 @@
 <section class="section section--cta">
   <div class="container cta-inner">
     <div>
-      <h2 class="cta-title">Ready to hit the road?</h2>
-      <p class="cta-sub">Join Iceland's ridesharing community. It's free to sign up.</p>
+      <h2 class="cta-title">{{ _t('cta_title') }}</h2>
+      <p class="cta-sub">{{ _t('cta_sub') }}</p>
     </div>
     <div class="cta-actions">
-      <a href="/register" class="btn btn-primary btn-lg">Create free account</a>
-      <a href="/trips" class="btn btn-outline btn-lg">Browse rides</a>
+      <a href="/register" class="btn btn-primary btn-lg">{{ _t('cta_create_account') }}</a>
+      <a href="/trips" class="btn btn-outline btn-lg">{{ _t('cta_browse') }}</a>
     </div>
   </div>
 </section>
