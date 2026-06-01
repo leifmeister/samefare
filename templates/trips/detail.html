@@ -53,6 +53,9 @@
   {% if request.query_params.get('blikk_fare_error') %}
   <div class="alert alert--warning" style="margin-bottom:1rem;">Could not send Blikk payment request. Please ensure the passenger has a registered Blikk phone number, or contact support.</div>
   {% endif %}
+  {% if request.query_params.get('blikk_fare_pending') %}
+  <div class="alert alert--info" style="margin-bottom:1rem;">Payment not yet approved — the passenger still needs to confirm in their Blikk app.</div>
+  {% endif %}
 
   {% if request.query_params.get('booking_closed') %}
   <div class="alert alert--warning" style="margin-bottom:1rem;">{{ _t('detail_booking_closed') }}</div>

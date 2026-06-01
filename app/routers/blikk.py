@@ -162,8 +162,14 @@ def blikk_return(
         if blikk_client.is_completed(blikk_payment):
             payment.status = models.PaymentStatus.blikk_fare_paid
             db.commit()
-
-        return RedirectResponse(f"/trips/{booking.trip_id}?blikk_fare_done=1", status_code=303)
+            return RedirectResponse(f"/trips/{booking.trip_id}?blikk_fare_done=1", status_code=303)
+        elif blikk_client.is_failed(blikk_payment):
+            payment.status = models.PaymentStatus.failed
+            db.commit()
+            return RedirectResponse(f"/trips/{booking.trip_id}?blikk_fare_error=1", status_code=303)
+        else:
+            # Still pending — passenger may not have approved yet
+            return RedirectResponse(f"/trips/{booking.trip_id}?blikk_fare_pending=1", status_code=303)
 
     return RedirectResponse("/my-trips?tab=bookings", status_code=303)
 
