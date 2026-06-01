@@ -235,32 +235,23 @@ def create_booking(
         return templates.TemplateResponse("bookings/create.html",
             {**err_ctx, "error": "This driver only accepts full-route bookings."}, status_code=400)
 
-    # Validate and apply segment (partial-route) pricing
-    graph = build_route_graph(db)
-    pickup_city, dropoff_city, prorated_price, seg_err = resolve_segment(
-        graph, trip, pickup_city, dropoff_city
-    )
-    if seg_err:
-        return templates.TemplateResponse("bookings/create.html", {
-            **err_ctx,
-            "error": seg_err,
-            "segment_pickup": None,
-            "segment_dropoff": None,
-            "segment_price": None,
-        }, status_code=400)
-    price_per_seat = prorated_price if prorated_price is not None else trip.price_per_seat
-
-    # Definitive availability check.
-    # Segment booking: count only bookings overlapping this specific leg —
-    #   seats_for_segment handles this correctly regardless of other legs.
-    # Full-route booking: use trip.seats_available (peak concurrent occupancy
-    #   minimum) which is already verified above; we re-read it here to produce
-    #   an accurate error message if seats were grabbed between the early guard
-    #   and the lock.  Do NOT call seats_for_segment for the full route: it
-    #   counts all bookings that touch any part of the route and overcounts when
-    #   non-overlapping segment bookings are present.
+    # Build route graph only when needed (segment bookings only) — full-route
+    # bookings don't use it, so building it unconditionally wastes a DB query
+    # on the majority of booking requests.
     active_bookings = [b for b in trip.bookings if b.status in _SEAT_HOLDING_STATUSES]
     if is_segment:
+        graph = build_route_graph(db)
+        pickup_city, dropoff_city, prorated_price, seg_err = resolve_segment(
+            graph, trip, pickup_city, dropoff_city
+        )
+        if seg_err:
+            return templates.TemplateResponse("bookings/create.html", {
+                **err_ctx,
+                "error": seg_err,
+                "segment_pickup": None,
+                "segment_dropoff": None,
+                "segment_price": None,
+            }, status_code=400)
         seg_pickup  = pickup_city  or trip.origin
         seg_dropoff = dropoff_city or trip.destination
         available_on_segment = seats_for_segment(
@@ -268,7 +259,17 @@ def create_booking(
             trip.origin, trip.destination, seg_pickup, seg_dropoff,
         )
     else:
+        graph            = None
+        prorated_price   = None
         available_on_segment = trip.seats_available
+
+    price_per_seat = prorated_price if prorated_price is not None else trip.price_per_seat
+
+    # Definitive availability check.
+    # Segment booking: count only bookings overlapping this specific leg.
+    # Full-route booking: use trip.seats_available (peak concurrent occupancy
+    #   minimum) — do NOT call seats_for_segment for the full route, it
+    #   overcounts when non-overlapping segment bookings are present.
     if seats_booked > available_on_segment:
         return templates.TemplateResponse("bookings/create.html",
             {**err_ctx, "error": f"Only {available_on_segment} seat(s) available on that leg."}, status_code=400)
@@ -290,15 +291,20 @@ def create_booking(
             trip.departure_datetime,
         )
         initial_status   = models.BookingStatus.awaiting_payment
-        # Recompute seats_available as true peak occupancy (segment-aware)
-        trip.seats_available = recompute_seats_available(
-            graph, trip.seats_total,
-            active_bookings + [type('_B', (), {
-                'pickup_city': pickup_city, 'dropoff_city': dropoff_city,
-                'seats_booked': seats_booked,
-            })()],
-            trip.origin, trip.destination,
-        )
+        # Recompute seats_available as true peak occupancy.
+        # Segment bookings use the full route graph; full-route bookings
+        # simply subtract the new booking from the current available count.
+        if is_segment and graph is not None:
+            trip.seats_available = recompute_seats_available(
+                graph, trip.seats_total,
+                active_bookings + [type('_B', (), {
+                    'pickup_city': pickup_city, 'dropoff_city': dropoff_city,
+                    'seats_booked': seats_booked,
+                })()],
+                trip.origin, trip.destination,
+            )
+        else:
+            trip.seats_available = max(0, trip.seats_available - seats_booked)
     else:
         # Requires approval: don't hold seats yet, wait for driver
         initial_status   = models.BookingStatus.pending
@@ -308,6 +314,15 @@ def create_booking(
         payment_method_val = models.TripPaymentMethod(payment_method)
     except ValueError:
         payment_method_val = models.TripPaymentMethod.card
+
+    # Blikk requires a verified phone — check before committing the booking
+    # so we don't hold a seat the passenger can't pay for.
+    if payment_method_val == models.TripPaymentMethod.blikk and not current_user.phone_verified:
+        return templates.TemplateResponse("bookings/create.html", {
+            **err_ctx,
+            "error": "You need a verified phone number to pay with Blikk. "
+                     "Please verify your phone in your profile first.",
+        }, status_code=400)
 
     booking = models.Booking(
         trip_id=trip_id,

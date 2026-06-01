@@ -100,11 +100,12 @@ def blikk_return(
             })
 
         if blikk_client.is_completed(blikk_payment):
-            # Confirm the booking
-            payment.status = models.PaymentStatus.blikk_fee_paid
-            if booking.status == models.BookingStatus.awaiting_payment:
+            # Only act if the booking hasn't already been confirmed — guards
+            # against duplicate emails and DB writes on URL replay.
+            just_confirmed = booking.status == models.BookingStatus.awaiting_payment
+            if just_confirmed:
+                payment.status = models.PaymentStatus.blikk_fee_paid
                 booking.status = models.BookingStatus.confirmed
-                # Recompute seats now that booking is confirmed
                 trip = (
                     db.query(models.Trip)
                     .filter(models.Trip.id == booking.trip_id)
@@ -113,12 +114,12 @@ def blikk_return(
                 )
                 if trip:
                     _refresh_seats(trip, db)
-            db.commit()
-            try:
-                mailer.booking_confirmed_to_passenger(booking)
-                mailer.booking_confirmed_to_driver(booking)
-            except Exception:
-                pass
+                db.commit()
+                try:
+                    mailer.booking_confirmed_to_passenger(booking)
+                    mailer.booking_confirmed_to_driver(booking)
+                except Exception:
+                    pass
             return templates.TemplateResponse("payments/blikk_return.html", {
                 **ctx,
                 "booking": booking,
