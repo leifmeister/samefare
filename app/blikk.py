@@ -160,12 +160,19 @@ def create_fee_payment(booking, base_url: str) -> tuple[str, str | None]:
     Create a service-fee P2P payment (passenger → Samefare platform).
 
     Flow:
-      1. POST /p2p  → get payment id
+      1. POST /p2p  → get payment id  (raises BlikkError on failure)
       2. GET  /payment/{id} → get redirectUri for passenger
 
     Returns (blikk_payment_id, redirect_url).
-    redirect_url may be None if payment requires no SCA redirect.
-    Raises BlikkError on API failure.
+    redirect_url may be None if:
+      - Blikk returns no URL (payment requires no SCA redirect), or
+      - GET /payment/{id} times out after the P2P was already created.
+
+    IMPORTANT: the caller must persist blikk_payment_id to the DB
+    immediately after this returns, before using the redirect URL.
+    If get_payment() fails after POST /p2p succeeded, the payment_id
+    is still returned so it can be recorded and recovered later.
+    Raises BlikkError only if POST /p2p itself fails (no payment created).
     """
     settings = get_settings()
     passenger_phone = booking.passenger.phone
@@ -182,8 +189,15 @@ def create_fee_payment(booking, base_url: str) -> tuple[str, str | None]:
     )
     payment_id = p2p["id"]
 
-    payment    = get_payment(payment_id)
-    redirect   = blikk_redirect_url(payment)
+    # GET /payment/{id} fetches the redirect URL — if it fails the P2P already
+    # exists on Blikk's side. Return the payment_id with redirect=None so the
+    # caller can save it to the DB. The blikk-pay endpoint will fetch the URL
+    # on the passenger's next visit via the idempotency check.
+    try:
+        payment  = get_payment(payment_id)
+        redirect = blikk_redirect_url(payment)
+    except BlikkError:
+        redirect = None
 
     return payment_id, redirect
 
@@ -210,8 +224,11 @@ def create_fare_payment(booking, driver_phone: str, base_url: str) -> tuple[str,
     )
     payment_id = p2p["id"]
 
-    payment  = get_payment(payment_id)
-    redirect = blikk_redirect_url(payment)
+    try:
+        payment  = get_payment(payment_id)
+        redirect = blikk_redirect_url(payment)
+    except BlikkError:
+        redirect = None
 
     return payment_id, redirect
 
