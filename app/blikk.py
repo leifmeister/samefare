@@ -5,19 +5,28 @@ Base URL  : https://api.blikk.tech/p2papi
 Auth      : Api-Key header  (set via BLIKK_API_KEY env var)
 Currency  : ISK (all amounts are integers, in full ISK)
 
+API flow (verified against openapi.json)
+-----------------------------------------
+1. POST /p2p  — debtorPhoneNumber, creditorPhoneNumber, amount, partnerRedirectUrl
+               → returns {id}
+2. GET  /payment/{id} — fetch full payment object
+               → includes redirectUri (send passenger here to approve in Blikk app)
+3. GET  /payment/{id} again on return → check status
+
+POST /payment/init/{id} is for the /p2p/creditor flow (creditor-only creation);
+we don't use that flow — both phones are always known upfront.
+
 Three flows
 -----------
 Flow 1 – Service fee (passenger → Samefare platform)
-    Call create_fee_payment() at booking time; redirect passenger to the
-    returned `redirect_url`; verify on return with get_payment().
+    create_fee_payment() at booking time → redirect passenger to redirectUri.
 
 Flow 2 – Fare (passenger → driver, at ride time)
-    Driver clicks "Request payment"; call create_fare_payment().
-    Passenger receives a push notification in their Blikk app.
+    Driver clicks "Request payment" → create_fare_payment().
+    Passenger follows redirectUri to approve in Blikk app.
 
 Flow 3 – Refund fee (Samefare platform → passenger)
-    Call refund_fee() when the driver rejects a booking or cancels after
-    the fee has been collected.  Uses the platform phone as the debtor.
+    refund_fee() when driver rejects or cancels after fee collected.
 """
 
 from __future__ import annotations
@@ -70,44 +79,34 @@ def create_p2p(
     debtor_phone: str,
     creditor_phone: str,
     amount: int,
-    reference: str,
-    description: str = "SameFare payment",
+    redirect_url: str,
 ) -> dict:
     """
-    POST /p2p — create a P2P payment object.
+    POST /p2p — create a P2P payment.
 
-    Returns the full Blikk payment dict (id, status, …).
+    Required fields per API spec: debtorPhoneNumber, creditorPhoneNumber,
+    amount (integer ISK), partnerRedirectUrl.
+
+    Returns {id: str}.
     """
     with _client() as c:
         resp = c.post("/p2p", json={
-            "debtor":      {"phone": debtor_phone},
-            "creditor":    {"phone": creditor_phone},
-            "amount":      amount,
-            "currency":    "ISK",
-            "reference":   reference,
-            "description": description,
-        })
-    _raise_for_error(resp)
-    return resp.json()
-
-
-def init_payment(payment_id: str, redirect_url: str) -> dict:
-    """
-    POST /payment/init/{id} — initialize a P2P payment.
-
-    Blikk returns a dict that includes the URL to send the passenger to
-    (the key may be 'redirectUrl', 'url', or similar — adapt as needed).
-    """
-    with _client() as c:
-        resp = c.post(f"/payment/init/{payment_id}", json={
-            "partnerRedirectUrl": redirect_url,
+            "debtorPhoneNumber":   debtor_phone,
+            "creditorPhoneNumber": creditor_phone,
+            "amount":              amount,
+            "partnerRedirectUrl":  redirect_url,
         })
     _raise_for_error(resp)
     return resp.json()
 
 
 def get_payment(payment_id: str) -> dict:
-    """GET /payment/{id} — fetch current payment status."""
+    """
+    GET /payment/{id} — fetch full payment object.
+
+    Response includes: id, status, redirectUri, scaRedirectUrl,
+    partnerRedirectUrl, callbackUrl, and payment details.
+    """
     with _client() as c:
         resp = c.get(f"/payment/{payment_id}")
     _raise_for_error(resp)
@@ -142,15 +141,15 @@ def is_failed(payment: dict) -> bool:
     return status in {"FAILED", "REJECTED", "EXPIRED", "CANCELLED"}
 
 
-def blikk_redirect_url(payment_init_response: dict) -> str | None:
+def blikk_redirect_url(payment: dict) -> str | None:
     """
-    Extract the redirect URL from a /payment/init response.
+    Extract the redirect URL from a GET /payment/{id} response.
 
-    Blikk may use different key names across API versions; we try the most
-    common ones and fall back to None so callers can handle the missing URL.
+    Tries the documented field names in priority order.
+    Returns None if no URL is present (payment may not require SCA).
     """
-    for key in ("redirectUrl", "url", "paymentUrl", "deepLink", "link"):
-        val = payment_init_response.get(key)
+    for key in ("redirectUri", "scaRedirectUrl", "redirectUrl", "url", "deepLink"):
+        val = payment.get(key)
         if val:
             return val
     return None
@@ -158,16 +157,14 @@ def blikk_redirect_url(payment_init_response: dict) -> str | None:
 
 def create_fee_payment(booking, base_url: str) -> tuple[str, str | None]:
     """
-    Create and initialize a service-fee P2P payment.
+    Create a service-fee P2P payment (passenger → Samefare platform).
 
-    debtor   = passenger's phone number
-    creditor = Samefare platform phone (+3546257175)
-    amount   = booking.service_fee (ISK)
+    Flow:
+      1. POST /p2p  → get payment id
+      2. GET  /payment/{id} → get redirectUri for passenger
 
     Returns (blikk_payment_id, redirect_url).
-    redirect_url may be None if Blikk returns no URL in the init response;
-    callers should fall back to a "payment pending" page in that case.
-
+    redirect_url may be None if payment requires no SCA redirect.
     Raises BlikkError on API failure.
     """
     settings = get_settings()
@@ -175,36 +172,25 @@ def create_fee_payment(booking, base_url: str) -> tuple[str, str | None]:
     if not passenger_phone:
         raise BlikkError("Passenger has no phone number on file.")
 
-    reference   = f"fee-booking-{booking.id}"
-    description = (
-        f"SameFare service fee — "
-        f"{booking.pickup_city or booking.trip.origin} → "
-        f"{booking.dropoff_city or booking.trip.destination}"
-    )
+    return_url = f"{base_url.rstrip('/')}/bookings/{booking.id}/blikk-return"
 
     p2p = create_p2p(
         debtor_phone   = passenger_phone,
         creditor_phone = settings.blikk_platform_phone,
         amount         = booking.service_fee,
-        reference      = reference,
-        description    = description,
+        redirect_url   = return_url,
     )
     payment_id = p2p["id"]
 
-    return_url = f"{base_url.rstrip('/')}/bookings/{booking.id}/blikk-return"
-    init_resp  = init_payment(payment_id, return_url)
-    redirect   = blikk_redirect_url(init_resp)
+    payment    = get_payment(payment_id)
+    redirect   = blikk_redirect_url(payment)
 
     return payment_id, redirect
 
 
 def create_fare_payment(booking, driver_phone: str, base_url: str) -> tuple[str, str | None]:
     """
-    Create and initialize a driver-fare P2P payment (triggered at ride time).
-
-    debtor   = passenger's phone number
-    creditor = driver's phone number
-    amount   = booking.subtotal (driver's cut, ISK)
+    Create a driver-fare P2P payment (passenger → driver, triggered at ride time).
 
     Returns (blikk_payment_id, redirect_url).
     """
@@ -214,25 +200,18 @@ def create_fare_payment(booking, driver_phone: str, base_url: str) -> tuple[str,
     if not driver_phone:
         raise BlikkError("Driver has no phone number on file.")
 
-    reference   = f"fare-booking-{booking.id}"
-    description = (
-        f"SameFare fare — "
-        f"{booking.pickup_city or booking.trip.origin} → "
-        f"{booking.dropoff_city or booking.trip.destination}"
-    )
+    return_url = f"{base_url.rstrip('/')}/bookings/{booking.id}/blikk-return?flow=fare"
 
     p2p = create_p2p(
         debtor_phone   = passenger_phone,
         creditor_phone = driver_phone,
         amount         = booking.subtotal,
-        reference      = reference,
-        description    = description,
+        redirect_url   = return_url,
     )
     payment_id = p2p["id"]
 
-    return_url = f"{base_url.rstrip('/')}/bookings/{booking.id}/blikk-return?flow=fare"
-    init_resp  = init_payment(payment_id, return_url)
-    redirect   = blikk_redirect_url(init_resp)
+    payment  = get_payment(payment_id)
+    redirect = blikk_redirect_url(payment)
 
     return payment_id, redirect
 
@@ -249,18 +228,12 @@ def refund_fee(booking) -> str:
     if not passenger_phone:
         raise BlikkError("Passenger has no phone number on file — cannot refund automatically.")
 
-    reference   = f"refund-booking-{booking.id}"
-    description = (
-        f"SameFare service fee refund — "
-        f"{booking.pickup_city or booking.trip.origin} → "
-        f"{booking.dropoff_city or booking.trip.destination}"
-    )
+    return_url = f"{get_settings().base_url.rstrip('/')}/bookings/{booking.id}/blikk-return?flow=refund"
 
     p2p = create_p2p(
         debtor_phone   = settings.blikk_platform_phone,
         creditor_phone = passenger_phone,
         amount         = booking.service_fee,
-        reference      = reference,
-        description    = description,
+        redirect_url   = return_url,
     )
     return p2p["id"]
