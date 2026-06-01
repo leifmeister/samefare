@@ -77,26 +77,21 @@ def _expire_booking(db: Session, booking: models.Booking) -> None:
             )
 
 
-_SERVICE_FEE_RATE        = 0.18
-_SERVICE_FEE_RATE_RETRY  = 0.23
-_SERVICE_FEE_FLOOR       = 200   # ISK — minimum fee regardless of fare
-_ROUNDING_UNIT           = 50    # ISK — passenger total rounded up to nearest 50
+_SERVICE_FEE_RATE  = 0.18
+_SERVICE_FEE_FLOOR = 200   # ISK — minimum fee regardless of fare
+_ROUNDING_UNIT     = 50    # ISK — passenger total rounded up to nearest 50
 
 
-def calc_fees(
-    contribution: int,
-    retry_surcharge: bool = False,
-) -> tuple[int, int, int]:
+def calc_fees(contribution: int) -> tuple[int, int, int]:
     """Return (service_fee, passenger_total, driver_payout).
 
     Logic:
-      1. raw_fee  = round(contribution × rate)
+      1. raw_fee  = round(contribution × 0.18)
       2. fee      = max(raw_fee, SERVICE_FEE_FLOOR)
       3. total    = ceil((contribution + fee) / ROUNDING_UNIT) × ROUNDING_UNIT
       4. service_fee absorbs the rounding delta so driver_payout stays clean.
     """
-    rate     = _SERVICE_FEE_RATE_RETRY if retry_surcharge else _SERVICE_FEE_RATE
-    raw_fee  = round(contribution * rate)
+    raw_fee  = round(contribution * _SERVICE_FEE_RATE)
     fee      = max(raw_fee, _SERVICE_FEE_FLOOR)
     raw_total = contribution + fee
     total    = -(-raw_total // _ROUNDING_UNIT) * _ROUNDING_UNIT  # ceiling div
@@ -581,8 +576,7 @@ def auth_failed_page(
         **ctx,
         "booking":         booking,
         "retry_deadline":  payment.retry_deadline,
-        "new_total":       booking.total_price,   # already updated with +5 % surcharge
-        "new_fee_pct":     23,
+        "new_total":       booking.total_price,
     })
 
 

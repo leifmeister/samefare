@@ -42,19 +42,6 @@
     </div>
     {% endif %}
 
-    <!-- Surcharge notice -->
-    <div class="form-card" style="margin-top:1rem; background:var(--c-warning-bg, #FEF9EC); border-color:var(--c-warning-border, #F59E0B);">
-      <p style="margin:0 0 .5rem; font-size:.9375rem; font-weight:600; color:#92400E;">
-        Late-authorisation fee applied
-      </p>
-      <p style="margin:0; font-size:.875rem; color:#78350F; line-height:1.6;">
-        Because your initial authorisation failed, a <strong>5% late-authorisation surcharge</strong>
-        now applies (total service fee: {{ new_fee_pct }}%).
-        Your updated total is <strong>{{ "{:,}".format(new_total) }} ISK</strong>.
-        This fee is non-refundable once the card is saved.
-      </p>
-    </div>
-
     <!-- Trip summary -->
     <div class="booking-summary" style="margin-top:1.5rem;">
       <h3 class="booking-summary__title">Booking details</h3>
@@ -71,7 +58,7 @@
         <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }}</span>
       </div>
       <div class="price-row price-row--total">
-        <span>New total (incl. {{ new_fee_pct }}% fee)</span>
+        <span>Total</span>
         <span>{{ "{:,}".format(new_total) }} ISK</span>
       </div>
     </div>

@@ -353,26 +353,17 @@ def _apply_mit_failure(
     Transitions:
       payment.status  → retry_pending
       booking stays   → card_saved  (NOT confirmed — seat is not yet paid for)
-      service_fee / total_price bumped +5 % (retry surcharge)
       retry_deadline  → now + 2 hours
       Notifications   → passenger (SMS + email) + driver (SMS)
     """
-    from app.routers.payments import calc_fees
-
     log.warning(
         "MIT did not result in ACT for booking %s — entering retry window. Reason: %s",
         booking.id, reason,
     )
 
-    new_fee, new_total, _ = calc_fees(booking.subtotal, retry_surcharge=True)
-
-    booking.service_fee       = new_fee
-    booking.total_price       = new_total
-    payment.passenger_total   = new_total
-    payment.platform_fee      = new_fee
-    payment.status            = models.PaymentStatus.retry_pending
-    payment.retry_deadline    = now + timedelta(hours=2)
-    payment.retry_fee_applied = True
+    # No surcharge on retry — fee stays the same as the original booking.
+    payment.status         = models.PaymentStatus.retry_pending
+    payment.retry_deadline = now + timedelta(hours=2)
 
     db.commit()
 
