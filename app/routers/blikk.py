@@ -214,7 +214,7 @@ def blikk_pay_page(
     settings = get_settings()
 
     # Idempotent: if a Blikk fee payment was already created for this booking,
-    # re-initialise and redirect again (handles browser back + retry).
+    # check its status before doing anything else.
     payment = booking.payment
     if payment and payment.blikk_fee_payment_id:
         try:
@@ -225,8 +225,36 @@ def blikk_pay_page(
                 booking.status = models.BookingStatus.confirmed
                 db.commit()
                 return RedirectResponse("/my-trips?tab=bookings&blikk_paid=1", status_code=303)
-        except BlikkError:
-            pass  # fall through and create a new payment
+            # Payment exists and is still pending — get its redirect URL and
+            # send the passenger back to the same Blikk flow. Never create a
+            # second P2P while the first one is still open.
+            redirect_url = blikk_client.blikk_redirect_url(blikk_payment)
+            if redirect_url:
+                return RedirectResponse(redirect_url, status_code=303)
+            # No redirect URL on an existing pending payment — show pending page
+            return templates.TemplateResponse("payments/blikk_return.html", {
+                **ctx,
+                "booking": booking,
+                "success": False,
+                "flow":    "fee",
+                "pending": True,
+                "message": "Your payment is still pending. Please complete it in your Blikk app.",
+            })
+        except BlikkError as exc:
+            # Blikk API unreachable — do NOT create a second P2P.
+            # Show an error page; the passenger can retry when the API recovers.
+            log.error(
+                "Blikk get_payment failed for existing payment on booking %d: %s",
+                booking_id, exc,
+            )
+            return templates.TemplateResponse("payments/blikk_return.html", {
+                **ctx,
+                "booking": booking,
+                "success": False,
+                "flow":    "fee",
+                "pending": False,
+                "message": "We could not reach the Blikk payment service. Please try again in a moment.",
+            }, status_code=503)
 
     try:
         payment_id, redirect_url = blikk_client.create_fee_payment(booking, settings.base_url)
