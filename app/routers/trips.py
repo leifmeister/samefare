@@ -523,6 +523,9 @@ def new_trip_page(
     if current_user.license_verification != models.VerificationStatus.approved:
         return RedirectResponse("/verify?next=driver", status_code=303)
 
+    if not current_user.phone_verified:
+        return RedirectResponse("/profile?msg=phone_required#phone", status_code=303)
+
     if current_user.posting_suspended:
         return RedirectResponse("/my-trips?tab=rides&posting_suspended=1", status_code=303)
 
@@ -633,6 +636,9 @@ def create_trip(
 ):
     if current_user.license_verification != models.VerificationStatus.approved:
         return RedirectResponse("/verify?next=driver", status_code=303)
+
+    if not current_user.phone_verified:
+        return RedirectResponse("/profile?msg=phone_required#phone", status_code=303)
 
     if current_user.posting_suspended:
         return RedirectResponse("/my-trips?tab=rides&posting_suspended=1", status_code=303)

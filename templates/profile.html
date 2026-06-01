@@ -7,6 +7,14 @@
 
 {% block content %}
 <div class="container" style="margin-top:2rem; margin-bottom:4rem;">
+
+  {% if request.query_params.get('msg') == 'phone_required' %}
+  <div class="alert alert--warning" role="alert" style="margin-bottom:1.5rem;">
+    <strong>{{ _t('profile_phone_required_title') }}</strong>
+    {{ _t('profile_phone_required_body') }}
+  </div>
+  {% endif %}
+
   <div class="profile-layout">
 
     <!-- Left: profile info -->
