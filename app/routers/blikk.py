@@ -202,7 +202,7 @@ def blikk_pay_page(
         return RedirectResponse("/my-trips?tab=bookings", status_code=303)
 
     trip = booking.trip
-    if not trip or trip.payment_method != models.TripPaymentMethod.blikk:
+    if not trip or booking.payment_method != models.TripPaymentMethod.blikk:
         return RedirectResponse("/my-trips?tab=bookings", status_code=303)
 
     settings = get_settings()

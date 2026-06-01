@@ -1,6 +1,9 @@
 import json
+import logging
 from datetime import datetime, date, timedelta
 from typing import List, Optional
+
+log = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -540,7 +543,6 @@ def new_trip_page(
         "chattiness": None,
         "winter_ready": False, "child_seat": False, "flexible_pickup": False,
         "instant_book": True, "description": "",
-        "payment_method": "card",
     }
     defaults = {
         "car_make":  current_user.default_car_make  or "",
@@ -632,7 +634,6 @@ def create_trip(
     flexible_pickup_raw: Optional[str] = Form(None),
     instant_book_raw:    Optional[str] = Form(None),
     allow_segments_raw:  Optional[str] = Form(None),
-    payment_method:      Optional[str] = Form(None),
 ):
     if current_user.license_verification != models.VerificationStatus.approved:
         return RedirectResponse("/verify?next=driver", status_code=303)
@@ -653,11 +654,6 @@ def create_trip(
     flexible_pickup = flexible_pickup_raw is not None
     instant_book    = instant_book_raw    is not None
     allow_segments  = allow_segments_raw  is not None
-    try:
-        payment_method_val = models.TripPaymentMethod(payment_method) if payment_method else models.TripPaymentMethod.card
-    except ValueError:
-        payment_method_val = models.TripPaymentMethod.card
-
     # Resolve fuel type (None is fine — estimator infers from car_type)
     try:
         fuel_type_val = models.FuelType(fuel_type_raw) if fuel_type_raw else None
@@ -775,7 +771,6 @@ def create_trip(
         flexible_pickup=flexible_pickup,
         instant_book=instant_book,
         allow_segments=allow_segments,
-        payment_method=payment_method_val,
     )
     db.add(trip)
 
@@ -849,7 +844,6 @@ def edit_trip_page(
             "allow_segments":  trip.allow_segments,
             "description":     trip.description or "",
             "fuel_type":       str(trip.fuel_type) if trip.fuel_type else "",
-            "payment_method":  str(trip.payment_method) if trip.payment_method else "card",
         },
         "defaults": {
             "car_make":  trip.car_make  or "",
@@ -893,7 +887,6 @@ def update_trip(
     flexible_pickup_raw:  Optional[str] = Form(None),
     instant_book_raw:     Optional[str] = Form(None),
     allow_segments_raw:   Optional[str] = Form(None),
-    payment_method:       Optional[str] = Form(None),
 ):
     trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
     if not trip or trip.driver_id != current_user.id:
@@ -911,11 +904,6 @@ def update_trip(
     flexible_pickup = flexible_pickup_raw is not None
     instant_book    = instant_book_raw    is not None
     allow_segments  = allow_segments_raw  is not None
-    try:
-        payment_method_val = models.TripPaymentMethod(payment_method) if payment_method else models.TripPaymentMethod.card
-    except ValueError:
-        payment_method_val = models.TripPaymentMethod.card
-
     try:
         fuel_type_val = models.FuelType(fuel_type_raw) if fuel_type_raw else None
     except ValueError:
@@ -1043,7 +1031,6 @@ def update_trip(
     trip.flexible_pickup    = flexible_pickup
     trip.instant_book       = instant_book
     trip.allow_segments     = allow_segments
-    trip.payment_method     = payment_method_val
 
     db.commit()
     return RedirectResponse(f"/trips/{trip.id}", status_code=303)
@@ -1327,6 +1314,19 @@ def cancel_trip(
             if was_card_saved:
                 # Card tokenized for MIT but never charged — nothing to refund.
                 b.payment.status = models.PaymentStatus.failed
+            elif b.payment_method == models.TripPaymentMethod.blikk:
+                # Blikk booking: refund service fee if it was already collected.
+                if b.payment.status == models.PaymentStatus.blikk_fee_paid:
+                    try:
+                        from app import blikk as blikk_client
+                        blikk_client.refund_fee(b)
+                        b.payment.status = models.PaymentStatus.blikk_refunded
+                        log.info("Blikk refund issued for booking %d on trip cancellation", b.id)
+                    except Exception as exc:
+                        log.error("Blikk refund failed for booking %d: %s", b.id, exc)
+                        # Don't block the cancellation — admin will need to issue manually
+                else:
+                    b.payment.status = models.PaymentStatus.failed
             else:
                 # Full refund for driver-initiated cancellations (including service fee).
                 # _issue_rapyd_refund owns refund_amount and status — do not pre-set them.

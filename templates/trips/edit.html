@@ -238,21 +238,6 @@
           </label>
         </div>
 
-        {# ── Payment method ─────────────────────────────────────────────────── #}
-        <div style="margin-top:1.25rem;">
-          <label class="label" for="payment_method_select">How should passengers pay?</label>
-          <select id="payment_method_select" name="payment_method" class="input" style="max-width:280px;">
-            <option value="card"  {{ 'selected' if not vals.payment_method or vals.payment_method == 'card' }}>
-              Card / Wallet (Rapyd)
-            </option>
-            <option value="blikk" {{ 'selected' if vals.payment_method == 'blikk' }}>
-              Blikk bank transfer (Iceland only)
-            </option>
-          </select>
-          <p class="form-hint" style="margin-top:.375rem;">
-            Blikk requires both you and your passengers to have Icelandic phone numbers registered with Blikk.
-          </p>
-        </div>
       </fieldset>
 
       <fieldset class="form-section">

@@ -200,7 +200,7 @@ def booking_approved_to_passenger(booking) -> None:
     trip = booking.trip
     # Route the payment CTA to the appropriate checkout depending on payment rail
     from app.models import TripPaymentMethod  # local import avoids circular
-    if trip.payment_method == TripPaymentMethod.blikk:
+    if booking.payment_method == TripPaymentMethod.blikk:
         payment_url  = f"{s.base_url}/bookings/{booking.id}/blikk-pay"
         payment_note = "Complete your payment via Blikk bank transfer"
     else:

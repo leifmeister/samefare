@@ -365,10 +365,7 @@ class Trip(Base):
     status             = Column(Enum(TripStatus), nullable=False, default=TripStatus.active)
     created_at         = Column(DateTime, nullable=False, default=datetime.utcnow)
 
-    # Payment method the driver accepts (Rapyd card or Blikk P2P bank transfer).
-    # NULL / 'card' → legacy Rapyd flow; 'blikk' → Blikk-only trip.
-    payment_method = Column(Enum(TripPaymentMethod), nullable=True,
-                            default=TripPaymentMethod.card)
+    # payment_method removed from Trip — passengers choose at booking time.
 
     # ── Pricing module ─────────────────────────────────────────────────────────
     # fuel_type: petrol/diesel/electric/hybrid — used by the cost estimator.
@@ -430,6 +427,9 @@ class Booking(Base):
     # driver's trip origin/destination.  NULL means use the trip's own city.
     pickup_city  = Column(String(150), nullable=True)   # null → trip.origin
     dropoff_city = Column(String(150), nullable=True)   # null → trip.destination
+    # Payment method chosen by the passenger at booking time.
+    payment_method = Column(Enum(TripPaymentMethod), nullable=True,
+                            default=TripPaymentMethod.card)
     status           = Column(Enum(BookingStatus), nullable=False,
                               default=BookingStatus.pending)
     payment_deadline = Column(DateTime, nullable=True)   # set when status→awaiting_payment

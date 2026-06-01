@@ -119,6 +119,22 @@
           </label>
         </div>
 
+        <!-- Payment method -->
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label class="label">{{ _t('booking_payment_method_label') }}</label>
+          <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.375rem;">
+            <label style="display:flex;align-items:center;gap:.625rem;cursor:pointer;font-size:.9rem;">
+              <input type="radio" name="payment_method" value="card" checked>
+              <span>💳 {{ _t('booking_pay_card') }}</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:.625rem;cursor:pointer;font-size:.9rem;">
+              <input type="radio" name="payment_method" value="blikk">
+              <span>🏦 {{ _t('booking_pay_blikk') }}</span>
+            </label>
+          </div>
+          <p class="form-hint" style="margin-top:.375rem;">{{ _t('booking_pay_blikk_hint') }}</p>
+        </div>
+
         <div class="form-actions">
           <a href="/trips/{{ trip.id }}" class="btn btn-ghost">{{ _t('booking_cancel_btn') }}</a>
           <button type="submit" class="btn btn-primary btn-lg">{{ _t('booking_confirm_btn') }}</button>

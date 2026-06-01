@@ -133,6 +133,7 @@ _MIGRATIONS = [
     # Segment booking — passenger boards/exits at a stop that differs from the trip endpoints
     "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS pickup_city  VARCHAR(150)",
     "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS dropoff_city VARCHAR(150)",
+    "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_method trippaymentmethod DEFAULT 'card'",
 
     # ── payments ──────────────────────────────────────────────────────────────
     "ALTER TABLE payments ADD COLUMN IF NOT EXISTS refund_amount INTEGER NOT NULL DEFAULT 0",

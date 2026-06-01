@@ -131,10 +131,11 @@ def create_booking(
     ctx: dict = Depends(get_template_context),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    seats_booked: int = Form(1),
-    message: str = Form(""),
-    pickup_city:  str = Form(""),   # segment booking — empty means trip.origin
-    dropoff_city: str = Form(""),   # segment booking — empty means trip.destination
+    seats_booked:   int = Form(1),
+    message:        str = Form(""),
+    pickup_city:    str = Form(""),   # segment booking — empty means trip.origin
+    dropoff_city:   str = Form(""),   # segment booking — empty means trip.destination
+    payment_method: str = Form("card"),
     _rl=rate_limit(10, 60),
 ):
     if not current_user.email_verified and not settings.beta_mode:
@@ -211,8 +212,8 @@ def create_booking(
     ).first()
     if existing:
         if existing.status == models.BookingStatus.awaiting_payment:
-            # Route to Blikk or Rapyd depending on the trip's payment method
-            if trip.payment_method == models.TripPaymentMethod.blikk:
+            # Route to Blikk or Rapyd depending on the booking's payment method
+            if existing.payment_method == models.TripPaymentMethod.blikk:
                 return RedirectResponse(
                     f"/bookings/{existing.id}/blikk-pay", status_code=303
                 )
@@ -300,6 +301,11 @@ def create_booking(
         initial_status   = models.BookingStatus.pending
         payment_deadline = None
 
+    try:
+        payment_method_val = models.TripPaymentMethod(payment_method)
+    except ValueError:
+        payment_method_val = models.TripPaymentMethod.card
+
     booking = models.Booking(
         trip_id=trip_id,
         passenger_id=current_user.id,
@@ -309,6 +315,7 @@ def create_booking(
         message=message or None,
         pickup_city=pickup_city,
         dropoff_city=dropoff_city,
+        payment_method=payment_method_val,
         status=initial_status,
         payment_deadline=payment_deadline,
     )
@@ -320,7 +327,7 @@ def create_booking(
 
     if trip.instant_book:
         # ── Blikk payment method ───────────────────────────────────────────────
-        if trip.payment_method == models.TripPaymentMethod.blikk:
+        if booking.payment_method == models.TripPaymentMethod.blikk:
             # Create the service-fee P2P and redirect passenger to Blikk
             try:
                 db.refresh(booking)  # load passenger relationship
