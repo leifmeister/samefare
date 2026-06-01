@@ -1,6 +1,9 @@
+import logging
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Form, Request
+
+log = logging.getLogger(__name__)
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
@@ -371,13 +374,14 @@ def _refund_preview(booking) -> dict:
     Returns a dict with 'amount', 'label', and 'policy'.
     Does NOT modify anything — safe to call from a GET handler.
 
-    Policy (two-tier, no partial refunds):
-    ───────────────────────────────────────
-    • Before pre-authorisation (card_saved / pending / no payment):
-        No charge.  Cancel freely.
-    • After pre-authorisation (payment.status == authorised or later):
-        No refund.  The seat is reserved — the full amount will be captured
-        immediately on cancellation, regardless of time remaining.
+    Rapyd policy:
+    • Before pre-auth (card_saved / pending / no payment): no charge.
+    • After pre-auth: no refund, full amount captured immediately.
+
+    Blikk policy:
+    • Fee not yet paid: no charge.
+    • Fee paid + within 1 h of booking + departure >25 h away: service fee refunded.
+    • All other cases: service fee forfeited (kept by platform).
     """
     if not booking.payment:
         return {"amount": 0, "label": "No charge — booking not yet paid", "policy": "free"}
@@ -393,7 +397,25 @@ def _refund_preview(booking) -> dict:
             "policy": "card_not_charged",
         }
 
-    # Pre-auth is in place (or capture already requested / captured) → no refund
+    # Blikk: grace-period refund check
+    if booking.payment_method == models.TripPaymentMethod.blikk:
+        if booking.payment.status == models.PaymentStatus.blikk_fee_paid:
+            now            = datetime.utcnow()
+            within_grace   = (now - booking.created_at) <= timedelta(hours=1)
+            far_enough_out = booking.trip.departure_datetime > (now + timedelta(hours=25))
+            if within_grace and far_enough_out:
+                return {
+                    "amount": booking.service_fee,
+                    "label":  "Service fee refunded (within 1-hour grace period)",
+                    "policy": "blikk_grace_refund",
+                }
+        return {
+            "amount": 0,
+            "label":  "No refund — service fee is non-refundable",
+            "policy": "blikk_fee_forfeited",
+        }
+
+    # Rapyd: pre-auth is in place → no refund
     return {
         "amount": 0,
         "label":  "No refund — full amount will be captured",
@@ -484,6 +506,27 @@ def cancel_booking(
             # Card was tokenised for a future MIT but the pre-auth has not fired yet.
             # No charge has been made — mark payment failed so the MIT cron skips it.
             booking.payment.status = models.PaymentStatus.failed
+        elif booking.payment_method == models.TripPaymentMethod.blikk:
+            # Blikk bookings: service fee was already collected from the passenger.
+            # Grace-period policy: refund only if BOTH conditions hold:
+            #   1. Cancelled within 1 hour of booking creation
+            #   2. Departure is still more than 25 hours away
+            # Any other cancellation forfeits the service fee — it is kept by the platform.
+            now = datetime.utcnow()
+            within_grace   = (now - booking.created_at) <= timedelta(hours=1)
+            far_enough_out = booking.trip.departure_datetime > (now + timedelta(hours=25))
+            if within_grace and far_enough_out and \
+               booking.payment.status == models.PaymentStatus.blikk_fee_paid:
+                try:
+                    blikk_client.refund_fee(booking)
+                    booking.payment.status = models.PaymentStatus.blikk_refunded
+                except BlikkError as exc:
+                    log.error(
+                        "Blikk refund failed for booking %d on passenger cancel: %s",
+                        booking.id, exc,
+                    )
+                    # Don't block the cancellation — admin will need to issue manually.
+            # All other cases: fee forfeited, no status change needed (already blikk_fee_paid).
         else:
             # Pre-auth is in place: the seat is reserved.
             # Trigger immediate capture by moving capture_at to now.
