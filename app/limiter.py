@@ -13,6 +13,10 @@ rate_limit(max_calls, window_seconds) returns a Depends() that raises
 HTTP 429 when the IP exceeds max_calls within window_seconds.
 State is in-memory and resets on process restart — fine for a
 single-process deployment. Swap for Redis if you ever go multi-instance.
+
+IP detection: reads the first entry of X-Forwarded-For (set by Railway's
+reverse proxy) so the key is the real client IP, not the proxy address.
+Falls back to request.client.host if the header is absent.
 """
 from collections import defaultdict
 from time import monotonic
@@ -23,6 +27,16 @@ from fastapi import Depends, HTTPException, Request
 # {key: [timestamp, ...]}
 _store: dict[str, list[float]] = defaultdict(list)
 _lock = Lock()
+
+
+def _real_ip(request: Request) -> str:
+    """Return the real client IP, honouring X-Forwarded-For from Railway's proxy."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        # Header may be a comma-separated list: "client, proxy1, proxy2"
+        # The leftmost entry is the original client.
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
 
 
 def _check(key: str, max_calls: int, window: float) -> bool:
@@ -49,7 +63,7 @@ def rate_limit(max_calls: int, window_seconds: int):
     side-effect-only dependency (no value used by the handler).
     """
     def dependency(request: Request):
-        ip = request.client.host if request.client else "unknown"
+        ip  = _real_ip(request)
         key = f"{request.url.path}:{ip}"
         if not _check(key, max_calls, window_seconds):
             raise HTTPException(
