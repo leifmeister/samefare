@@ -100,7 +100,7 @@
                      value="{{ current_user.full_name }}" required />
             </div>
             <div class="form-group" id="phone"
-                 x-data="phoneField({{ (current_user.phone or '')|tojson }})">
+                 {% if not current_user.phone_verified %}x-data="phoneField({{ (current_user.phone or '')|tojson }})"{% endif %}>
               <label class="label">
                 {{ _t('profile_phone_label') }}
                 {% if current_user.phone_verified %}
@@ -109,14 +109,23 @@
                   <span class="verify-chip verify-chip--pending" style="margin-left:.4rem;">{{ _t('profile_phone_unverified') }}</span>
                 {% endif %}
               </label>
-              <input type="hidden" name="phone" :value="full" />
-              <div class="phone-input">
-                {{ phone_select(x_model="code") }}
-                <input type="tel" class="phone-input__number input"
-                       x-model="local"
-                       autocomplete="tel-national"
-                       placeholder="xxx xxxx" />
-              </div>
+              {% if current_user.phone_verified %}
+                {# Verified — show read-only, preserve value in hidden field #}
+                <input type="hidden" name="phone" value="{{ current_user.phone }}" />
+                <p style="font-size:.95rem; padding:.5rem 0; color:var(--c-text);">
+                  {{ current_user.phone }}
+                </p>
+                <p class="form-hint">{{ _t('profile_phone_locked') }}</p>
+              {% else %}
+                <input type="hidden" name="phone" :value="full" />
+                <div class="phone-input">
+                  {{ phone_select(x_model="code") }}
+                  <input type="tel" class="phone-input__number input"
+                         x-model="local"
+                         autocomplete="tel-national"
+                         placeholder="xxx xxxx" />
+                </div>
+              {% endif %}
 
               {# OTP verification widget — only shown when phone saved but not yet verified #}
               {% if current_user.phone and not current_user.phone_verified %}
