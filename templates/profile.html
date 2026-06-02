@@ -110,12 +110,30 @@
                 {% endif %}
               </label>
               {% if current_user.phone_verified %}
-                {# Verified — show read-only, preserve value in hidden field #}
-                <input type="hidden" name="phone" value="{{ current_user.phone }}" />
-                <p style="font-size:.95rem; padding:.5rem 0; color:var(--c-text);">
-                  {{ current_user.phone }}
-                </p>
-                <p class="form-hint">{{ _t('profile_phone_locked') }}</p>
+                {# Verified — show read-only with option to change #}
+                <div x-data="{ changing: false }">
+                  <div x-show="!changing" style="display:flex; align-items:center; gap:.75rem;">
+                    <input type="hidden" name="phone" value="{{ current_user.phone }}" />
+                    <p style="font-size:.95rem; padding:.5rem 0; color:var(--c-text); margin:0;">
+                      {{ current_user.phone }}
+                    </p>
+                    <button type="button" class="btn btn-ghost btn-sm"
+                            @click="changing = true">
+                      {{ _t('profile_phone_change_btn') }}
+                    </button>
+                  </div>
+                  <div x-show="changing" x-data="phoneField({{ (current_user.phone or '')|tojson }})">
+                    <input type="hidden" name="phone" :value="full" />
+                    <div class="phone-input">
+                      {{ phone_select(x_model="code") }}
+                      <input type="tel" class="phone-input__number input"
+                             x-model="local"
+                             autocomplete="tel-national"
+                             placeholder="xxx xxxx" />
+                    </div>
+                    <p class="form-hint" style="margin-top:.375rem;">{{ _t('profile_phone_change_hint') }}</p>
+                  </div>
+                </div>
               {% else %}
                 <input type="hidden" name="phone" :value="full" />
                 <div class="phone-input">
