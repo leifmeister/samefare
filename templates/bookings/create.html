@@ -105,34 +105,46 @@
         </div>
         {% endif %}
 
-        <div class="form-group" style="margin-bottom:1rem;">
+        <!-- Payment method + acknowledgement — Alpine keeps them in sync -->
+        <div class="form-group" style="margin-bottom:1rem;"
+             x-data="{ method: 'card' }">
+
+          <label class="label">{{ _t('booking_payment_method_label') }}</label>
+          <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.375rem;margin-bottom:.75rem;">
+            <label style="display:flex;align-items:center;gap:.625rem;cursor:pointer;font-size:.9rem;">
+              <input type="radio" name="payment_method" value="card"
+                     x-model="method" checked>
+              <span>💳 {{ _t('booking_pay_card') }}</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:.625rem;cursor:pointer;font-size:.9rem;">
+              <input type="radio" name="payment_method" value="blikk"
+                     x-model="method">
+              <span>🏦 {{ _t('booking_pay_blikk') }}</span>
+            </label>
+          </div>
+          <p class="form-hint" x-show="method === 'blikk'" style="margin-top:-.25rem;margin-bottom:.75rem;">
+            {{ _t('booking_pay_blikk_hint') }}
+          </p>
+
+          <!-- Acknowledgement — text switches based on payment method -->
           <label style="display:flex;align-items:flex-start;gap:.625rem;cursor:pointer;font-size:.9rem;line-height:1.4;">
             <input type="checkbox" name="no_refund_acknowledged" id="no_refund_acknowledged" required
                    style="margin-top:.2rem;flex-shrink:0;">
             <span>
-              {% if less_than_24h %}
-                {{ _t('booking_ack_lt24') }} <strong>{{ _t('booking_ack_lt24_bold') }}</strong> {{ _t('booking_ack_lt24_end') }}
-              {% else %}
-                {{ _t('booking_ack_pre24') }} <strong>{{ _t('booking_ack_pre24_bold') }}</strong> {{ _t('booking_ack_pre24_end') }}
-              {% endif %}
+              {# Blikk policy: grace period #}
+              <span x-show="method === 'blikk'">
+                {{ _t('booking_ack_blikk') }} <strong>{{ _t('booking_ack_blikk_bold') }}</strong> {{ _t('booking_ack_blikk_end') }}
+              </span>
+              {# Card policy: depends on departure timing #}
+              <span x-show="method !== 'blikk'">
+                {% if less_than_24h %}
+                  {{ _t('booking_ack_lt24') }} <strong>{{ _t('booking_ack_lt24_bold') }}</strong> {{ _t('booking_ack_lt24_end') }}
+                {% else %}
+                  {{ _t('booking_ack_pre24') }} <strong>{{ _t('booking_ack_pre24_bold') }}</strong> {{ _t('booking_ack_pre24_end') }}
+                {% endif %}
+              </span>
             </span>
           </label>
-        </div>
-
-        <!-- Payment method -->
-        <div class="form-group" style="margin-bottom:1rem;">
-          <label class="label">{{ _t('booking_payment_method_label') }}</label>
-          <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.375rem;">
-            <label style="display:flex;align-items:center;gap:.625rem;cursor:pointer;font-size:.9rem;">
-              <input type="radio" name="payment_method" value="card" checked>
-              <span>💳 {{ _t('booking_pay_card') }}</span>
-            </label>
-            <label style="display:flex;align-items:center;gap:.625rem;cursor:pointer;font-size:.9rem;">
-              <input type="radio" name="payment_method" value="blikk">
-              <span>🏦 {{ _t('booking_pay_blikk') }}</span>
-            </label>
-          </div>
-          <p class="form-hint" style="margin-top:.375rem;">{{ _t('booking_pay_blikk_hint') }}</p>
         </div>
 
         <div class="form-actions">

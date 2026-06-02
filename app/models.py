@@ -75,7 +75,7 @@ class PaymentStatus(_StrEnum):
     failed         = "failed"              # authorisation or capture failed permanently
     auth_expired   = "auth_expired"        # authorisation lapsed before capture
     # Case B retry
-    retry_pending  = "retry_pending"       # MIT failed; passenger has 2 h to update card (+5 % fee)
+    retry_pending  = "retry_pending"       # MIT failed; passenger has 2 h to update card
     # Blikk (P2P bank transfer) payment states
     blikk_fee_pending = "blikk_fee_pending"  # service-fee P2P created, passenger redirected to Blikk
     blikk_fee_paid    = "blikk_fee_paid"     # passenger completed fee payment

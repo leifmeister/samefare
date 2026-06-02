@@ -662,14 +662,26 @@ def report_driver_no_show(
 
     # Flag the trip for accountability tracking and auto-rating
     booking.trip.driver_no_show = True
-    # Cancel the booking on our side (seat released, status updated).
-    # Under the Slize marketplace model the driver is registered as the sub-merchant
-    # and receives their 82% directly at capture time. SameFare does not hold or
-    # control that portion — the passenger's financial remedy is a chargeback filed
-    # with their card issuer against the driver's sub-merchant account.
-    # SameFare's role: suspend the driver, record the event, support the dispute
-    # with evidence if the card issuer requests it. No platform-funded refund.
     booking.status = models.BookingStatus.cancelled
+
+    # Refund the service fee based on payment method.
+    # Blikk: reverse P2P (platform → passenger) — driver never collected the
+    #   fare so only the service fee needs refunding.
+    # Rapyd: no platform-funded refund — under the Rapyd model the driver is
+    #   the sub-merchant and receives their payout directly at capture. The
+    #   passenger's remedy is a chargeback filed with their card issuer.
+    #   SameFare's role: suspend the driver and support the dispute with evidence.
+    if (booking.payment_method == models.TripPaymentMethod.blikk
+            and booking.payment
+            and booking.payment.status == models.PaymentStatus.blikk_fee_paid):
+        try:
+            blikk_client.refund_fee(booking)
+            booking.payment.status = models.PaymentStatus.blikk_refunded
+        except BlikkError as exc:
+            log.error(
+                "Blikk refund failed for booking %d on driver no-show: %s",
+                booking.id, exc,
+            )
 
     # Issue an immediate 1-star auto-review for the driver (no grace period for no-shows)
     existing_review = (
