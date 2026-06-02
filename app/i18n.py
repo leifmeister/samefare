@@ -581,6 +581,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "profile_verify_btn": "Verify",
         "profile_checking": "Checking…",
         "profile_resend": "Resend",
+        "profile_code_resent_msg": "✓ New code sent — check your messages.",
         "profile_phone_verified_msg": "✓ Phone verified! Refreshing…",
         "profile_sending": "Sending…",
 
@@ -1208,6 +1209,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "profile_verify_btn": "Staðfesta",
         "profile_checking": "Athugar…",
         "profile_resend": "Senda aftur",
+        "profile_code_resent_msg": "✓ Nýr kóði sendur — athugaðu skilaboðin.",
         "profile_phone_verified_msg": "✓ Sími staðfestur! Endurhlöðum…",
         "profile_sending": "Sendir…",
 

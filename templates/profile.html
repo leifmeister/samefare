@@ -147,10 +147,15 @@
                       <span x-show="confirming">{{ _t('profile_checking') }}</span>
                     </button>
                     <button type="button" class="btn btn-ghost btn-sm"
-                            @click="codeSent = false; otp = ''; error = ''">
-                      {{ _t('profile_resend') }}
+                            :disabled="sending"
+                            @click="resendCode()">
+                      <span x-show="!sending">{{ _t('profile_resend') }}</span>
+                      <span x-show="sending">{{ _t('profile_sending') }}</span>
                     </button>
                   </div>
+                  <p x-show="resent && !error" class="form-hint form-hint--success" style="margin-top:.3rem;">
+                    {{ _t('profile_code_resent_msg') }}
+                  </p>
                   <p x-show="error" x-text="error" class="form-hint form-hint--error" style="margin-top:.3rem;"></p>
                   <p x-show="success" class="form-hint form-hint--success" style="margin-top:.3rem;">
                     {{ _t('profile_phone_verified_msg') }}
@@ -282,6 +287,7 @@ function phoneOtp() {
     sending:    false,
     confirming: false,
     codeSent:   false,
+    resent:     false,
     otp:        '',
     error:      '',
     success:    false,
@@ -289,11 +295,25 @@ function phoneOtp() {
     async sendCode() {
       this.sending = true;
       this.error   = '';
+      this.resent  = false;
       try {
         const r = await fetch('/verify-phone/send', { method: 'POST' });
         const j = await r.json();
         if (j.ok) { this.codeSent = true; }
         else       { this.error = j.error || 'Could not send code.'; }
+      } catch(e) { this.error = 'Network error. Please try again.'; }
+      finally    { this.sending = false; }
+    },
+
+    async resendCode() {
+      this.sending = true;
+      this.error   = '';
+      this.resent  = false;
+      try {
+        const r = await fetch('/verify-phone/send', { method: 'POST' });
+        const j = await r.json();
+        if (j.ok) { this.resent = true; this.otp = ''; }
+        else       { this.error = j.error || 'Could not resend code.'; }
       } catch(e) { this.error = 'Network error. Please try again.'; }
       finally    { this.sending = false; }
     },
