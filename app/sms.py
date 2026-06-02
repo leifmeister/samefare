@@ -27,15 +27,15 @@ log = logging.getLogger(__name__)
 
 # ── Low-level sender ──────────────────────────────────────────────────────────
 
-def _send(to: str, body: str) -> None:
-    """Send a single SMS via Twilio REST API. Silently logs on failure."""
+def _send(to: str, body: str) -> bool:
+    """Send a single SMS via Twilio REST API. Returns True on success, False on failure."""
     s = get_settings()
     if not s.twilio_account_sid or not s.twilio_auth_token or not s.twilio_from_number:
         log.debug("Twilio not configured — skipping SMS to %s", to)
-        return
+        return False
     if not to:
         log.debug("No phone number — skipping SMS")
-        return
+        return False
 
     credentials = b64encode(
         f"{s.twilio_account_sid}:{s.twilio_auth_token}".encode()
@@ -63,18 +63,21 @@ def _send(to: str, body: str) -> None:
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             log.info("SMS sent → %s  status=%s", to, resp.status)
+            return True
     except urllib.error.HTTPError as exc:
         body_err = exc.read().decode("utf-8", errors="replace")
         log.warning("SMS failed → %s: %s %s", to, exc.code, body_err)
+        return False
     except Exception as exc:
         log.warning("SMS failed → %s: %s", to, exc)
+        return False
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def send_otp(phone: str, code: str) -> None:
-    """Send a 6-digit OTP for phone number verification."""
-    _send(phone, f"Your SameFare verification code is: {code}\n\nExpires in 10 minutes.")
+def send_otp(phone: str, code: str) -> bool:
+    """Send a 6-digit OTP for phone number verification. Returns True on success."""
+    return _send(phone, f"Your SameFare verification code is: {code}\n\nExpires in 10 minutes.")
 
 
 def trip_cancelled_to_passenger(booking) -> None:
