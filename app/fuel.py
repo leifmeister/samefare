@@ -61,14 +61,16 @@ def _prices_from_gasvaktin() -> list[float] | None:
     try:
         req = urllib.request.Request(_GASVAKTIN_URL, headers={"Accept": "application/json"})
         with urllib.request.urlopen(req, timeout=_REQUEST_TIMEOUT, context=_SSL_CTX) as resp:
-            stations = json.loads(resp.read().decode())
+            raw = json.loads(resp.read().decode())
     except Exception as exc:
         log.warning("gasvaktin fetch failed: %s", exc)
         return None
+    # gasvaktin gas.min.json is a dict keyed by station ID; handle both dict and list.
+    stations = raw.values() if isinstance(raw, dict) else raw
     prices = [
         float(s["bensin95"])
         for s in stations
-        if s.get("bensin95") and isinstance(s["bensin95"], (int, float)) and s["bensin95"] > 0
+        if isinstance(s, dict) and s.get("bensin95") and isinstance(s["bensin95"], (int, float)) and s["bensin95"] > 0
     ]
     return prices if prices else None
 

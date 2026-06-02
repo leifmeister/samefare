@@ -54,11 +54,11 @@ def send_otp(
     current_user.phone_otp_expires = expires
     db.commit()
 
-    sent = sms.send_otp(phone, code)
+    sent, sms_error = sms.send_otp(phone, code)
     if not sent:
         return JSONResponse({
             "ok": False,
-            "error": "Could not send SMS. Please check your number is correct and try again."
+            "error": f"Could not send SMS: {sms_error}"
         }, status_code=502)
 
     return JSONResponse({"ok": True, "message": f"Code sent to {phone}."})
