@@ -36,24 +36,30 @@ log = logging.getLogger(__name__)
 
 def _run_auto_complete() -> None:
     """
-    Mark trips and their confirmed bookings as completed once
-    2 hours have passed since the scheduled departure time.
+    Mark trips and their confirmed bookings as completed once the estimated
+    arrival time has passed.
 
-    No lower-bound date filter — any active trip whose departure is more than
-    2 hours in the past is overdue and should be completed regardless of age.
-    If the worker was down or trips were imported from old data they will be
-    swept on the next run.  The only guard against junk test data is the
-    future-date validation enforced at trip creation time.
+    estimated_arrival = departure + (distance ÷ 80 km/h) + 1 h buffer.
+    Set at trip creation; recomputed on edit.
+
+    Trips created before this column existed (estimated_arrival IS NULL) fall
+    back to departure + 6 h so nothing gets stuck.
     """
-    now    = datetime.utcnow()
-    cutoff = now - timedelta(hours=2)
-    db = SessionLocal()
+    from sqlalchemy import or_, case as sa_case
+    now = datetime.utcnow()
+    db  = SessionLocal()
     try:
         stale = (
             db.query(models.Trip)
             .filter(
                 models.Trip.status == models.TripStatus.active,
-                models.Trip.departure_datetime <= cutoff,
+                or_(
+                    # New trips: use estimated_arrival
+                    models.Trip.estimated_arrival <= now,
+                    # Legacy trips without estimated_arrival: 6 h flat fallback
+                    (models.Trip.estimated_arrival == None)  # noqa: E711
+                    & (models.Trip.departure_datetime <= now - timedelta(hours=6)),
+                ),
             )
             .all()
         )

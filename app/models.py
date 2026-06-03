@@ -338,8 +338,9 @@ class Trip(Base):
                                 nullable=False)
     origin             = Column(String(150), nullable=False)
     destination        = Column(String(150), nullable=False)
-    departure_datetime = Column(DateTime,    nullable=False)
-    seats_total        = Column(SmallInteger, nullable=False, default=3)
+    departure_datetime  = Column(DateTime, nullable=False)
+    estimated_arrival   = Column(DateTime, nullable=True)   # departure + drive time + 1 h buffer; auto-complete trigger
+    seats_total         = Column(SmallInteger, nullable=False, default=3)
     seats_available    = Column(SmallInteger, nullable=False, default=3)
     # Price in ISK (integer to avoid float drift)
     price_per_seat     = Column(Integer, nullable=False)

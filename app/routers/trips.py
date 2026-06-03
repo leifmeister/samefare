@@ -745,11 +745,25 @@ def create_trip(
                 "This cap ensures passengers only cover their share of trip costs."
             )}, status_code=400)
 
+    # Estimated arrival = departure + (distance ÷ 80 km/h) + 1 h buffer.
+    # Used by auto-complete so long routes aren't marked done too early.
+    # Falls back to departure + 4 h if no route distance is available.
+    _avg_speed_kmh = 80
+    _buffer_h      = 1
+    if estimate.distance_km:
+        _drive_minutes   = (estimate.distance_km / _avg_speed_kmh) * 60
+        estimated_arrival_dt = departure_dt + timedelta(
+            minutes=_drive_minutes + _buffer_h * 60
+        )
+    else:
+        estimated_arrival_dt = departure_dt + timedelta(hours=4 + _buffer_h)
+
     trip = models.Trip(
         driver_id=current_user.id,
         origin=origin.strip(),
         destination=destination.strip(),
         departure_datetime=departure_dt,
+        estimated_arrival=estimated_arrival_dt,
         seats_total=seats_total,
         seats_available=seats_total,
         price_per_seat=price_per_seat,
@@ -1008,6 +1022,9 @@ def update_trip(
     trip.origin             = origin.strip()
     trip.destination        = destination.strip()
     trip.departure_datetime = departure_dt
+    # Recompute estimated_arrival whenever departure or route changes.
+    _edit_drive_min = (estimate.distance_km / 80 * 60) if estimate.distance_km else 240
+    trip.estimated_arrival  = departure_dt + timedelta(minutes=_edit_drive_min + 60)
     trip.seats_available    = recompute_seats_available(
         _graph_edit, seats_total, _active_edit, trip.origin, trip.destination
     )
