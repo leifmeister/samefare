@@ -201,8 +201,9 @@ class User(Base):
     # Others set up a Stripe Connect account and receive payouts in their local currency
     # (with FX fees applied by Stripe — their choice, disclosed at onboarding).
     payout_method      = Column(Enum(PayoutMethod), nullable=True)
-    blikk_account_iban = Column(String(34), nullable=True)   # e.g. IS14 0159 2600 7654 5510 7303 (IBAN)
-    stripe_account_id  = Column(String(255), nullable=True)  # Stripe Connect acct_xxx ID
+    kennitala          = Column(String(20),  nullable=True)   # Icelandic SSN (kennitala) — required for Blikk payouts
+    blikk_account_iban = Column(String(34),  nullable=True)   # e.g. IS14 0159 2600 7654 5510 7303
+    stripe_account_id  = Column(String(255), nullable=True)   # Stripe Connect acct_xxx ID
 
     # Identity & licence verification
     id_verification          = Column(Enum(VerificationStatus), nullable=False,

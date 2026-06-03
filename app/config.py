@@ -46,9 +46,12 @@ class Settings(BaseSettings):
     # blikk_platform_phone  — Samefare's own Blikk phone number (receives service fees)
     # blikk_payments        — accept Blikk as a passenger payment method (default off;
     #                         Blikk is used for driver payouts regardless of this flag)
-    blikk_api_key:        str  = Field(default="", alias="BLIKK_API_KEY")
-    blikk_platform_phone: str  = Field(default="+3546257175", alias="BLIKK_PLATFORM_PHONE")
-    blikk_payments:       bool = Field(default=False, alias="BLIKK_PAYMENTS")
+    blikk_api_key:           str  = Field(default="", alias="BLIKK_API_KEY")
+    blikk_platform_phone:    str  = Field(default="+3546257175", alias="BLIKK_PLATFORM_PHONE")
+    blikk_payments:          bool = Field(default=False, alias="BLIKK_PAYMENTS")
+    # SameFare's company kennitala — used as scaUserSsn in Payment Channel payouts.
+    # Confirm with Blikk whether this should be the company or driver kennitala.
+    blikk_company_kennitala: str  = Field(default="", alias="BLIKK_COMPANY_KENNITALA")
 
     # Didit KYC/AML (https://didit.me)
     # didit_api_key             — from Business Console → API & Webhooks

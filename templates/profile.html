@@ -236,6 +236,50 @@
 
       </details>
 
+      <!-- Payout details -->
+      <details class="details-card" {% if request.query_params.get('payout_saved') or payout_error %}open{% endif %}>
+        <summary class="details-card__summary">
+          💳 Payout details
+          {% if current_user.kennitala and current_user.blikk_account_iban %}
+            <span class="verify-chip verify-chip--approved" style="margin-left:.5rem;">Set up</span>
+          {% else %}
+            <span class="verify-chip verify-chip--pending" style="margin-left:.5rem;">Required to offer rides</span>
+          {% endif %}
+        </summary>
+
+        {% if request.query_params.get('payout_saved') %}
+        <div class="alert alert--success" role="alert" style="margin-bottom:1rem;">Payout details saved.</div>
+        {% endif %}
+        {% if payout_error %}
+        <div class="alert alert--error" role="alert" style="margin-bottom:1rem;">{{ payout_error }}</div>
+        {% endif %}
+
+        <p class="field-hint" style="margin-bottom:1.25rem;">
+          Your kennitala and Icelandic IBAN are required so you can receive payments after completing a ride via Blikk.
+        </p>
+
+        <form method="post" action="/profile/payout" class="details-card__form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="kennitala" class="label">Kennitala <span class="required">*</span></label>
+              <input id="kennitala" name="kennitala" type="text" class="input"
+                     placeholder="1234567890"
+                     value="{{ current_user.kennitala or '' }}"
+                     maxlength="10" inputmode="numeric" />
+              <p class="field-hint">10-digit Icelandic SSN, no spaces or dashes.</p>
+            </div>
+            <div class="form-group">
+              <label for="blikk_iban" class="label">Icelandic IBAN <span class="required">*</span></label>
+              <input id="blikk_iban" name="blikk_iban" type="text" class="input"
+                     placeholder="IS14 0159 2600 7654 5510 7303 90"
+                     value="{{ current_user.blikk_account_iban or '' }}" />
+              <p class="field-hint">26-character IBAN starting with IS. Found in your online banking.</p>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">Save payout details</button>
+        </form>
+      </details>
+
       <!-- Change password -->
       <div class="details-card" style="display:flex; align-items:center; justify-content:space-between; gap:1rem;">
         <div>

@@ -93,6 +93,7 @@ _MIGRATIONS = [
     "ALTER TYPE bookingstatus ADD VALUE IF NOT EXISTS 'card_saved'",
 
     # ── trips ─────────────────────────────────────────────────────────────────
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS kennitala          VARCHAR(20)",
     "ALTER TABLE trips ADD COLUMN IF NOT EXISTS driver_no_show      BOOLEAN NOT NULL DEFAULT FALSE",
     "ALTER TABLE trips ADD COLUMN IF NOT EXISTS reminder_sent       BOOLEAN NOT NULL DEFAULT FALSE",
     "ALTER TABLE trips ADD COLUMN IF NOT EXISTS estimated_arrival   TIMESTAMP",

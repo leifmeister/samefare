@@ -297,6 +297,47 @@ def edit_profile(
     return RedirectResponse("/profile", status_code=303)
 
 
+@router.post("/profile/payout", response_class=HTMLResponse)
+def save_payout_details(
+    request:      Request,
+    ctx:          dict        = Depends(get_template_context),
+    current_user: models.User = Depends(get_current_user),
+    db:           Session     = Depends(get_db),
+    kennitala:    str         = Form(""),
+    blikk_iban:   str         = Form(""),
+):
+    """Save driver payout details — kennitala and Icelandic IBAN."""
+    from app.routers.users import profile_completion
+
+    def _err(msg: str):
+        completion = profile_completion(current_user)
+        return templates.TemplateResponse("profile.html", {
+            **ctx, "completion": completion, "payout_error": msg,
+        }, status_code=400)
+
+    # Validate kennitala — 10 digits, no spaces/dashes
+    kt = kennitala.strip().replace("-", "").replace(" ", "")
+    if kt and (not kt.isdigit() or len(kt) != 10):
+        return _err("Kennitala must be exactly 10 digits (e.g. 1234567890).")
+
+    # Validate IBAN — must start with IS, 26 chars, alphanumeric
+    iban = blikk_iban.strip().upper().replace(" ", "")
+    if iban and (not iban.startswith("IS") or len(iban) != 26 or not iban.isalnum()):
+        return _err("IBAN must be a valid Icelandic IBAN (IS + 24 digits, e.g. IS140159260076545510730390).")
+
+    current_user.kennitala          = kt   or None
+    current_user.blikk_account_iban = iban or None
+
+    # Auto-set payout method once both are present
+    if kt and iban:
+        current_user.payout_method = models.PayoutMethod.blikk
+    elif not iban:
+        current_user.payout_method = None
+
+    db.commit()
+    return RedirectResponse("/profile?payout_saved=1", status_code=303)
+
+
 @router.post("/profile/change-password", response_class=HTMLResponse)
 def change_password(
     request:              Request,

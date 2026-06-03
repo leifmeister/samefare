@@ -394,17 +394,52 @@ class PayoutProviderError(Exception):
 
 def _send_blikk_payout(batch: DriverPayout, driver: models.User) -> str:
     """
-    Submit an ISK bank transfer via Blikk to driver.blikk_account_iban.
-    Returns the Blikk transaction reference ID on success.
+    Submit an A2A transfer via the Blikk Payment Channel API.
+    Platform's bank account is pre-configured in the channel; driver identified
+    by kennitala + IBAN.
+
+    Returns the Blikk payment ID on success.
     Raises PayoutProviderError on failure.
 
-    TODO: implement once Blikk API credentials and endpoint docs are available.
-    Blikk reference: https://blikk.is
+    NOTE: scaUserSsn — confirm with Blikk whether this should be SameFare's
+    company kennitala (static config) or the driver's kennitala. Currently uses
+    the driver's kennitala. Update BLIKK_COMPANY_KENNITALA env var once confirmed.
     """
-    raise NotImplementedError(
-        "Blikk payout not yet implemented. "
-        "Wire up Blikk API credentials and replace this stub."
-    )
+    from app import blikk as blikk_client
+    from app.blikk import BlikkError
+    from app.config import get_settings
+
+    s = get_settings()
+
+    if not driver.kennitala:
+        raise PayoutProviderError(
+            f"Driver {driver.id} has no kennitala — cannot send Blikk payout."
+        )
+    if not driver.blikk_account_iban:
+        raise PayoutProviderError(
+            f"Driver {driver.id} has no IBAN — cannot send Blikk payout."
+        )
+
+    # scaUserSsn: use platform kennitala if configured, fall back to driver's.
+    sca_ssn = getattr(s, "blikk_company_kennitala", None) or driver.kennitala
+
+    try:
+        result = blikk_client.create_channel_payout(
+            amount        = batch.amount,
+            creditor_ssn  = driver.kennitala,
+            creditor_name = driver.full_name,
+            creditor_iban = driver.blikk_account_iban,
+            sca_user_ssn  = sca_ssn,
+            reference     = f"SameFare payout batch {batch.id}",
+        )
+    except BlikkError as exc:
+        raise PayoutProviderError(f"Blikk channel payout failed: {exc}") from exc
+
+    payment_id = result.get("id", "")
+    if not payment_id:
+        raise PayoutProviderError("Blikk returned no payment ID.")
+
+    return payment_id
 
 
 def _send_stripe_connect_payout(batch: DriverPayout, driver: models.User) -> str:

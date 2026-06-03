@@ -1,32 +1,30 @@
 """
-Blikk P2P bank-transfer client.
+Blikk client — P2P payments and Payment Channel payouts.
 
-Base URL  : https://api.blikk.tech/p2papi
-Auth      : Api-Key header  (set via BLIKK_API_KEY env var)
-Currency  : ISK (all amounts are integers, in full ISK)
+━━ P2P API  (https://api.blikk.tech/p2papi) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Used for passenger ↔ platform money flows where both parties are Blikk users.
 
-API flow (verified against openapi.json)
------------------------------------------
-1. POST /p2p  — debtorPhoneNumber, creditorPhoneNumber, amount, partnerRedirectUrl
-               → returns {id}
-2. GET  /payment/{id} — fetch full payment object
-               → includes redirectUri (send passenger here to approve in Blikk app)
-3. GET  /payment/{id} again on return → check status
+API flow:
+  1. POST /p2p  — debtorPhoneNumber, creditorPhoneNumber, amount, partnerRedirectUrl
+  2. GET  /payment/{id} — fetch redirect URL for passenger approval
+  3. GET  /payment/{id} on return — check status
 
-POST /payment/init/{id} is for the /p2p/creditor flow (creditor-only creation);
-we don't use that flow — both phones are always known upfront.
+P2P flows:
+  Flow 1 – Service fee (passenger → platform)   create_fee_payment()
+  Flow 2 – Fare (passenger → driver, deferred)  create_fare_payment()
+  Flow 3 – Refund fee (platform → passenger)    refund_fee()
 
-Three flows
------------
-Flow 1 – Service fee (passenger → Samefare platform)
-    create_fee_payment() at booking time → redirect passenger to redirectUri.
+━━ Payment Channel API  (https://api.blikk.tech/paymentchannel) ━━━━━━━━━━━━━
+Used for platform → driver payouts (Account-to-Account).
+Platform's bank account is pre-configured in the Blikk payment channel.
+Driver identified by kennitala + IBAN.
 
-Flow 2 – Fare (passenger → driver, at ride time)
-    Driver clicks "Request payment" → create_fare_payment().
-    Passenger follows redirectUri to approve in Blikk app.
+API flow:
+  1. POST /payment — creditor.ssn, creditor.name, creditor.iban, amount, currency
+  2. GET  /payment/{id} — poll until SUCCESS / CANCELLED / REJECTED / ERROR
 
-Flow 3 – Refund fee (Samefare platform → passenger)
-    refund_fee() when driver rejects or cancels after fee collected.
+Channel flows:
+  Flow 4 – Driver payout (platform → driver)    create_channel_payout()
 """
 
 from __future__ import annotations
@@ -40,7 +38,11 @@ from app.config import get_settings
 
 log = logging.getLogger(__name__)
 
-_BASE = "https://api.blikk.tech/p2papi"
+_BASE          = "https://api.blikk.tech/p2papi"
+_CHANNEL_BASE  = "https://api.blikk.tech/paymentchannel"
+
+# Terminal statuses for the Payment Channel API
+_CHANNEL_TERMINAL = {"SUCCESS", "CANCELLED", "REJECTED", "ERROR"}
 
 
 class BlikkError(Exception):
@@ -55,6 +57,16 @@ def _client() -> httpx.Client:
     settings = get_settings()
     return httpx.Client(
         base_url=_BASE,
+        headers={"Api-Key": settings.blikk_api_key, "Content-Type": "application/json"},
+        timeout=15.0,
+    )
+
+
+def _channel_client() -> httpx.Client:
+    """HTTP client for the Payment Channel API."""
+    settings = get_settings()
+    return httpx.Client(
+        base_url=_CHANNEL_BASE,
         headers={"Api-Key": settings.blikk_api_key, "Content-Type": "application/json"},
         timeout=15.0,
     )
@@ -254,3 +266,87 @@ def refund_fee(booking) -> str:
         redirect_url   = return_url,
     )
     return p2p["id"]
+
+
+# ── Payment Channel — driver payouts (platform → driver) ─────────────────────
+
+def create_channel_payout(
+    amount:          int,
+    creditor_ssn:    str,
+    creditor_name:   str,
+    creditor_iban:   str,
+    sca_user_ssn:    str,
+    reference:       str | None = None,
+) -> dict:
+    """
+    POST /payment on the Payment Channel API.
+    Initiates an A2A transfer from the platform's pre-configured bank account
+    to the driver's Icelandic IBAN.
+
+    Args:
+        amount:        Transfer amount in ISK (integer).
+        creditor_ssn:  Driver's kennitala (10 digits).
+        creditor_name: Driver's full name.
+        creditor_iban: Driver's Icelandic IBAN (IS + 24 chars).
+        sca_user_ssn:  Kennitala of the entity authorising the payment.
+                       Confirm with Blikk whether this is SameFare's company
+                       kennitala or the driver's kennitala.
+        reference:     Optional free-text reference (e.g. "Booking #42").
+
+    Returns:
+        Full payment object dict with at least {"id": ..., "status": ...}.
+    Raises:
+        BlikkError on API or validation errors.
+    """
+    payload: dict = {
+        "amount":     amount,
+        "currency":   "ISK",
+        "scaUserSsn": sca_user_ssn,
+        "creditor": {
+            "ssn":  creditor_ssn,
+            "name": creditor_name,
+            "iban": creditor_iban.upper().replace(" ", ""),
+        },
+    }
+    if reference:
+        payload["reference"] = reference
+
+    with _channel_client() as c:
+        resp = c.post("/payment", json=payload)
+    if resp.status_code not in (200, 201):
+        body = resp.text[:300]
+        log.error("Blikk channel payout failed %s: %s", resp.status_code, body)
+        raise BlikkError(
+            f"Channel payout failed ({resp.status_code})",
+            status_code=resp.status_code,
+            body=body,
+        )
+    data = resp.json()
+    log.info(
+        "Blikk channel payout created: id=%s status=%s amount=%s ISK → %s",
+        data.get("id"), data.get("status"), amount, creditor_name,
+    )
+    return data
+
+
+def get_channel_payment(payment_id: str) -> dict:
+    """
+    GET /payment/{paymentId} — poll until terminal status.
+    Returns the full payment object.
+    Raises BlikkError if the payment is not found or the call fails.
+    """
+    with _channel_client() as c:
+        resp = c.get(f"/payment/{payment_id}")
+    if resp.status_code == 404:
+        raise BlikkError(f"Channel payment {payment_id} not found", status_code=404)
+    if resp.status_code != 200:
+        raise BlikkError(
+            f"get_channel_payment failed ({resp.status_code})",
+            status_code=resp.status_code,
+        )
+    return resp.json()
+
+
+def channel_payment_is_terminal(payment: dict) -> bool:
+    """Return True if the payment has reached a terminal state."""
+    return payment.get("status", "") in _CHANNEL_TERMINAL

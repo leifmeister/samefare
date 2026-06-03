@@ -736,23 +736,21 @@ def create_trip(
                 "If you think this route should be supported, let us know."
             )}, status_code=400)
 
-    # Confirm the driver has a Blikk account so payouts can reach them.
-    # Only checked when Blikk is configured (api key present) and not in beta.
-    if settings.blikk_api_key and not settings.beta_mode:
-        from app import blikk as blikk_client
-        if not current_user.phone_verified:
+    # Require payout details before the driver can post — without these
+    # we cannot send them money after the trip completes.
+    # Skipped in beta mode so testing is unaffected.
+    if not settings.beta_mode:
+        if not current_user.kennitala:
             return templates.TemplateResponse("trips/create.html",
                 {**err_ctx, "error": (
-                    "You need a verified phone number to offer rides — "
-                    "please verify your phone in your profile first."
+                    "You need to add your kennitala before offering rides. "
+                    "Go to your profile → Payout details."
                 )}, status_code=400)
-        blikk_user = blikk_client.get_user(current_user.phone)
-        if blikk_user is None:
+        if not current_user.blikk_account_iban:
             return templates.TemplateResponse("trips/create.html",
                 {**err_ctx, "error": (
-                    "You need a Blikk account to receive payments as a driver. "
-                    "Download the Blikk app, register with your phone number, "
-                    "then come back and post your ride."
+                    "You need to add your Icelandic IBAN before offering rides. "
+                    "Go to your profile → Payout details."
                 )}, status_code=400)
 
     price_snapshot_json = estimate.to_json()
