@@ -63,11 +63,16 @@ def _client() -> httpx.Client:
 
 
 def _channel_client() -> httpx.Client:
-    """HTTP client for the Payment Channel API."""
+    """HTTP client for the Payment Channel API (separate key from P2P)."""
     settings = get_settings()
+    key = settings.blikk_channel_api_key
+    if not key:
+        raise BlikkError(
+            "BLIKK_CHANNEL_API_KEY is not set — required for driver payouts."
+        )
     return httpx.Client(
         base_url=_CHANNEL_BASE,
-        headers={"Api-Key": settings.blikk_api_key, "Content-Type": "application/json"},
+        headers={"Api-Key": key, "Content-Type": "application/json"},
         timeout=15.0,
     )
 

@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     blikk_api_key:           str  = Field(default="", alias="BLIKK_API_KEY")
     blikk_platform_phone:    str  = Field(default="+3546257175", alias="BLIKK_PLATFORM_PHONE")
     blikk_payments:          bool = Field(default=False, alias="BLIKK_PAYMENTS")
+    # Payment Channel API key — separate from P2P key; tied to SameFare's bank
+    # account in Blikk's system. Obtain from Blikk when setting up the channel.
+    blikk_channel_api_key:   str  = Field(default="", alias="BLIKK_CHANNEL_API_KEY")
     # SameFare's company kennitala — used as scaUserSsn in Payment Channel payouts.
     # Confirm with Blikk whether this should be the company or driver kennitala.
     blikk_company_kennitala: str  = Field(default="", alias="BLIKK_COMPANY_KENNITALA")
