@@ -20,8 +20,6 @@ from app.utils import (
     build_route_graph, resolve_segment,
     seats_for_segment, recompute_seats_available,
 )
-from app import blikk as blikk_client
-from app.blikk import BlikkError
 
 settings = get_settings()
 templates = Jinja2Templates(directory="templates")
@@ -217,11 +215,6 @@ def create_booking(
     ).first()
     if existing:
         if existing.status == models.BookingStatus.awaiting_payment:
-            # Route to Blikk or Rapyd depending on the booking's payment method
-            if existing.payment_method == models.TripPaymentMethod.blikk:
-                return RedirectResponse(
-                    f"/bookings/{existing.id}/blikk-pay", status_code=303
-                )
             return RedirectResponse(
                 f"/payments/checkout/{existing.id}", status_code=303
             )
@@ -312,20 +305,6 @@ def create_booking(
         initial_status   = models.BookingStatus.pending
         payment_deadline = None
 
-    try:
-        payment_method_val = models.TripPaymentMethod(payment_method)
-    except ValueError:
-        payment_method_val = models.TripPaymentMethod.card
-
-    # Blikk requires a verified phone — check before committing the booking
-    # so we don't hold a seat the passenger can't pay for.
-    if payment_method_val == models.TripPaymentMethod.blikk and not current_user.phone_verified:
-        return templates.TemplateResponse("bookings/create.html", {
-            **err_ctx,
-            "error": "You need a verified phone number to pay with Blikk. "
-                     "Please verify your phone in your profile first.",
-        }, status_code=400)
-
     booking = models.Booking(
         trip_id=trip_id,
         passenger_id=current_user.id,
@@ -335,7 +314,7 @@ def create_booking(
         message=message or None,
         pickup_city=pickup_city,
         dropoff_city=dropoff_city,
-        payment_method=payment_method_val,
+        payment_method=models.TripPaymentMethod.card,
         status=initial_status,
         payment_deadline=payment_deadline,
     )
@@ -346,38 +325,6 @@ def create_booking(
     db.refresh(booking)
 
     if trip.instant_book:
-        # ── Blikk payment method ───────────────────────────────────────────────
-        if booking.payment_method == models.TripPaymentMethod.blikk:
-            # Create the service-fee P2P and redirect passenger to Blikk
-            try:
-                db.refresh(booking)  # load passenger relationship
-                payment_id, redirect_url = blikk_client.create_fee_payment(
-                    booking, settings.base_url
-                )
-                payment = models.Payment(
-                    booking_id      = booking.id,
-                    passenger_total = booking.total_price,
-                    driver_payout   = booking.subtotal,
-                    platform_fee    = booking.service_fee,
-                    status          = models.PaymentStatus.blikk_fee_pending,
-                    blikk_fee_payment_id = payment_id,
-                )
-                db.add(payment)
-                db.commit()
-            except BlikkError as exc:
-                import logging as _log
-                _log.getLogger(__name__).error(
-                    "Blikk create_fee_payment failed for booking %d: %s", booking.id, exc
-                )
-                # Leave booking in awaiting_payment; send to Blikk-pay page
-                return RedirectResponse(f"/bookings/{booking.id}/blikk-pay", status_code=303)
-
-            if redirect_url:
-                return RedirectResponse(redirect_url, status_code=303)
-            # Blikk didn't return a URL — send to our pending page
-            return RedirectResponse(f"/bookings/{booking.id}/blikk-pay", status_code=303)
-
-        # ── Rapyd card payment (default) ───────────────────────────────────────
         return RedirectResponse(f"/payments/checkout/{booking.id}", status_code=303)
     else:
         # Notify driver of the pending request
@@ -391,19 +338,13 @@ def _refund_preview(booking) -> dict:
     Returns a dict with 'amount', 'label', and 'policy'.
     Does NOT modify anything — safe to call from a GET handler.
 
-    Rapyd policy:
+    Card (Rapyd) policy:
     • Before pre-auth (card_saved / pending / no payment): no charge.
-    • After pre-auth: no refund, full amount captured immediately.
-
-    Blikk policy:
-    • Fee not yet paid: no charge.
-    • Fee paid + within 1 h of booking + departure >25 h away: service fee refunded.
-    • All other cases: service fee forfeited (kept by platform).
+    • After pre-auth: no refund — full amount captured immediately.
     """
     if not booking.payment:
         return {"amount": 0, "label": "No charge — booking not yet paid", "policy": "free"}
 
-    # Card tokenised for future MIT but pre-auth not yet placed → no charge
     if booking.payment.status in (
         models.PaymentStatus.pending,
         models.PaymentStatus.failed,
@@ -414,25 +355,6 @@ def _refund_preview(booking) -> dict:
             "policy": "card_not_charged",
         }
 
-    # Blikk: grace-period refund check
-    if booking.payment_method == models.TripPaymentMethod.blikk:
-        if booking.payment.status == models.PaymentStatus.blikk_fee_paid:
-            now            = datetime.utcnow()
-            within_grace   = (now - booking.created_at) <= timedelta(hours=1)
-            far_enough_out = booking.trip.departure_datetime > (now + timedelta(hours=25))
-            if within_grace and far_enough_out:
-                return {
-                    "amount": booking.service_fee,
-                    "label":  "Service fee refunded (within 1-hour grace period)",
-                    "policy": "blikk_grace_refund",
-                }
-        return {
-            "amount": 0,
-            "label":  "No refund — service fee is non-refundable",
-            "policy": "blikk_fee_forfeited",
-        }
-
-    # Rapyd: pre-auth is in place → no refund
     return {
         "amount": 0,
         "label":  "No refund — full amount will be captured",
@@ -520,35 +442,12 @@ def cancel_booking(
 
     if booking.payment:
         if original_status == models.BookingStatus.card_saved or not pre_auth_placed:
-            # Card was tokenised for a future MIT but the pre-auth has not fired yet.
-            # No charge has been made — mark payment failed so the MIT cron skips it.
+            # Card tokenised but pre-auth not yet fired — no charge, mark failed.
             booking.payment.status = models.PaymentStatus.failed
-        elif booking.payment_method == models.TripPaymentMethod.blikk:
-            # Blikk bookings: service fee was already collected from the passenger.
-            # Grace-period policy: refund only if BOTH conditions hold:
-            #   1. Cancelled within 1 hour of booking creation
-            #   2. Departure is still more than 25 hours away
-            # Any other cancellation forfeits the service fee — it is kept by the platform.
-            now = datetime.utcnow()
-            within_grace   = (now - booking.created_at) <= timedelta(hours=1)
-            far_enough_out = booking.trip.departure_datetime > (now + timedelta(hours=25))
-            if within_grace and far_enough_out and \
-               booking.payment.status == models.PaymentStatus.blikk_fee_paid:
-                try:
-                    blikk_client.refund_fee(booking)
-                    booking.payment.status = models.PaymentStatus.blikk_refunded
-                except BlikkError as exc:
-                    log.error(
-                        "Blikk refund failed for booking %d on passenger cancel: %s",
-                        booking.id, exc,
-                    )
-                    # Don't block the cancellation — admin will need to issue manually.
-            # All other cases: fee forfeited, no status change needed (already blikk_fee_paid).
         else:
-            # Pre-auth is in place: the seat is reserved.
-            # Trigger immediate capture by moving capture_at to now.
-            # The _run_capture_payments cron (runs every 10 min) will pick this up.
-            # No refund is issued — the full amount is forfeited per the cancellation policy.
+            # Pre-auth is in place: trigger immediate capture.
+            # _run_capture_payments (every 10 min) picks this up.
+            # No refund — full amount forfeited per cancellation policy.
             booking.payment.capture_at = datetime.utcnow()
 
     db.commit()
@@ -665,25 +564,6 @@ def report_driver_no_show(
     # Flag the trip for accountability tracking and auto-rating
     booking.trip.driver_no_show = True
     booking.status = models.BookingStatus.cancelled
-
-    # Refund the service fee based on payment method.
-    # Blikk: reverse P2P (platform → passenger) — driver never collected the
-    #   fare so only the service fee needs refunding.
-    # Rapyd: no platform-funded refund — under the Rapyd model the driver is
-    #   the sub-merchant and receives their payout directly at capture. The
-    #   passenger's remedy is a chargeback filed with their card issuer.
-    #   SameFare's role: suspend the driver and support the dispute with evidence.
-    if (booking.payment_method == models.TripPaymentMethod.blikk
-            and booking.payment
-            and booking.payment.status == models.PaymentStatus.blikk_fee_paid):
-        try:
-            blikk_client.refund_fee(booking)
-            booking.payment.status = models.PaymentStatus.blikk_refunded
-        except BlikkError as exc:
-            log.error(
-                "Blikk refund failed for booking %d on driver no-show: %s",
-                booking.id, exc,
-            )
 
     # Issue an immediate 1-star auto-review for the driver (no grace period for no-shows)
     existing_review = (

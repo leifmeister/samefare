@@ -19,7 +19,7 @@ from app.database import Base, engine, SessionLocal
 from app.dependencies import get_current_user_optional
 from app.i18n import get_translations, detect_lang
 from app import models  # noqa: F401 — register models before create_all
-from app.routers import alerts, auth, bookings, blikk as blikk_router, language, messages, newsletter, payments, phone, reports, reviews, trips, users, verification, webhooks
+from app.routers import alerts, auth, bookings, language, messages, newsletter, payments, phone, reports, reviews, trips, users, verification, webhooks
 from app.tasks import (
     auto_complete_loop,
     _run_auto_complete, _run_auto_ratings, _run_trip_reminders,
@@ -808,7 +808,6 @@ app.include_router(auth.router)
 app.include_router(alerts.router)
 app.include_router(trips.router)
 app.include_router(bookings.router)
-app.include_router(blikk_router.router)
 app.include_router(payments.router)
 app.include_router(users.router)
 app.include_router(language.router)

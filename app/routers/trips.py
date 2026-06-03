@@ -1353,19 +1353,6 @@ def cancel_trip(
             if was_card_saved:
                 # Card tokenized for MIT but never charged — nothing to refund.
                 b.payment.status = models.PaymentStatus.failed
-            elif b.payment_method == models.TripPaymentMethod.blikk:
-                # Blikk booking: refund service fee if it was already collected.
-                if b.payment.status == models.PaymentStatus.blikk_fee_paid:
-                    try:
-                        from app import blikk as blikk_client
-                        blikk_client.refund_fee(b)
-                        b.payment.status = models.PaymentStatus.blikk_refunded
-                        log.info("Blikk refund issued for booking %d on trip cancellation", b.id)
-                    except Exception as exc:
-                        log.error("Blikk refund failed for booking %d: %s", b.id, exc)
-                        # Don't block the cancellation — admin will need to issue manually
-                else:
-                    b.payment.status = models.PaymentStatus.failed
             else:
                 # Full refund for driver-initiated cancellations (including service fee).
                 # _issue_rapyd_refund owns refund_amount and status — do not pre-set them.
