@@ -130,53 +130,35 @@
           </div>
           <div class="form-group">
             <label for="price_per_seat" class="label">Price per seat (ISK) <span class="required">*</span></label>
-            <input id="price_per_seat" name="price_per_seat" type="number" class="input" required
-                   min="1" value="{{ vals.price_per_seat or '' }}"
-                   x-ref="priceInput"
-                   :max="capPerSeat || ''"
-                   placeholder="e.g. 3500" />
-            <p class="input-hint" x-show="!distanceKm">
-              Cover your fuel costs — not a profit. Typical range: 800–6,000 ISK.
-            </p>
-            <p class="input-hint" x-show="distanceKm" x-cloak>
-              Maximum <strong x-text="fmt(capPerSeat) + ' ISK'"></strong> for this route
-              — you can set a lower price but not higher.
-            </p>
-          </div>
-        </div>
 
-        <!-- Price breakdown — shown only when route is recognised -->
-        <div class="price-cap-card" x-show="distanceKm" x-cloak>
-          <p class="price-cap-card__title">
-            Cost breakdown
-            <span class="price-cap-card__route" x-text="fromCity + ' → ' + toCity + ' · ' + distanceKm + ' km'"></span>
-          </p>
-          <div class="price-cap-card__rows">
-            <div class="price-cap-card__row">
-              <span>Fuel</span>
-              <span x-text="fmtPerKm(fuelCostPerKm) + ' ISK/km → ' + fmtTotal(fuelCostPerKm) + ' ISK'"></span>
+            <!-- Stepper control -->
+            <div class="price-stepper">
+              <button type="button" class="price-stepper__btn" @click="stepPrice(-250)"
+                      aria-label="Decrease price by 250 ISK">−</button>
+              <input id="price_per_seat" name="price_per_seat" type="number"
+                     class="price-stepper__input" required min="1"
+                     x-model.number="priceVal"
+                     :max="capPerSeat || ''" />
+              <button type="button" class="price-stepper__btn" @click="stepPrice(250)"
+                      aria-label="Increase price by 250 ISK">+</button>
             </div>
-            <div class="price-cap-card__row">
-              <span>Kílómetragjald</span>
-              <span x-text="fmtPerKm(policy.kilometragjald) + ' ISK/km → ' + fmtTotal(policy.kilometragjald) + ' ISK'"></span>
+
+            <!-- Suggested range badge — only when route is known -->
+            <div x-show="distanceKm && capPerSeat" x-cloak style="margin-top:.625rem; display:flex; align-items:baseline; gap:.5rem; flex-wrap:wrap;">
+              <span class="price-suggestion__badge">
+                Suggested: <span x-text="fmt(suggestedLow) + '–' + fmt(capPerSeat) + ' ISK'"></span>
+              </span>
+              <span class="input-hint" style="margin:0;">
+                Your fair share of trip costs.
+                <a href="/pricing/how-it-works" target="_blank">How is this calculated?</a>
+              </span>
             </div>
-            <div class="price-cap-card__row">
-              <span>Wear &amp; tear</span>
-              <span x-text="fmtPerKm(policy.wear_tear) + ' ISK/km → ' + fmtTotal(policy.wear_tear) + ' ISK'"></span>
-            </div>
-            <div class="price-cap-card__row">
-              <span>Depreciation (partial)</span>
-              <span x-text="fmtPerKm(policy.real_depr * policy.depr_factor) + ' ISK/km → ' + fmtTotal(policy.real_depr * policy.depr_factor) + ' ISK'"></span>
-            </div>
-            <div class="price-cap-card__row price-cap-card__row--cap">
-              <span>Each person's share (1 of <span x-text="seats + 1"></span>)</span>
-              <span x-text="fmt(capPerSeat) + ' ISK'"></span>
-            </div>
+
+            <!-- No route selected yet -->
+            <p class="input-hint" x-show="!distanceKm">
+              Cover your fuel costs — not a profit.
+            </p>
           </div>
-          <p class="price-cap-card__note">
-            Prices are capped so passengers only cover their share of actual trip costs.
-            <a href="/pricing/how-it-works" target="_blank">How is this calculated?</a>
-          </p>
         </div>
       </fieldset>
 
@@ -393,12 +375,14 @@
 <script>
 function tripPricing(routes, policy, fuelPrice, cities) {
   const vehicleClassMap = {sedan:'standard', suv:'suv', van:'van', electric:'standard', '4x4':'suv', camper:'van'};
+  const PRICE_STEP = 250;
   return {
     fromCity:    '{{ vals.origin | e }}',
     toCity:      '{{ vals.destination | e }}',
     seats:       {{ vals.seats_total | default(3) }},
     carType:     '{{ defaults.car_type | default("sedan") | e }}',
     fuelType:    '{{ vals.fuel_type or ("electric" if defaults.car_type == "electric" else "petrol") | e }}',
+    priceVal:    {{ vals.price_per_seat | default(0) }},
 
     oOpen:false, oShowAll:false, oCursor:-1,
     dOpen:false, dShowAll:false, dCursor:-1,
@@ -442,23 +426,31 @@ function tripPricing(routes, policy, fuelPrice, cities) {
       const raw = this.totalTripCost / (this.seats + 1);
       return Math.floor(raw / policy.rounding) * policy.rounding;
     },
+    get suggestedLow() {
+      if (!this.capPerSeat || !policy) return null;
+      const r = policy.rounding || PRICE_STEP;
+      return Math.max(Math.floor(this.capPerSeat * 0.7 / r) * r, r);
+    },
     fmt(v)      { return Math.round(v).toLocaleString('is-IS'); },
     fmtPerKm(v) { return v.toFixed(2); },
     fmtTotal(v) { return Math.round(this.distanceKm * v).toLocaleString('is-IS'); },
 
+    stepPrice(delta) {
+      const cap = this.capPerSeat || Infinity;
+      const cur = this.priceVal || 0;
+      const next = Math.round((cur + delta) / PRICE_STEP) * PRICE_STEP;
+      this.priceVal = Math.max(PRICE_STEP, Math.min(cap, next));
+    },
+
     init() {
-      
+      // Seed price from cap once route is first resolved
+      this.$watch('capPerSeat', cap => {
+        if (cap === null) return;
+        if (!this.priceVal || this.priceVal > cap) this.priceVal = cap;
+      });
       this.$watch('carType', (newVal, oldVal) => {
         if ((oldVal === 'electric') !== (newVal === 'electric'))
           this.fuelType = newVal === 'electric' ? 'electric' : 'petrol';
-      });
-      this.$watch('capPerSeat', cap => {
-        if (cap === null) return;
-        const el = this.$refs.priceInput;
-        if (!el) return;
-        const cur = parseInt(el.value) || 0;
-        if (!cur || cur > cap) el.value = cap;
-        el.max = cap;
       });
     }
   };
