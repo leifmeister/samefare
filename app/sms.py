@@ -38,8 +38,16 @@ def _send(to: str, body: str) -> tuple[bool, str]:
         return False, "No phone number provided."
 
     # Use alphanumeric sender ID when set (recipients see "Samefare" instead of
-    # a foreign phone number).  Falls back to the Twilio number if blank.
-    sender = s.twilio_sender_id.strip() if s.twilio_sender_id.strip() else s.twilio_from_number
+    # a foreign phone number).  Falls back to the Twilio phone number for:
+    #   • countries that don't support alphanumeric IDs (US/CA = +1)
+    #   • when TWILIO_SENDER_ID is blank
+    _alpha = s.twilio_sender_id.strip()
+    _no_alpha_prefixes = ("+1",)   # US and Canada reject alphanumeric sender IDs
+    sender = (
+        s.twilio_from_number
+        if not _alpha or to.startswith(_no_alpha_prefixes)
+        else _alpha
+    )
 
     credentials = b64encode(
         f"{s.twilio_account_sid}:{s.twilio_auth_token}".encode()
