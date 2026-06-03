@@ -23,9 +23,13 @@ class Settings(BaseSettings):
     base_url:       str = Field(default="https://samefare.com", alias="BASE_URL")
 
     # SMS via Twilio (https://twilio.com)
+    # TWILIO_SENDER_ID — alphanumeric sender name shown to recipient (max 11 chars,
+    # letters/digits, must start with a letter).  Falls back to TWILIO_FROM_NUMBER
+    # when blank.  Alphanumeric IDs are one-way only (recipients cannot reply).
     twilio_account_sid:  str = Field(default="", alias="TWILIO_ACCOUNT_SID")
     twilio_auth_token:   str = Field(default="", alias="TWILIO_AUTH_TOKEN")
     twilio_from_number:  str = Field(default="", alias="TWILIO_FROM_NUMBER")
+    twilio_sender_id:    str = Field(default="Samefare", alias="TWILIO_SENDER_ID")
 
     # Rapyd payment processing (https://rapyd.net)
     rapyd_access_key: str  = Field(default="", alias="RAPYD_ACCESS_KEY")

@@ -37,13 +37,17 @@ def _send(to: str, body: str) -> tuple[bool, str]:
         log.debug("No phone number — skipping SMS")
         return False, "No phone number provided."
 
+    # Use alphanumeric sender ID when set (recipients see "Samefare" instead of
+    # a foreign phone number).  Falls back to the Twilio number if blank.
+    sender = s.twilio_sender_id.strip() if s.twilio_sender_id.strip() else s.twilio_from_number
+
     credentials = b64encode(
         f"{s.twilio_account_sid}:{s.twilio_auth_token}".encode()
     ).decode()
 
     payload = urllib.parse.urlencode({
         "To":   to,
-        "From": s.twilio_from_number,
+        "From": sender,
         "Body": body,
     }).encode("utf-8")
 
