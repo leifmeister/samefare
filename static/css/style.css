@@ -1317,6 +1317,99 @@ button, input, select, textarea { font: inherit; }
   font-size: .85rem;
 }
 
+/* ── Booking step indicator ──────────────────────────────────── */
+.booking-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: var(--space-6);
+}
+.booking-steps__step {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .875rem;
+  color: var(--c-text-muted);
+}
+.booking-steps__step--active { color: var(--c-text); font-weight: 600; }
+.booking-steps__num {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .8125rem;
+  font-weight: 700;
+  background: var(--c-border-light);
+  color: var(--c-text-muted);
+  flex-shrink: 0;
+}
+.booking-steps__step--active .booking-steps__num {
+  background: var(--c-primary);
+  color: #fff;
+}
+.booking-steps__line {
+  flex: 1;
+  height: 2px;
+  background: var(--c-border-light);
+  margin: 0 .75rem;
+}
+
+/* ── Payment step ────────────────────────────────────────────── */
+.payment-step__title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: .25rem;
+}
+.payment-step__sub {
+  font-size: .9375rem;
+  color: var(--c-text-muted);
+  margin-bottom: var(--space-5);
+}
+.payment-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+.payment-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border: 2px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .15s, box-shadow .15s;
+  width: 100%;
+}
+.payment-option:hover { border-color: var(--c-primary); }
+.payment-option--selected {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 15%, transparent);
+  background: color-mix(in srgb, var(--c-primary) 4%, #fff);
+}
+.payment-option__icon { font-size: 1.75rem; flex-shrink: 0; line-height: 1; }
+.payment-option__body { flex: 1; }
+.payment-option__title { font-weight: 600; font-size: 1rem; margin: 0 0 .2rem; }
+.payment-option__desc  { font-size: .8125rem; color: var(--c-text-muted); margin: 0; }
+.payment-option__check { color: var(--c-primary); flex-shrink: 0; }
+
+/* ── Booking policy ack ──────────────────────────────────────── */
+.booking-ack {
+  display: flex;
+  align-items: flex-start;
+  gap: .625rem;
+  cursor: pointer;
+  font-size: .9rem;
+  line-height: 1.4;
+  margin-bottom: var(--space-5);
+}
+.booking-ack__check { margin-top: .2rem; flex-shrink: 0; }
+
 .booking-summary {
   background: var(--c-bg); border-radius: var(--r-md);
   padding: var(--space-5); border: 1px solid var(--c-border-light); margin-top: var(--space-5);
