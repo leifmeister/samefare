@@ -265,6 +265,22 @@
     </div>
     {% endif %}
 
+    {# ── Beta skip — only rendered when BETA_MODE=true and not yet fully approved ── #}
+    {% if beta_mode and not (id_ok and (lic_ok or not is_driver)) %}
+    <div style="margin-top:1.5rem; padding:1rem 1.25rem; background:#fffbeb; border:1px solid #fcd34d; border-radius:.5rem; display:flex; align-items:center; gap:1rem;">
+      <span style="font-size:1.25rem;">🧪</span>
+      <div style="flex:1;">
+        <p style="margin:0 0 .25rem; font-weight:600; font-size:.875rem;">Beta mode</p>
+        <p style="margin:0; font-size:.8125rem; color:#92400e;">Skip the full verification flow and auto-approve your account for testing.</p>
+      </div>
+      <form method="post" action="/verify/beta-skip?{{ request.query_string.decode() }}">
+        <button type="submit" class="btn" style="background:#d97706; color:#fff; white-space:nowrap; padding:.5rem 1rem; font-size:.875rem;">
+          Skip verification
+        </button>
+      </form>
+    </div>
+    {% endif %}
+
     <div class="policy-box" style="margin-top:2rem;">
       <p class="policy-box__title">{{ _t('verify_why_title') }}</p>
       <ul class="policy-box__list">

@@ -66,6 +66,7 @@ def verify_page(
         "error":         None,
         "success":       None,
         "didit_enabled": bool(s.didit_api_key),
+        "beta_mode":     s.beta_mode,
     })
 
 
@@ -93,6 +94,7 @@ def start_didit_verification(
             "error":         msg,
             "success":       None,
             "didit_enabled": bool(s.didit_api_key),
+            "beta_mode":     s.beta_mode,
         }, status_code=400)
 
     if not s.didit_api_key:
@@ -160,6 +162,42 @@ def start_didit_verification(
     return RedirectResponse(didit_url, status_code=303)
 
 
+# ── Beta bypass ───────────────────────────────────────────────────────────────
+
+@router.post("/verify/beta-skip")
+def beta_skip_verification(
+    request:      Request,
+    current_user: models.User = Depends(get_current_user),
+    db:           Session     = Depends(get_db),
+):
+    """
+    Instantly approve all verifications for the current user.
+    Only active when BETA_MODE=true — returns 403 in production.
+    """
+    s = get_settings()
+    if not s.beta_mode:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Not available outside beta mode.")
+
+    approved = models.VerificationStatus.approved
+    current_user.id_verification       = approved
+    current_user.id_doc_type           = current_user.id_doc_type or "license"
+    current_user.id_rejection_reason   = None
+    current_user.license_verification  = approved
+    current_user.license_rejection_reason = None
+    db.commit()
+
+    log.info("Beta skip: user %s verification auto-approved", current_user.id)
+
+    next_url = request.query_params.get("next", "")
+    trip_id  = request.query_params.get("trip", "")
+    if next_url == "driver":
+        return RedirectResponse("/trips/new", status_code=303)
+    if next_url == "book" and trip_id:
+        return RedirectResponse(f"/trips/{trip_id}", status_code=303)
+    return RedirectResponse("/verify", status_code=303)
+
+
 @router.get("/verify/didit/callback", response_class=HTMLResponse)
 def didit_callback(
     request:      Request,
@@ -180,6 +218,7 @@ def didit_callback(
         ),
         "error":         None,
         "didit_enabled": bool(s.didit_api_key),
+        "beta_mode":     s.beta_mode,
     })
 
 
@@ -207,9 +246,11 @@ def upload_identity(
     try:
         filename = _save_upload(document)
     except ValueError as e:
+        _s = get_settings()
         return templates.TemplateResponse("verification/index.html", {
             **ctx, "error": str(e), "success": None,
-            "didit_enabled": bool(get_settings().didit_api_key),
+            "didit_enabled": bool(_s.didit_api_key),
+            "beta_mode":     _s.beta_mode,
         }, status_code=400)
 
     is_licence = doc_type == "license"
@@ -243,6 +284,8 @@ def upload_identity(
 
     return templates.TemplateResponse("verification/index.html", {
         **ctx, "error": None, "success": success_msg,
+        "didit_enabled": bool(settings.didit_api_key),
+        "beta_mode":     settings.beta_mode,
     })
 
 
@@ -266,6 +309,8 @@ def upload_license(
     except ValueError as e:
         return templates.TemplateResponse("verification/index.html", {
             **ctx, "error": str(e), "success": None,
+            "didit_enabled": bool(settings.didit_api_key),
+            "beta_mode":     settings.beta_mode,
         }, status_code=400)
 
     current_user.license_doc_filename     = filename
@@ -279,6 +324,8 @@ def upload_license(
     db.commit()
     return templates.TemplateResponse("verification/index.html", {
         **ctx, "error": None, "success": success_msg,
+        "didit_enabled": bool(settings.didit_api_key),
+        "beta_mode":     settings.beta_mode,
     })
 
 
