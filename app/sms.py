@@ -37,16 +37,16 @@ def _send(to: str, body: str) -> tuple[bool, str]:
         log.debug("No phone number — skipping SMS")
         return False, "No phone number provided."
 
-    # Use alphanumeric sender ID when set (recipients see "Samefare" instead of
-    # a foreign phone number).  Falls back to the Twilio phone number for:
-    #   • countries that don't support alphanumeric IDs (US/CA = +1)
-    #   • when TWILIO_SENDER_ID is blank
+    # Use alphanumeric sender ID only for countries registered in Twilio.
+    # Falls back to the phone number for all others so messages are never
+    # silently dropped by an unregistered alphanumeric sender.
+    # Add country prefixes here as you register more countries in Twilio.
     _alpha = s.twilio_sender_id.strip()
-    _no_alpha_prefixes = ("+1",)   # US and Canada reject alphanumeric sender IDs
+    _alpha_prefixes = ("+354",)   # Iceland — registered in Twilio
     sender = (
-        s.twilio_from_number
-        if not _alpha or to.startswith(_no_alpha_prefixes)
-        else _alpha
+        _alpha
+        if _alpha and to.startswith(_alpha_prefixes)
+        else s.twilio_from_number
     )
 
     credentials = b64encode(
