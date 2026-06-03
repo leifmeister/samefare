@@ -117,13 +117,14 @@ def book_trip_page(
         if booking_available_seats < 1:
             return RedirectResponse(f"/trips/{trip_id}", status_code=303)
 
-    has_discount  = _newsletter_discount(db, current_user) is not None
-    less_than_24h = trip.departure_datetime <= datetime.utcnow() + timedelta(hours=24)
+    has_discount   = _newsletter_discount(db, current_user) is not None
+    less_than_24h  = trip.departure_datetime <= datetime.utcnow() + timedelta(hours=24)
     return templates.TemplateResponse("bookings/create.html", {
         **ctx, "trip": trip, "error": None, "has_discount": has_discount,
         "segment_pickup": segment_pickup, "segment_dropoff": segment_dropoff,
         "segment_price": segment_price, "less_than_24h": less_than_24h,
         "booking_available_seats": booking_available_seats,
+        "blikk_payments": settings.blikk_payments,
     })
 
 
@@ -184,7 +185,8 @@ def create_booking(
         return RedirectResponse(f"/trips/{trip_id}?booking_closed=1", status_code=303)
 
     has_discount = _newsletter_discount(db, current_user) is not None
-    err_ctx = {**ctx, "trip": trip, "has_discount": has_discount}
+    err_ctx = {**ctx, "trip": trip, "has_discount": has_discount,
+               "blikk_payments": settings.blikk_payments}
 
     if trip.driver_id == current_user.id:
         return templates.TemplateResponse("bookings/create.html",

@@ -44,8 +44,11 @@ class Settings(BaseSettings):
     # Blikk P2P bank transfers (https://blikk.tech)
     # blikk_api_key         — from Blikk partner dashboard (Api-Key header)
     # blikk_platform_phone  — Samefare's own Blikk phone number (receives service fees)
-    blikk_api_key:        str = Field(default="", alias="BLIKK_API_KEY")
-    blikk_platform_phone: str = Field(default="+3546257175", alias="BLIKK_PLATFORM_PHONE")
+    # blikk_payments        — accept Blikk as a passenger payment method (default off;
+    #                         Blikk is used for driver payouts regardless of this flag)
+    blikk_api_key:        str  = Field(default="", alias="BLIKK_API_KEY")
+    blikk_platform_phone: str  = Field(default="+3546257175", alias="BLIKK_PLATFORM_PHONE")
+    blikk_payments:       bool = Field(default=False, alias="BLIKK_PAYMENTS")
 
     # Didit KYC/AML (https://didit.me)
     # didit_api_key             — from Business Console → API & Webhooks
