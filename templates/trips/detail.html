@@ -632,48 +632,73 @@
 (function () {
   var polyline = {{ trip_polyline | tojson }};
 
-  var RING = [
-    ['Reykjavík',           [64.135,-21.895]],
-    ['Hveragerði',          [63.991,-21.184]],
-    ['Selfoss',             [63.933,-20.998]],
-    ['Hella',               [63.834,-20.387]],
-    ['Vík',                 [63.419,-18.998]],
-    ['Kirkjubæjarklaustur', [63.783,-18.055]],
-    ['Höfn',                [64.253,-15.207]],
-    ['Egilsstaðir',         [65.267,-14.395]],
-    ['Mývatn',              [65.600,-16.970]],
-    ['Akureyri',            [65.683,-18.088]],
-    ['Blönduós',            [65.662,-20.291]],
-    ['Borgarnes',           [64.537,-21.914]],
+  // Dense Ring Road (Hringvegur) waypoints — clockwise from Reykjavík.
+  // Intermediate waypoints between cities make the route follow the road
+  // rather than cutting straight across.
+  var RING_COORDS = [
+    [64.135,-21.895],  // 0  Reykjavík
+    [64.215,-21.878],  // 1  (Hvalfjörður / Akranes)
+    [64.537,-21.914],  // 2  Borgarnes
+    [64.780,-21.750],  // 3  (Hvammstangi direction)
+    [65.397,-20.948],  // 4  (Brú / Hrútafjörður)
+    [65.662,-20.291],  // 5  Blönduós
+    [65.573,-19.469],  // 6  (Varmahlíð)
+    [65.683,-18.088],  // 7  Akureyri
+    [65.600,-16.970],  // 8  Mývatn
+    [65.267,-14.395],  // 9  Egilsstaðir
+    [64.790,-14.020],  // 10 (Djúpivogur / Breiðdalsvík)
+    [64.657,-14.285],  // 11 (Berufjörður)
+    [64.253,-15.207],  // 12 Höfn
+    [64.048,-16.180],  // 13 (Skaftafell / Núpsstaður)
+    [63.783,-18.055],  // 14 Kirkjubæjarklaustur
+    [63.419,-18.998],  // 15 Vík
+    [63.530,-19.500],  // 16 (Þórsmörk / Mýrdalssandur)
+    [63.834,-20.387],  // 17 Hella
+    [63.933,-20.998],  // 18 Selfoss
+    [63.991,-21.184],  // 19 Hveragerði
+    [64.023,-21.544],  // 20 (Hafnarfjörður / Mosfellsbær)
   ];
+  var RING_IDX = {
+    'Reykjavík':0, 'Borgarnes':2, 'Blönduós':5, 'Varmahlíð':6,
+    'Akureyri':7, 'Mývatn':8, 'Egilsstaðir':9, 'Höfn':12,
+    'Kirkjubæjarklaustur':14, 'Vík':15, 'Hella':17,
+    'Selfoss':18, 'Hveragerði':19,
+  };
+  // Branch cities: { ringIdx, enter (city→ring), exit (ring→city) }
   var BRANCH = {
-    'Keflavík':      { via: 'Reykjavík',   coords: [63.985,-22.556] },
-    'Sauðárkrókur':  { via: 'Blönduós',    coords: [65.746,-19.639] },
-    'Húsavík':       { via: 'Akureyri',    coords: [66.042,-17.339] },
-    'Siglufjörður':  { via: 'Akureyri',    coords: [66.152,-18.910] },
-    'Stykkishólmur': { via: 'Borgarnes',   coords: [65.073,-22.726] },
-    'Ólafsvík':      { via: 'Borgarnes',   coords: [64.894,-23.714] },
-    'Ísafjörður':    { via: 'Borgarnes',   coords: [66.075,-23.137] },
-    'Seyðisfjörður': { via: 'Egilsstaðir', coords: [65.258,-13.999] },
-    'Vopnafjörður':  { via: 'Egilsstaðir', coords: [65.747,-14.841] },
+    'Keflavík':      { ringIdx:0,  spur:[[64.000,-22.150],[63.985,-22.556]] },
+    'Sauðárkrókur':  { ringIdx:6,  spur:[[65.746,-19.639]] },
+    'Húsavík':       { ringIdx:7,  spur:[[65.870,-17.600],[66.042,-17.339]] },
+    'Siglufjörður':  { ringIdx:7,  spur:[[65.900,-18.500],[66.152,-18.910]] },
+    'Stykkishólmur': { ringIdx:2,  spur:[[64.780,-21.750],[65.000,-22.350],[65.073,-22.726]] },
+    'Ólafsvík':      { ringIdx:2,  spur:[[64.780,-21.750],[65.000,-22.350],[65.073,-22.726],[64.894,-23.714]] },
+    'Ísafjörður':    { ringIdx:2,  spur:[[65.063,-21.784],[65.705,-21.690],[65.900,-22.500],[66.075,-23.137]] },
+    'Seyðisfjörður': { ringIdx:9,  spur:[[65.258,-13.999]] },
+    'Vopnafjörður':  { ringIdx:9,  spur:[[65.747,-14.841]] },
+    'Landeyjahöfn':  { ringIdx:17, spur:[[63.615,-20.290]] },
+    'Skógarfoss':    { ringIdx:15, spur:[[63.532,-19.512]] },
+    'Landmannalaugar':{ ringIdx:17,spur:[[63.993,-19.067]] },
   };
 
   function ringRoute(from, to) {
-    var fromRing = BRANCH[from] ? BRANCH[from].via : from;
-    var toRing   = BRANCH[to]   ? BRANCH[to].via   : to;
-    var n = RING.length;
-    var oi = RING.findIndex(function(r){ return r[0]===fromRing; });
-    var di = RING.findIndex(function(r){ return r[0]===toRing; });
-    if (oi === -1 || di === -1) return null;
+    var ob = BRANCH[from], db2 = BRANCH[to];
+    var oi = ob ? ob.ringIdx : RING_IDX[from];
+    var di = db2 ? db2.ringIdx : RING_IDX[to];
+    if (oi === undefined || di === undefined) return null;
+    var n = RING_COORDS.length;
+    // Clockwise
     var cw = [], i = oi;
-    do { cw.push(RING[i][1]); i = (i+1)%n; } while (i !== di);
-    cw.push(RING[di][1]);
+    do { cw.push(RING_COORDS[i]); i = (i+1)%n; } while (i !== di);
+    cw.push(RING_COORDS[di]);
+    // Counter-clockwise
     var ccw = [], j = oi;
-    do { ccw.push(RING[j][1]); j = (j-1+n)%n; } while (j !== di);
-    ccw.push(RING[di][1]);
+    do { ccw.push(RING_COORDS[j]); j = (j-1+n)%n; } while (j !== di);
+    ccw.push(RING_COORDS[di]);
     var path = cw.length <= ccw.length ? cw : ccw;
-    if (BRANCH[from])  path = [BRANCH[from].coords].concat(path);
-    if (BRANCH[to])    path = path.concat([BRANCH[to].coords]);
+    // Prepend origin branch spur (reversed to go city→ring)
+    if (ob)  path = ob.spur.slice().reverse().concat(path);
+    // Append destination branch spur (ring→city)
+    if (db2) path = path.concat(db2.spur);
     return path;
   }
 

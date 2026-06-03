@@ -19,6 +19,7 @@ from app.routers.payments import _issue_rapyd_refund
 from app.estimator import estimate_trip_cost, route_lookup
 from app.fuel import active_policy, get_cached_petrol_price
 from app.utils import canonical_city, nearest_cities, build_route_graph, is_on_route, shortest_path_km, prorate_segment_price, resolve_segment, segments_overlap, seats_for_segment, recompute_seats_available
+from app.geo import ring_road_polyline
 
 settings = get_settings()
 
@@ -1246,6 +1247,10 @@ def trip_detail(
             trip_polyline = json.loads(route_row.polyline)
         except (json.JSONDecodeError, TypeError):
             pass
+    # No route row (or empty polyline) — compute ring-road approximation
+    # so the map never shows a bare straight line.
+    if not trip_polyline:
+        trip_polyline = ring_road_polyline(trip.origin, trip.destination)
 
     return templates.TemplateResponse("trips/detail.html", {
         **ctx,

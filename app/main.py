@@ -680,15 +680,23 @@ _CITY_COORDS: dict[str, tuple[float, float]] = {
     "Ísafjörður":            (66.0750, -23.1351),
     "Keflavík":              (63.9850, -22.5607),
     "Kirkjubæjarklaustur":   (63.7850, -18.0597),
+    "Landmannalaugar":       (63.9930, -19.0670),
+    "Landeyjahöfn":          (63.6150, -20.2900),
     "Mývatn":                (65.5955, -17.0093),
     "Ólafsvík":              (64.8955, -23.7149),
     "Reykjavík":             (64.1355, -21.8954),
     "Sauðárkrókur":          (65.7453, -19.6389),
     "Selfoss":               (63.9330, -20.9978),
+    "Seyðisfjörður":         (65.2580, -13.9990),
     "Siglufjörður":          (66.1520, -18.9063),
+    "Skógarfoss":            (63.5320, -19.5120),
     "Stykkishólmur":         (65.0720, -22.7287),
+    "Varmahlíð":             (65.5430, -19.4630),
     "Vík":                   (63.4187, -19.0054),
+    "Vopnafjörður":          (65.7553, -14.8410),
 }
+
+from app.geo import ring_road_polyline  # ring-road fallback; lives in geo.py
 
 _OSRM_BASE = "https://router.project-osrm.org/route/v1/driving"
 
@@ -732,16 +740,21 @@ def _refresh_osrm_polylines() -> None:
             db.query(models.Route)
             .filter(
                 models.Route.is_active == True,  # noqa: E712
-                models.Route.source.in_(["seeded_approximate", None]),
+                models.Route.source != "osrm",   # re-fetch anything not yet osrm-sourced
             )
             .all()
         )
         updated = 0
         for route in routes:
             poly = _fetch_osrm_polyline(route.origin, route.destination)
+            src  = "osrm"
+            if not poly:
+                # Fall back to ring-road approximation for cities not in OSRM coords
+                poly = ring_road_polyline(route.origin, route.destination)
+                src  = "ring_road"
             if poly:
                 route.polyline = json.dumps(poly)
-                route.source   = "osrm"
+                route.source   = src
                 updated += 1
         if updated:
             db.commit()
