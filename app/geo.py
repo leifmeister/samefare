@@ -21,21 +21,23 @@ _RING_SEQ: list[list[float]] = [
     [64.780, -21.750],   # 3  (Hvammstangi direction)
     [65.397, -20.948],   # 4  (Brú / Hrútafjörður)
     [65.662, -20.291],   # 5  Blönduós
-    [65.573, -19.469],   # 6  (Varmahlíð / Víðidalur)
-    [65.683, -18.088],   # 7  Akureyri
-    [65.600, -16.970],   # 8  Mývatn
-    [65.267, -14.395],   # 9  Egilsstaðir
-    [64.790, -14.020],   # 10 (Djúpivogur / Breiðdalsvík)
-    [64.657, -14.285],   # 11 (Berufjörður)
-    [64.253, -15.207],   # 12 Höfn
-    [64.048, -16.180],   # 13 (Skaftafell / Núpsstaður)
-    [63.783, -18.055],   # 14 Kirkjubæjarklaustur
-    [63.419, -18.998],   # 15 Vík
-    [63.530, -19.500],   # 16 (Þórsmörk / Mýrdalssandur)
-    [63.834, -20.387],   # 17 Hella
-    [63.933, -20.998],   # 18 Selfoss
-    [63.991, -21.184],   # 19 Hveragerði
-    [64.023, -21.544],   # 20 (Hafnarfjörður / Mosfellsbær)
+    [65.573, -19.469],   # 6  (Varmahlíð)
+    [65.820, -18.450],   # 7  (Öxnadalsheiðar pass — road goes north here)
+    [65.683, -18.088],   # 8  Akureyri
+    [65.600, -16.970],   # 9  Mývatn
+    [65.370, -15.900],   # 10 (Möðrudalur — road dips south-east)
+    [65.267, -14.395],   # 11 Egilsstaðir
+    [64.790, -14.020],   # 12 (Djúpivogur / Breiðdalsvík)
+    [64.657, -14.285],   # 13 (Berufjörður)
+    [64.253, -15.207],   # 14 Höfn
+    [64.048, -16.180],   # 15 (Skaftafell / Núpsstaður)
+    [63.783, -18.055],   # 16 Kirkjubæjarklaustur
+    [63.419, -18.998],   # 17 Vík
+    [63.530, -19.500],   # 18 (Þórsmörk / Mýrdalssandur)
+    [63.834, -20.387],   # 19 Hella
+    [63.933, -20.998],   # 20 Selfoss
+    [63.991, -21.184],   # 21 Hveragerði
+    [64.023, -21.544],   # 22 (Hafnarfjörður / Mosfellsbær)
 ]
 _RING_N = len(_RING_SEQ)
 
@@ -45,15 +47,15 @@ _RING_IDX: dict[str, int] = {
     "Borgarnes":           2,
     "Blönduós":            5,
     "Varmahlíð":           6,
-    "Akureyri":            7,
-    "Mývatn":              8,
-    "Egilsstaðir":         9,
-    "Höfn":               12,
-    "Kirkjubæjarklaustur": 14,
-    "Vík":                15,
-    "Hella":              17,
-    "Selfoss":            18,
-    "Hveragerði":         19,
+    "Akureyri":            8,
+    "Mývatn":              9,
+    "Egilsstaðir":        11,
+    "Höfn":               14,
+    "Kirkjubæjarklaustur": 16,
+    "Vík":                17,
+    "Hella":              19,
+    "Selfoss":            20,
+    "Hveragerði":         21,
 }
 
 # Branch cities: connect at a ring node index with road spur waypoints.
