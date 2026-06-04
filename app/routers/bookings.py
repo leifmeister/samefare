@@ -585,13 +585,14 @@ def report_driver_no_show(
         .first()
     )
     now = datetime.utcnow()
-    report_open_from  = booking.trip.departure_datetime + timedelta(minutes=15)
-    report_open_until = booking.trip.departure_datetime + timedelta(hours=4)
     if (not booking
             or booking.passenger_id != current_user.id
-            or booking.status != models.BookingStatus.confirmed
-            or now < report_open_from
-            or now > report_open_until):
+            or booking.status != models.BookingStatus.confirmed):
+        return RedirectResponse("/my-trips?tab=bookings", status_code=303)
+
+    report_open_from  = booking.trip.departure_datetime + timedelta(minutes=15)
+    report_open_until = booking.trip.departure_datetime + timedelta(hours=4)
+    if now < report_open_from or now > report_open_until:
         return RedirectResponse("/my-trips?tab=bookings", status_code=303)
 
     # Flag the trip for accountability tracking and auto-rating
