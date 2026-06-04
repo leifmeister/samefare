@@ -293,24 +293,6 @@
                   <button type="submit" class="btn btn-xs btn-danger-outline">{{ _t('detail_no_show_btn') }}</button>
                 </form>
                 {% endif %}
-                {# ── Blikk: driver requests fare at ride time ──────────────── #}
-                {% if booking.status == 'confirmed'
-                      and current_user_booking and current_user_booking.payment_method and current_user_booking.payment_method.value == 'blikk'
-                      and (not booking.payment or booking.payment.status.value not in ('blikk_fare_pending','blikk_fare_paid')) %}
-                <form method="post" action="/bookings/{{ booking.id }}/blikk-request-fare"
-                      style="display:inline; margin-left:auto;"
-                      onsubmit="return confirm('Request Blikk payment from {{ booking.passenger.full_name.split()[0] }}? They will receive a notification in their Blikk app.')">
-                  <button type="submit" class="btn btn-xs btn-primary">Request payment</button>
-                </form>
-                {% elif booking.status == 'confirmed'
-                        and current_user_booking and current_user_booking.payment_method and current_user_booking.payment_method.value == 'blikk'
-                        and booking.payment and booking.payment.status.value == 'blikk_fare_pending' %}
-                <span class="badge badge--warning" style="margin-left:auto; font-size:.75rem;">Blikk payment sent</span>
-                {% elif booking.status == 'confirmed'
-                        and current_user_booking and current_user_booking.payment_method and current_user_booking.payment_method.value == 'blikk'
-                        and booking.payment and booking.payment.status.value == 'blikk_fare_paid' %}
-                <span class="badge badge--success" style="margin-left:auto; font-size:.75rem;">Paid via Blikk</span>
-                {% endif %}
                 {% if booking.status == 'completed' %}
                   {% set reviewed = namespace(done=false) %}
                   {% for r in booking.trip.reviews %}

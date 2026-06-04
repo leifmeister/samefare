@@ -198,14 +198,8 @@ def booking_confirmed_to_passenger(booking) -> None:
 def booking_approved_to_passenger(booking) -> None:
     s    = get_settings()
     trip = booking.trip
-    # Route the payment CTA to the appropriate checkout depending on payment rail
-    from app.models import TripPaymentMethod  # local import avoids circular
-    if booking.payment_method == TripPaymentMethod.blikk:
-        payment_url  = f"{s.base_url}/bookings/{booking.id}/blikk-pay"
-        payment_note = "Complete your payment via Blikk bank transfer"
-    else:
-        payment_url  = f"{s.base_url}/payments/checkout/{booking.id}"
-        payment_note = "Complete your payment"
+    payment_url  = f"{s.base_url}/payments/checkout/{booking.id}"
+    payment_note = "Complete your payment"
     body = (
         _h1("Your request was approved!") +
         _p(f"<strong>{trip.driver.full_name}</strong> has accepted your booking request for:") +
