@@ -327,9 +327,11 @@ def create_booking(
     if trip.instant_book:
         return RedirectResponse(f"/payments/checkout/{booking.id}", status_code=303)
     else:
-        # Notify driver of the pending request
+        # Notify driver of the pending request, then collect card details upfront.
+        # Card is saved now (amount=0); MIT fires the moment driver accepts.
+        # No return visit needed from the passenger.
         mailer.booking_request_to_driver(booking)
-        return RedirectResponse("/bookings?requested=1", status_code=303)
+        return RedirectResponse(f"/payments/checkout/{booking.id}", status_code=303)
 
 
 def _refund_preview(booking) -> dict:
@@ -495,17 +497,68 @@ def confirm_booking(
                     # No room on this leg — leave pending, driver must handle manually
                     db.commit()
                     return RedirectResponse("/my-trips?tab=rides", status_code=303)
-                booking.status       = models.BookingStatus.awaiting_payment
                 _refresh_seats(trip, db)
-                # Cap at departure so the passenger can never hold an unpaid
-                # seat past the point the trip has left.
-                booking.payment_deadline = min(
-                    datetime.utcnow() + timedelta(hours=24),
-                    trip.departure_datetime,
-                )
-                db.commit()
-                db.refresh(booking)
-                mailer.booking_approved_to_passenger(booking)
+
+                # Card already saved upfront — fire MIT immediately so the
+                # passenger doesn't need to return to pay.
+                if (booking.payment
+                        and booking.payment.status == models.PaymentStatus.card_saved
+                        and booking.payment.rapyd_customer_id
+                        and booking.payment.rapyd_payment_method_id):
+                    from app import rapyd as rapyd_client
+                    from app.rapyd import RapydError
+                    from app.rapyd import generate_idempotency_key
+                    _RAPYD_MIT_ACT = "ACT"
+                    try:
+                        mit_data = rapyd_client.create_mit_payment(
+                            amount            = booking.total_price,
+                            customer_id       = booking.payment.rapyd_customer_id,
+                            payment_method_id = booking.payment.rapyd_payment_method_id,
+                            capture           = False,
+                            idempotency_key   = f"mit-accept-{booking.payment.id}",
+                            metadata          = {"booking_id": booking.id, "case": "accept"},
+                        )
+                        if mit_data.get("id"):
+                            booking.payment.rapyd_payment_id = mit_data["id"]
+
+                        if mit_data.get("status") == _RAPYD_MIT_ACT:
+                            booking.payment.status  = models.PaymentStatus.authorised
+                            booking.payment.capture_at = trip.departure_datetime
+                            booking.payment.auth_expires_at = datetime.utcnow() + timedelta(days=7)
+                            booking.status = models.BookingStatus.confirmed
+                            db.commit()
+                            db.refresh(booking)
+                            mailer.booking_confirmed_to_passenger(booking)
+                            mailer.booking_confirmed_to_driver(booking)
+                        else:
+                            # MIT not immediately ACT — fall back to awaiting_payment
+                            booking.status           = models.BookingStatus.awaiting_payment
+                            booking.payment_deadline = min(
+                                datetime.utcnow() + timedelta(hours=24),
+                                trip.departure_datetime,
+                            )
+                            db.commit()
+                            db.refresh(booking)
+                            mailer.booking_approved_to_passenger(booking)
+                    except RapydError:
+                        booking.status           = models.BookingStatus.awaiting_payment
+                        booking.payment_deadline = min(
+                            datetime.utcnow() + timedelta(hours=24),
+                            trip.departure_datetime,
+                        )
+                        db.commit()
+                        db.refresh(booking)
+                        mailer.booking_approved_to_passenger(booking)
+                else:
+                    # No card saved yet — passenger still needs to pay
+                    booking.status           = models.BookingStatus.awaiting_payment
+                    booking.payment_deadline = min(
+                        datetime.utcnow() + timedelta(hours=24),
+                        trip.departure_datetime,
+                    )
+                    db.commit()
+                    db.refresh(booking)
+                    mailer.booking_approved_to_passenger(booking)
             # If trip is not active, in the past, or has insufficient seats,
             # do nothing — driver sees the booking still pending
     return RedirectResponse("/my-trips?tab=rides", status_code=303)

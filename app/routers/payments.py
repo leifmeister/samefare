@@ -235,6 +235,7 @@ def checkout_page(
     if booking.status not in (
         models.BookingStatus.awaiting_payment,
         models.BookingStatus.card_saved,   # allow re-visit for Case B (shows status)
+        models.BookingStatus.pending,      # pending bookings: save card upfront before driver accepts
     ):
         return RedirectResponse("/bookings", status_code=303)
 
@@ -259,10 +260,12 @@ def checkout_page(
     # Exception: retry_pending means the MIT failed and retry_payment() has
     # already created a fresh checkout page — fall through so the passenger
     # can actually see the card-update form.
-    if booking.status == models.BookingStatus.card_saved:
+    # Pending bookings that already have a card saved show a "waiting for driver" message.
+    if booking.status in (models.BookingStatus.card_saved, models.BookingStatus.pending):
         payment_for_check = booking.payment
-        if (not payment_for_check
-                or payment_for_check.status != models.PaymentStatus.retry_pending):
+        if (payment_for_check
+                and payment_for_check.status == models.PaymentStatus.card_saved
+                and payment_for_check.status != models.PaymentStatus.retry_pending):
             return RedirectResponse(
                 f"/payments/card-saved/{booking_id}", status_code=303
             )
@@ -288,7 +291,11 @@ def checkout_page(
 
     # ── Real Rapyd flow ───────────────────────────────────────────────────────
     payment = _get_or_create_payment(db, booking)
-    case    = payment.payment_case or _payment_case(booking.trip.departure_datetime)
+    # Pending bookings always save the card now and MIT on driver acceptance —
+    # regardless of departure date, this is always a Case B (save-card) flow.
+    case    = "B" if booking.status == models.BookingStatus.pending else (
+        payment.payment_case or _payment_case(booking.trip.departure_datetime)
+    )
 
     # Commit the new Payment record (flushed but not yet committed by
     # _get_or_create_payment) so it survives any subsequent API failure.

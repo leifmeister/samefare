@@ -91,6 +91,7 @@ _CASE_A_CONFIRMABLE_STATES = frozenset({
 _CASE_B_CARD_SAVE_STATES = frozenset({
     models.BookingStatus.awaiting_payment,
     models.BookingStatus.card_saved,   # idempotent re-delivery
+    models.BookingStatus.pending,      # upfront card-save before driver acceptance
 })
 
 
@@ -378,18 +379,23 @@ def _handle_checkout_completed(
 
         payment.status = models.PaymentStatus.card_saved
 
+        was_pending = booking.status == models.BookingStatus.pending
         if booking.status == models.BookingStatus.awaiting_payment:
             booking.status = models.BookingStatus.card_saved
-        # If already card_saved: idempotent — booking status unchanged, card fields refreshed.
+        # Pending bookings: keep booking.status = pending (MIT fires on driver acceptance).
+        # Already card_saved: idempotent — booking status unchanged, card fields refreshed.
 
-        # Single atomic commit: card_saved state + seen-ID
         _mark_seen(payment, webhook_id)
         db.commit()
+
         if booking.status == models.BookingStatus.card_saved:
             mailer.card_saved_to_passenger(booking)
+        elif was_pending:
+            mailer.card_saved_pending_to_passenger(booking)
+
         log.info(
-            "Booking %s: card saved — MIT scheduled for %s",
-            booking.id, payment.auth_scheduled_for,
+            "Booking %s: card saved (booking status=%s) — MIT fires on driver acceptance",
+            booking.id, booking.status.value,
         )
 
 

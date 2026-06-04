@@ -446,6 +446,33 @@ def card_saved_to_passenger(booking) -> None:
     )
 
 
+def card_saved_pending_to_passenger(booking) -> None:
+    """
+    Card saved for a pending booking (before driver has accepted).
+    MIT will fire the moment the driver accepts.
+    """
+    s    = get_settings()
+    trip = booking.trip
+    body = (
+        _h1("Card saved — waiting for driver ✓") +
+        _p("Your card has been securely saved. Once the driver accepts your request, "
+           "the payment will be authorised automatically — no further action needed.") +
+        f'<div style="background:#F7FAF9;border:1px solid #DDE8E5;border-radius:8px;'
+        f'padding:16px;margin:8px 0;">'
+        f'{_route_line(trip.origin, trip.destination, trip.departure_datetime)}'
+        f'</div>' +
+        _divider() +
+        _p(f"Amount to be charged: <strong>{booking.total_price:,} ISK</strong>") +
+        _p("You may cancel for free before the driver accepts your request.") +
+        _btn("View my booking", f"{s.base_url}/my-trips?tab=bookings")
+    )
+    _send(
+        booking.passenger.email,
+        f"Card saved — waiting for driver · {trip.origin} → {trip.destination}",
+        _wrap(body),
+    )
+
+
 def mit_auth_failed_to_passenger(booking, retry_deadline) -> None:
     """
     Case B: MIT authorisation declined 24 h before departure.
