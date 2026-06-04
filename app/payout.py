@@ -401,9 +401,9 @@ def _send_blikk_payout(batch: DriverPayout, driver: models.User) -> str:
     Returns the Blikk payment ID on success.
     Raises PayoutProviderError on failure.
 
-    NOTE: scaUserSsn — confirm with Blikk whether this should be SameFare's
-    company kennitala (static config) or the driver's kennitala. Currently uses
-    the driver's kennitala. Update BLIKK_COMPANY_KENNITALA env var once confirmed.
+    scaUserSsn is the kennitala of the person at SameFare with transfer authority
+    on the Blikk payment account (set via BLIKK_SCA_KENNITALA env var).
+    This is fixed per channel — the merchant account holder, not the driver.
     """
     from app import blikk as blikk_client
     from app.blikk import BlikkError
@@ -419,9 +419,12 @@ def _send_blikk_payout(batch: DriverPayout, driver: models.User) -> str:
         raise PayoutProviderError(
             f"Driver {driver.id} has no IBAN — cannot send Blikk payout."
         )
+    if not s.blikk_sca_kennitala:
+        raise PayoutProviderError(
+            "BLIKK_SCA_KENNITALA is not set — required for Payment Channel payouts."
+        )
 
-    # scaUserSsn: use platform kennitala if configured, fall back to driver's.
-    sca_ssn = getattr(s, "blikk_company_kennitala", None) or driver.kennitala
+    sca_ssn = s.blikk_sca_kennitala
 
     try:
         result = blikk_client.create_channel_payout(

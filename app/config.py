@@ -52,9 +52,11 @@ class Settings(BaseSettings):
     # Payment Channel API key — separate from P2P key; tied to SameFare's bank
     # account in Blikk's system. Obtain from Blikk when setting up the channel.
     blikk_channel_api_key:   str  = Field(default="", alias="BLIKK_CHANNEL_API_KEY")
-    # SameFare's company kennitala — used as scaUserSsn in Payment Channel payouts.
-    # Confirm with Blikk whether this should be the company or driver kennitala.
-    blikk_company_kennitala: str  = Field(default="", alias="BLIKK_COMPANY_KENNITALA")
+    # Kennitala of the person with transfer authority on SameFare's Blikk payment
+    # account (i.e. the merchant account holder). Used as scaUserSsn on every
+    # Payment Channel payout — this person authenticates the transfer.
+    # Set this to the kennitala of whoever owns/manages the merchants.blikk.tech account.
+    blikk_sca_kennitala: str  = Field(default="", alias="BLIKK_SCA_KENNITALA")
 
     # Didit KYC/AML (https://didit.me)
     # didit_api_key             — from Business Console → API & Webhooks
