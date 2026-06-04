@@ -59,6 +59,12 @@ def _expire_booking(db: Session, booking: models.Booking) -> None:
     Cancel an expired awaiting-payment booking and release held seats.
     Idempotent — status check prevents double-cancellation.
     Caller is responsible for db.commit().
+
+    Seats are recomputed from remaining active bookings (excluding this one)
+    rather than by simple addition.  Simple addition is wrong for segment
+    bookings: seats_available is a peak/minimum across all legs, so adding
+    back booking.seats_booked can overstate capacity when another leg is
+    still fully occupied.
     """
     if booking.status != models.BookingStatus.awaiting_payment:
         return
@@ -71,9 +77,16 @@ def _expire_booking(db: Session, booking: models.Booking) -> None:
             .first()
         )
         if trip:
-            trip.seats_available = min(
-                trip.seats_total,
-                trip.seats_available + booking.seats_booked,
+            from app.utils import build_route_graph, recompute_seats_available
+            active = [b for b in trip.bookings
+                      if b.id != booking.id and b.status in {
+                          models.BookingStatus.awaiting_payment,
+                          models.BookingStatus.confirmed,
+                          models.BookingStatus.card_saved,
+                      }]
+            graph = build_route_graph(db)
+            trip.seats_available = recompute_seats_available(
+                graph, trip.seats_total, active, trip.origin, trip.destination,
             )
 
 
