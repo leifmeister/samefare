@@ -358,7 +358,11 @@ def _apply_mit_failure(
 
     Transitions:
       payment.status  → retry_pending
-      booking stays   → card_saved  (NOT confirmed — seat is not yet paid for)
+      booking status:
+        card_saved  → unchanged  (standard Case B: not yet confirmed, seat held on card token)
+        confirmed   → awaiting_payment  (accepted pending booking: was confirmed on driver
+                      acceptance but pre-auth failed at T-24h; must not appear as a paid
+                      confirmed ride during the retry window)
       retry_deadline  → now + 2 hours
       Notifications   → passenger (SMS + email) + driver (SMS)
     """
@@ -370,6 +374,14 @@ def _apply_mit_failure(
     # No surcharge on retry — fee stays the same as the original booking.
     payment.status         = models.PaymentStatus.retry_pending
     payment.retry_deadline = now + timedelta(hours=2)
+
+    # Confirmed bookings (accepted pending trips whose driver approved before T-24h)
+    # must be demoted — a confirmed+retry_pending booking looks fully paid to all UIs.
+    # awaiting_payment is the correct state: seat is still held, card is on file,
+    # passenger needs to take action.  The retry webhook (_handle_checkout_completed
+    # Case B) accepts awaiting_payment and moves it to card_saved for a fresh MIT.
+    if booking.status == models.BookingStatus.confirmed:
+        booking.status = models.BookingStatus.awaiting_payment
 
     db.commit()
 
