@@ -19,7 +19,7 @@ from app.routers.payments import _issue_rapyd_refund
 from app.estimator import estimate_trip_cost, route_lookup
 from app.fuel import active_policy, get_cached_petrol_price
 from app.utils import canonical_city, nearest_cities, build_route_graph, is_on_route, shortest_path_km, prorate_segment_price, resolve_segment, segments_overlap, seats_for_segment, recompute_seats_available
-from app.geo import ring_road_polyline
+from app.geo import ring_road_polyline, fetch_osrm_polyline
 
 settings = get_settings()
 
@@ -1281,10 +1281,32 @@ def trip_detail(
             trip_polyline = json.loads(route_row.polyline)
         except (json.JSONDecodeError, TypeError):
             pass
-    # No route row (or empty polyline) — compute ring-road approximation
-    # so the map never shows a bare straight line.
+
     if not trip_polyline:
-        trip_polyline = ring_road_polyline(trip.origin, trip.destination)
+        # No stored polyline — fetch real road geometry from OSRM on demand.
+        # Cache the result so the next page load is instant.
+        poly = fetch_osrm_polyline(trip.origin, trip.destination)
+        if poly:
+            trip_polyline = poly
+            try:
+                if route_row:
+                    route_row.polyline = json.dumps(poly)
+                    route_row.source   = "osrm"
+                else:
+                    db.add(models.Route(
+                        origin      = trip.origin,
+                        destination = trip.destination,
+                        distance_km = 0,
+                        is_active   = False,
+                        polyline    = json.dumps(poly),
+                        source      = "osrm",
+                    ))
+                db.commit()
+            except Exception:
+                db.rollback()
+        else:
+            # OSRM unavailable — ring-road approximation as last resort
+            trip_polyline = ring_road_polyline(trip.origin, trip.destination)
 
     return templates.TemplateResponse("trips/detail.html", {
         **ctx,

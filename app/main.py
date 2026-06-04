@@ -668,99 +668,95 @@ _MIGRATIONS = [
 
 
 # ── OSRM road-geometry fetch ───────────────────────────────────────────────────
+# Moved to app/geo.py so trips.py can import without circular dependency.
 
-# WGS-84 coordinates for every city SameFare routes through.
-_CITY_COORDS: dict[str, tuple[float, float]] = {
-    "Akureyri":              (65.6885, -18.1059),
-    "Blönduós":              (65.6617, -20.2886),
-    "Borgarnes":             (64.5390, -21.9224),
-    "Egilsstaðir":           (65.2675, -14.3947),
-    "Hella":                 (63.8333, -20.4000),
-    "Höfn":                  (64.2539, -15.2082),
-    "Húsavík":               (66.0442, -17.3390),
-    "Hveragerði":            (63.9915, -21.1844),
-    "Ísafjörður":            (66.0750, -23.1351),
-    "Keflavík":              (63.9850, -22.5607),
-    "Kirkjubæjarklaustur":   (63.7850, -18.0597),
-    "Landmannalaugar":       (63.9930, -19.0670),
-    "Landeyjahöfn":          (63.6150, -20.2900),
-    "Mývatn":                (65.5955, -17.0093),
-    "Ólafsvík":              (64.8955, -23.7149),
-    "Reykjavík":             (64.1355, -21.8954),
-    "Sauðárkrókur":          (65.7453, -19.6389),
-    "Selfoss":               (63.9330, -20.9978),
-    "Seyðisfjörður":         (65.2580, -13.9990),
-    "Siglufjörður":          (66.1520, -18.9063),
-    "Skógarfoss":            (63.5320, -19.5120),
-    "Stykkishólmur":         (65.0720, -22.7287),
-    "Varmahlíð":             (65.5430, -19.4630),
-    "Vík":                   (63.4187, -19.0054),
-    "Vopnafjörður":          (65.7553, -14.8410),
-}
+from app.geo import ring_road_polyline, fetch_osrm_polyline, CITY_COORDS
 
-from app.geo import ring_road_polyline  # ring-road fallback; lives in geo.py
-
-_OSRM_BASE = "https://router.project-osrm.org/route/v1/driving"
-
-
-def _fetch_osrm_polyline(origin: str, destination: str) -> list | None:
-    """
-    Call the public OSRM demo server and return a [[lat, lon], …] list
-    suitable for Leaflet, or None on any error.
-    Uses overview=full so the geometry covers the entire road, not just
-    a simplified version.
-    """
-    o = _CITY_COORDS.get(origin)
-    d = _CITY_COORDS.get(destination)
-    if not o or not d:
-        return None
-    url = (
-        f"{_OSRM_BASE}/{o[1]},{o[0]};{d[1]},{d[0]}"
-        "?overview=full&geometries=geojson"
-    )
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "SameFare/1.0"})
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read())
-        coords = data["routes"][0]["geometry"]["coordinates"]
-        # OSRM returns [lon, lat]; Leaflet expects [lat, lon]
-        return [[lat, lon] for lon, lat in coords]
-    except Exception as exc:
-        log.warning("OSRM fetch failed for %s→%s: %s", origin, destination, exc)
-        return None
+# Keep alias for internal use
+_fetch_osrm_polyline = fetch_osrm_polyline
 
 
 def _refresh_osrm_polylines() -> None:
     """
-    For every active route whose polyline was hand-seeded (source='seeded_approximate')
-    or is still NULL, fetch the real road geometry from OSRM and store it.
-    Runs once at startup; safe to re-run (idempotent via source flag).
+    Ensure every origin→destination pair used by any trip has a real OSRM
+    polyline stored in the routes table.
+
+    Two passes:
+    1. Update existing route rows that aren't yet osrm-sourced.
+    2. Find trip pairs with no route row at all, fetch OSRM, and insert a row.
+
+    Falls back to ring_road_polyline() when OSRM can't reach a city.
+    Safe to re-run — existing osrm rows are skipped.
     """
     db: Session = SessionLocal()
     try:
+        updated = 0
+
+        # ── Pass 1: existing route rows without real geometry ─────────────────
         routes = (
             db.query(models.Route)
             .filter(
                 models.Route.is_active == True,  # noqa: E712
-                models.Route.source != "osrm",   # re-fetch anything not yet osrm-sourced
+                models.Route.source != "osrm",
             )
             .all()
         )
-        updated = 0
         for route in routes:
-            poly = _fetch_osrm_polyline(route.origin, route.destination)
+            poly = fetch_osrm_polyline(route.origin, route.destination)
             src  = "osrm"
             if not poly:
-                # Fall back to ring-road approximation for cities not in OSRM coords
                 poly = ring_road_polyline(route.origin, route.destination)
                 src  = "ring_road"
             if poly:
                 route.polyline = json.dumps(poly)
                 route.source   = src
                 updated += 1
-        if updated:
+        if routes:
             db.commit()
-            log.info("OSRM: updated polylines for %d routes", updated)
+
+        # ── Pass 2: trip pairs with no route row at all ───────────────────────
+        from sqlalchemy import tuple_ as sa_tuple
+        trip_pairs = (
+            db.query(models.Trip.origin, models.Trip.destination)
+            .filter(models.Trip.status != models.TripStatus.cancelled)
+            .distinct()
+            .all()
+        )
+        existing_pairs = {
+            (r.origin, r.destination)
+            for r in db.query(models.Route.origin, models.Route.destination).all()
+        }
+        missing = [(o, d) for o, d in trip_pairs if (o, d) not in existing_pairs]
+
+        for origin, destination in missing:
+            poly = fetch_osrm_polyline(origin, destination)
+            src  = "osrm"
+            if not poly:
+                poly = ring_road_polyline(origin, destination)
+                src  = "ring_road"
+            if not poly:
+                log.warning("No polyline available for %s→%s", origin, destination)
+                continue
+            new_route = models.Route(
+                origin      = origin,
+                destination = destination,
+                distance_km = 0,   # unknown for ad-hoc pairs
+                is_active   = False,  # not a bookable route, just a map cache
+                polyline    = json.dumps(poly),
+                source      = src,
+            )
+            db.add(new_route)
+            updated += 1
+
+        if missing:
+            db.commit()
+
+        if updated:
+            log.info("OSRM: updated/created polylines for %d route(s)", updated)
+
+    except Exception as exc:
+        log.error("_refresh_osrm_polylines failed: %s", exc)
+        db.rollback()
     finally:
         db.close()
 
