@@ -310,20 +310,27 @@ def _handle_checkout_completed(
         payment.card_brand = pm_data.get("brand") or rapyd_payment.get("brand")
 
         if rapyd_status in ("ACT", "CLO"):
-            payment.status          = models.PaymentStatus.authorised
-            payment.auth_expires_at = datetime.utcnow() + timedelta(days=7)
+            # ACT = pre-authorised (capture=False): schedule capture at departure.
+            # CLO = already captured by Rapyd (e.g. capture=True flow or instant
+            #       settlement): mark captured immediately; no further capture needed.
+            if rapyd_status == "CLO":
+                payment.status     = models.PaymentStatus.captured
+                payment.capture_at = None          # nothing left to capture
+            else:
+                payment.status          = models.PaymentStatus.authorised
+                payment.auth_expires_at = datetime.utcnow() + timedelta(days=7)
 
             confirmed = _apply_booking_confirmation(db, booking, payment)
 
             if not confirmed and booking.status != models.BookingStatus.confirmed:
                 # Booking is in a terminal or unexpected state (cancelled, expired,
                 # completed, …).  Mark the payment as failed, persist the seen-ID
-                # so we don't retry, then void the Rapyd auth so the cardholder's
-                # hold is released without waiting 7 days.
+                # so we don't retry.  Only void the hold for ACT (CLO has no hold).
                 payment.status = models.PaymentStatus.failed
                 _mark_seen(payment, webhook_id)
                 db.commit()
-                _void_stale_authorization(payment)
+                if rapyd_status == "ACT":
+                    _void_stale_authorization(payment)
                 return
 
             # Either confirmed=True (normal) or booking was already confirmed
@@ -334,7 +341,8 @@ def _handle_checkout_completed(
                 db.refresh(booking)
                 mailer.booking_confirmed_to_passenger(booking)
                 mailer.booking_confirmed_to_driver(booking)
-                log.info("Booking %s confirmed via webhook (Case A)", booking.id)
+                log.info("Booking %s confirmed via webhook (Case A, rapyd_status=%s)",
+                         booking.id, rapyd_status)
         else:
             log.warning(
                 "CHECKOUT_COMPLETED Case A booking %s — unexpected status %s",
