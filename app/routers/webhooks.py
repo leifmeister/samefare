@@ -549,9 +549,16 @@ def _handle_payment_failed(
                     .first()
                 )
                 if trip:
-                    trip.seats_available = min(
-                        trip.seats_total,
-                        trip.seats_available + booking.seats_booked,
+                    from app.utils import build_route_graph, recompute_seats_available
+                    active = [b for b in trip.bookings
+                              if b.id != booking.id and b.status in {
+                                  models.BookingStatus.awaiting_payment,
+                                  models.BookingStatus.confirmed,
+                                  models.BookingStatus.card_saved,
+                              }]
+                    graph = build_route_graph(db)
+                    trip.seats_available = recompute_seats_available(
+                        graph, trip.seats_total, active, trip.origin, trip.destination,
                     )
         db.commit()
         log.info("Booking %s: Case A payment failed — cancelled", booking_id)
