@@ -499,71 +499,36 @@ def confirm_booking(
                     return RedirectResponse("/my-trips?tab=rides", status_code=303)
                 _refresh_seats(trip, db)
 
-                # Card already saved upfront — fire MIT immediately so the
-                # passenger doesn't need to return to pay.
-                # In beta mode, stub IDs are used; skip Rapyd and confirm directly.
-                _is_beta_card = (
-                    booking.payment
-                    and booking.payment.rapyd_customer_id == "beta-customer"
-                    and booking.payment.rapyd_payment_method_id == "beta-pm"
-                )
-                if _is_beta_card and settings.beta_mode:
-                    booking.payment.status = models.PaymentStatus.authorised
-                    booking.payment.capture_at = trip.departure_datetime
+                # Card already saved upfront — confirm the booking now.
+                # MIT always fires at T-24h via the background task, never
+                # immediately on acceptance, so the passenger's card is not
+                # frozen days before departure.
+                if (booking.payment
+                        and booking.payment.status == models.PaymentStatus.card_saved
+                        and booking.payment.rapyd_customer_id
+                        and booking.payment.rapyd_payment_method_id):
+
                     booking.status = models.BookingStatus.confirmed
+
+                    # In beta mode: no Rapyd, mark authorised directly.
+                    if settings.beta_mode:
+                        booking.payment.status     = models.PaymentStatus.authorised
+                        booking.payment.capture_at = trip.departure_datetime
+                    else:
+                        # Ensure auth_scheduled_for is set (may not be for pending
+                        # bookings whose payment was created before driver accepted).
+                        if not booking.payment.auth_scheduled_for:
+                            scheduled = trip.departure_datetime - timedelta(hours=24)
+                            # If T-24h has already passed, schedule for now so the
+                            # task picks it up on the next run (within minutes).
+                            booking.payment.auth_scheduled_for = max(
+                                scheduled, datetime.utcnow()
+                            )
+
                     db.commit()
                     db.refresh(booking)
                     mailer.booking_confirmed_to_passenger(booking)
                     mailer.booking_confirmed_to_driver(booking)
-                    # fall through to redirect below
-                elif (booking.payment
-                        and booking.payment.status == models.PaymentStatus.card_saved
-                        and booking.payment.rapyd_customer_id
-                        and booking.payment.rapyd_payment_method_id):
-                    from app import rapyd as rapyd_client
-                    from app.rapyd import RapydError
-                    from app.rapyd import generate_idempotency_key
-                    _RAPYD_MIT_ACT = "ACT"
-                    try:
-                        mit_data = rapyd_client.create_mit_payment(
-                            amount            = booking.total_price,
-                            customer_id       = booking.payment.rapyd_customer_id,
-                            payment_method_id = booking.payment.rapyd_payment_method_id,
-                            capture           = False,
-                            idempotency_key   = f"mit-accept-{booking.payment.id}",
-                            metadata          = {"booking_id": booking.id, "case": "accept"},
-                        )
-                        if mit_data.get("id"):
-                            booking.payment.rapyd_payment_id = mit_data["id"]
-
-                        if mit_data.get("status") == _RAPYD_MIT_ACT:
-                            booking.payment.status  = models.PaymentStatus.authorised
-                            booking.payment.capture_at = trip.departure_datetime
-                            booking.payment.auth_expires_at = datetime.utcnow() + timedelta(days=7)
-                            booking.status = models.BookingStatus.confirmed
-                            db.commit()
-                            db.refresh(booking)
-                            mailer.booking_confirmed_to_passenger(booking)
-                            mailer.booking_confirmed_to_driver(booking)
-                        else:
-                            # MIT not immediately ACT — fall back to awaiting_payment
-                            booking.status           = models.BookingStatus.awaiting_payment
-                            booking.payment_deadline = min(
-                                datetime.utcnow() + timedelta(hours=24),
-                                trip.departure_datetime,
-                            )
-                            db.commit()
-                            db.refresh(booking)
-                            mailer.booking_approved_to_passenger(booking)
-                    except RapydError:
-                        booking.status           = models.BookingStatus.awaiting_payment
-                        booking.payment_deadline = min(
-                            datetime.utcnow() + timedelta(hours=24),
-                            trip.departure_datetime,
-                        )
-                        db.commit()
-                        db.refresh(booking)
-                        mailer.booking_approved_to_passenger(booking)
                 else:
                     # No card saved yet — passenger still needs to pay
                     booking.status           = models.BookingStatus.awaiting_payment

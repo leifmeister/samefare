@@ -452,8 +452,9 @@ def beta_confirm(
     is_pending = booking.status == models.BookingStatus.pending
 
     if is_pending:
-        # Pending booking: simulate card-save only — booking stays pending,
-        # MIT fires (bypassed) when driver accepts.
+        # Pending booking: simulate card-save only — booking stays pending.
+        # Stub IDs tell confirm_booking a card is on file; beta_mode check
+        # there bypasses Rapyd and marks authorised directly at acceptance.
         payment = models.Payment(
             booking_id      = booking.id,
             passenger_total = booking.total_price,
@@ -463,7 +464,6 @@ def beta_confirm(
             card_brand      = "Beta",
             payment_case    = "B",
             capture_at      = booking.trip.departure_datetime,
-            # Stub IDs so confirm_booking's MIT check recognises the card as saved
             rapyd_customer_id        = "beta-customer",
             rapyd_payment_method_id  = "beta-pm",
         )

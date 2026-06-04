@@ -399,7 +399,13 @@ def _run_mit_authorizations() -> None:
             db.query(models.Payment)
             .join(models.Booking, models.Payment.booking_id == models.Booking.id)
             .filter(
-                models.Booking.status             == models.BookingStatus.card_saved,
+                # card_saved bookings = regular Case B (standard far-future booking)
+                # confirmed bookings  = accepted pending bookings (card saved upfront,
+                #                       driver accepted, MIT still fires at T-24h)
+                models.Booking.status.in_([
+                    models.BookingStatus.card_saved,
+                    models.BookingStatus.confirmed,
+                ]),
                 models.Payment.status             == models.PaymentStatus.card_saved,
                 models.Payment.auth_scheduled_for != None,   # noqa: E711
                 models.Payment.auth_scheduled_for <= now,
@@ -435,18 +441,26 @@ def _run_mit_authorizations() -> None:
                     payment.rapyd_payment_id = mit_data["id"]
 
                 if rapyd_status == _RAPYD_MIT_ACT:
-                    # Card is genuinely authorised — safe to confirm the booking.
+                    # Card is genuinely authorised.
+                    # Accepted pending bookings are already confirmed (booking.status
+                    # was set to confirmed when the driver accepted); only send
+                    # confirmation emails for bookings that weren't confirmed yet
+                    # (standard Case B: card_saved → confirmed here).
+                    was_already_confirmed = booking.status == models.BookingStatus.confirmed
+
                     payment.status          = models.PaymentStatus.authorised
                     payment.auth_expires_at = now + timedelta(days=7)
                     booking.status          = models.BookingStatus.confirmed
 
                     db.commit()
                     db.refresh(booking)
-                    mailer.booking_confirmed_to_passenger(booking)
-                    mailer.booking_confirmed_to_driver(booking)
+                    if not was_already_confirmed:
+                        mailer.booking_confirmed_to_passenger(booking)
+                        mailer.booking_confirmed_to_driver(booking)
                     log.info(
-                        "MIT authorised (ACT) for booking %s — Rapyd payment %s",
-                        booking.id, payment.rapyd_payment_id,
+                        "MIT authorised (ACT) for booking %s — Rapyd payment %s "
+                        "(was_already_confirmed=%s)",
+                        booking.id, payment.rapyd_payment_id, was_already_confirmed,
                     )
                 else:
                     # Rapyd responded without error but the payment is not ACT.
