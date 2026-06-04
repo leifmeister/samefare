@@ -598,6 +598,18 @@ def report_driver_no_show(
     booking.trip.driver_no_show = True
     booking.status = models.BookingStatus.cancelled
 
+    # Refund the passenger in full — driver didn't show up.
+    # _issue_rapyd_refund records a durable refund intent; the retry task
+    # submits it to Rapyd.  handle_refund_payout_impact cancels/reverses any
+    # payout item so the driver is not paid for a trip they didn't complete.
+    # Both land in the same db.commit() below.
+    from app.routers.payments import _issue_rapyd_refund
+    from app.payout import handle_refund_payout_impact
+    if booking.payment:
+        _issue_rapyd_refund(db, booking, booking.payment.passenger_total or 0,
+                            reason="requested_by_customer")
+        handle_refund_payout_impact(db, booking)
+
     # Issue an immediate 1-star auto-review for the driver (no grace period for no-shows)
     existing_review = (
         db.query(models.Review)
@@ -630,7 +642,7 @@ def report_driver_no_show(
 
     db.commit()
 
-    # Notify admin — action required to investigate and void/refund via payment dashboard
+    # Notify admin — for awareness; refund is already queued automatically.
     try:
         mailer.driver_no_show_admin_alert(booking, driver)
     except Exception:
