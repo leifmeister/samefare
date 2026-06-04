@@ -501,7 +501,22 @@ def confirm_booking(
 
                 # Card already saved upfront — fire MIT immediately so the
                 # passenger doesn't need to return to pay.
-                if (booking.payment
+                # In beta mode, stub IDs are used; skip Rapyd and confirm directly.
+                _is_beta_card = (
+                    booking.payment
+                    and booking.payment.rapyd_customer_id == "beta-customer"
+                    and booking.payment.rapyd_payment_method_id == "beta-pm"
+                )
+                if _is_beta_card and settings.beta_mode:
+                    booking.payment.status = models.PaymentStatus.authorised
+                    booking.payment.capture_at = trip.departure_datetime
+                    booking.status = models.BookingStatus.confirmed
+                    db.commit()
+                    db.refresh(booking)
+                    mailer.booking_confirmed_to_passenger(booking)
+                    mailer.booking_confirmed_to_driver(booking)
+                    # fall through to redirect below
+                elif (booking.payment
                         and booking.payment.status == models.PaymentStatus.card_saved
                         and booking.payment.rapyd_customer_id
                         and booking.payment.rapyd_payment_method_id):

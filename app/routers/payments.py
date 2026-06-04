@@ -443,9 +443,37 @@ def beta_confirm(
     )
     if not booking or booking.passenger_id != current_user.id:
         return RedirectResponse("/bookings", status_code=303)
-    if booking.status != models.BookingStatus.awaiting_payment:
+    if booking.status not in (
+        models.BookingStatus.awaiting_payment,
+        models.BookingStatus.pending,
+    ):
         return RedirectResponse("/bookings", status_code=303)
 
+    is_pending = booking.status == models.BookingStatus.pending
+
+    if is_pending:
+        # Pending booking: simulate card-save only — booking stays pending,
+        # MIT fires (bypassed) when driver accepts.
+        payment = models.Payment(
+            booking_id      = booking.id,
+            passenger_total = booking.total_price,
+            driver_payout   = booking.subtotal,
+            platform_fee    = booking.service_fee,
+            status          = models.PaymentStatus.card_saved,
+            card_brand      = "Beta",
+            payment_case    = "B",
+            capture_at      = booking.trip.departure_datetime,
+            # Stub IDs so confirm_booking's MIT check recognises the card as saved
+            rapyd_customer_id        = "beta-customer",
+            rapyd_payment_method_id  = "beta-pm",
+        )
+        db.add(payment)
+        db.commit()
+        db.refresh(booking)
+        mailer.card_saved_pending_to_passenger(booking)
+        return RedirectResponse(f"/payments/card-saved/{booking_id}", status_code=303)
+
+    # Instant booking: authorise immediately and confirm
     payment = models.Payment(
         booking_id      = booking.id,
         passenger_total = 0,

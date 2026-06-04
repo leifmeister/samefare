@@ -6,6 +6,48 @@
 <div class="container container--narrow" style="margin-top:2rem; margin-bottom:4rem;">
   <div class="form-page">
 
+    {% if booking.status.value == 'pending' %}
+    {# Option A: card saved upfront, waiting for driver to accept #}
+    <div class="success-hero">
+      <div class="success-hero__icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+             stroke-linejoin="round" width="40" height="40" aria-hidden="true">
+          <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+          <line x1="1" y1="10" x2="23" y2="10"/>
+        </svg>
+      </div>
+      <h1 class="success-hero__title">Card saved — waiting for driver</h1>
+      <p class="success-hero__sub">
+        Your card is securely saved. The driver will review your request
+        and you'll be notified when they accept.
+      </p>
+    </div>
+
+    <div class="policy-box" style="margin-top:2rem;">
+      <p class="policy-box__title">What happens next</p>
+      <ul class="policy-box__list">
+        <li>
+          <strong>Now</strong> — your card is securely saved. Nothing is charged yet.
+        </li>
+        <li>
+          <strong>When the driver accepts</strong> — we'll pre-authorise
+          {% if booking.payment %}
+            <strong>{{ "{:,}".format(booking.payment.passenger_total) }} ISK</strong>
+          {% else %}
+            your trip amount
+          {% endif %}
+          on your card. Your booking becomes confirmed automatically — no action needed from you.
+        </li>
+        <li>
+          <strong>At departure</strong> — the authorised amount is captured and
+          the driver receives their payout.
+        </li>
+      </ul>
+    </div>
+
+    {% else %}
+    {# Case B: card saved, MIT fires at T-24h #}
     <div class="success-hero">
       <div class="success-hero__icon">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
@@ -46,6 +88,7 @@
         </li>
       </ul>
     </div>
+    {% endif %}
 
     <!-- Trip summary -->
     <div class="booking-summary" style="margin-top:1.5rem;">
