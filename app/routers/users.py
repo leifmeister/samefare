@@ -62,6 +62,18 @@ def profile_completion(user: models.User) -> dict:
             "done":  user.license_verification == models.VerificationStatus.approved,
             "url":   "/verify",
         })
+        steps.append({
+            "key":   "kennitala",
+            "label": "Add your kennitala",
+            "done":  bool(user.kennitala),
+            "url":   "/profile#payout",
+        })
+        steps.append({
+            "key":   "iban",
+            "label": "Add your Icelandic IBAN",
+            "done":  bool(user.blikk_account_iban),
+            "url":   "/profile#payout",
+        })
 
     completed = sum(1 for s in steps if s["done"])
     total     = len(steps)
