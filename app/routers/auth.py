@@ -162,15 +162,16 @@ def register(
 
     existing = db.query(models.User).filter(models.User.email == email).first()
     if existing:
+        _t = ctx["_t"]
         if not existing.email_verified:
             return templates.TemplateResponse(
                 "auth/register.html",
-                {**_reg_ctx, "error": "We already sent a verification email to that address. Check your inbox (and spam folder)."},
+                {**_reg_ctx, "error": _t("register_email_pending")},
                 status_code=400,
             )
         return templates.TemplateResponse(
             "auth/register.html",
-            {**_reg_ctx, "error": "That email is already registered. <a href='/login'>Log in</a> or <a href='/forgot-password'>reset your password</a>."},
+            {**_reg_ctx, "error": _t("register_email_taken")},
             status_code=400,
         )
 

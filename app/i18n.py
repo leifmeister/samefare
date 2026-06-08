@@ -98,6 +98,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "register_btn": "Create free account",
         "register_have_account": "Already have an account?",
         "register_login": "Log in",
+        "register_email_taken": "That email is already registered. <a href='/login'>Log in</a> or <a href='/forgot-password'>reset your password</a>.",
+        "register_email_pending": "We already sent a verification email to that address. Check your inbox (and spam folder).",
 
         # ── Auth — forgot password ──────────────────────────────────────────
         "forgot_title": "Forgot password?",
@@ -729,6 +731,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "register_btn": "Búa til reikning ókeypis",
         "register_have_account": "Ertu nú þegar með reikning?",
         "register_login": "Innskráning",
+        "register_email_taken": "Þetta netfang er þegar skráð. <a href='/login'>Skráðu þig inn</a> eða <a href='/forgot-password'>endurstilltu lykilorðið þitt</a>.",
+        "register_email_pending": "Við höfum þegar sent staðfestingarpóst á þetta netfang. Skoðaðu pósthólfið þitt (og ruslpóst).",
 
         # ── Auth — forgot password ──────────────────────────────────────────
         "forgot_title": "Gleymdirðu lykilorðinu?",
