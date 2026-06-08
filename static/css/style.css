@@ -4627,6 +4627,27 @@ button, input, select, textarea { font: inherit; }
 .pax-item__name { font-weight: 600; }
 .pax-item__seats { font-size: .8125rem; color: var(--c-text-muted); }
 .pax-item__actions { display: flex; gap: var(--space-2); margin-left: auto; }
+
+.pax-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: .2rem;
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--c-text);
+  background: #FEF3C7;
+  border: 1px solid #FDE68A;
+  border-radius: 99px;
+  padding: .1rem .45rem;
+  margin-left: .35rem;
+  vertical-align: middle;
+}
+.pax-rating--new {
+  background: var(--color-bg-subtle, #F8F9FA);
+  border-color: var(--color-border, #E2E8F0);
+  color: var(--c-text-muted);
+  font-weight: 400;
+}
 .pax-item__status { margin-left: auto; }
 .pax-badge {
   font-size: .72rem;
