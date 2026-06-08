@@ -592,11 +592,28 @@ def new_trip_page(
     if pricing["estimate"] and not vals.get("price_per_seat"):
         vals["price_per_seat"] = pricing["estimate"].price_per_seat_cap
 
+    # Warn about missing payout details upfront so the driver doesn't fill
+    # out the whole form only to hit an error on submit.
+    payout_warning = None
+    if not settings.beta_mode:
+        missing = []
+        if not current_user.kennitala:
+            missing.append("kennitala")
+        if not current_user.blikk_account_iban:
+            missing.append("Icelandic IBAN")
+        if missing:
+            fields = " and ".join(missing)
+            payout_warning = (
+                f"You need to add your {fields} before you can post a ride. "
+                "Go to your profile → Payout details."
+            )
+
     return templates.TemplateResponse("trips/create.html", {
         **ctx,
         "car_types":     ALL_CAR_TYPES,
         "cities":        ICELANDIC_CITIES,
         "error":         None,
+        "payout_warning": payout_warning,
         "defaults":      defaults,
         "vals":          vals,
         "return_banner": return_banner,

@@ -15,6 +15,12 @@
       </div>
     {% endif %}
 
+    {% if payout_warning %}
+      <div class="alert alert--warning" role="alert" style="margin-bottom:1rem;">
+        ⚠️ {{ payout_warning }}
+      </div>
+    {% endif %}
+
     {% if error %}
       <div class="alert alert--error" role="alert">{{ error }}</div>
     {% endif %}
