@@ -382,7 +382,7 @@ function tripPricing(routes, policy, fuelPrice, cities) {
     seats:       {{ vals.seats_total | default(3) }},
     carType:     '{{ defaults.car_type | default("sedan") | e }}',
     fuelType:    '{{ vals.fuel_type or ("electric" if defaults.car_type == "electric" else "petrol") | e }}',
-    priceVal:    {{ vals.price_per_seat | default(0) }},
+    priceVal:    {{ vals.price_per_seat or 0 }},
 
     oOpen:false, oShowAll:false, oCursor:-1,
     dOpen:false, dShowAll:false, dCursor:-1,
