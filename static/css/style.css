@@ -314,6 +314,16 @@ button, input, select, textarea { font: inherit; }
 .avatar--lg  { width: 3.5rem; height: 3.5rem; font-size: 1.375rem; }
 .avatar--xl  { width: 5rem;   height: 5rem;   font-size: 2rem; }
 
+/* Avatar — no photo uploaded yet */
+.avatar--empty {
+  background: var(--c-border);
+  color: var(--c-text-muted);
+}
+.avatar--empty svg {
+  width: 60%;
+  height: 60%;
+}
+
 /* Avatar image (when a photo has been uploaded) */
 .avatar-img {
   border-radius: var(--r-full);
