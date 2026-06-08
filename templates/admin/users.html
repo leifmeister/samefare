@@ -143,6 +143,10 @@
                   <button class="btn btn-ghost btn-xs">Reactivate</button>
                 </form>
                 {% endif %}
+                <form method="post" action="/admin/users/{{ u.id }}/reset-for-testing"
+                      onsubmit="return confirm('Reset {{ u.full_name }} for testing?\n\nThis clears email verification, ID and licence status so they can walk through the full flow again. Bookings and payments are untouched.')">
+                  <button class="btn btn-ghost btn-xs" title="Clear email_verified + all verification status for re-testing">🔄 Reset for testing</button>
+                </form>
               {% elif u.deleted_at %}
                 <span class="data-table__meta">Deleted</span>
               {% else %}

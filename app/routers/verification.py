@@ -616,6 +616,38 @@ def reactivate_user(
     return RedirectResponse("/admin/users", status_code=303)
 
 
+@router.post("/admin/users/{user_id}/reset-for-testing", response_class=HTMLResponse)
+def reset_user_for_testing(
+    user_id: int,
+    admin:   models.User = Depends(_require_admin),
+    db:      Session     = Depends(get_db),
+):
+    """
+    Reset a user's verification and email-confirmed state back to zero
+    so they can walk through the full registration + verification + payment
+    flow again on production without needing a fresh email address.
+
+    Clears: email_verified, id_verification, license_verification,
+            didit session IDs, rejection reasons, licence expiry.
+    Does NOT touch bookings, payments, or trips.
+    Admin cannot reset themselves.
+    """
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user and user.id != admin.id and not user.deleted_at:
+        user.email_verified               = False
+        user.id_verification              = models.VerificationStatus.unverified
+        user.license_verification         = models.VerificationStatus.unverified
+        user.id_rejection_reason          = None
+        user.license_rejection_reason     = None
+        user.didit_identity_session_id    = None
+        user.didit_licence_session_id     = None
+        user.licence_expiry               = None
+        user.licence_expiry_warned_at     = None
+        db.commit()
+        log.info("Admin %s reset verification state for user %s (%s)", admin.id, user.id, user.email)
+    return RedirectResponse("/admin/users", status_code=303)
+
+
 @router.get("/admin/verifications", response_class=HTMLResponse)
 def admin_verifications(
     request: Request,
