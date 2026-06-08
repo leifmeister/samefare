@@ -104,7 +104,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         # ── Auth — forgot password ──────────────────────────────────────────
         "forgot_title": "Forgot password?",
         "forgot_sub": "Enter your email and we'll send you a reset link",
-        "forgot_sent": "If an account exists for that email, a reset link is on its way. Check your inbox (and spam folder).",
+        "forgot_sent": "Reset link sent! Check your inbox (and spam folder).",
+        "forgot_not_found": "No account found for that email address. <a href='/register'>Create an account</a>?",
         "forgot_back_login": "Back to log in",
         "forgot_email": "Email address",
         "forgot_btn": "Send reset link",
@@ -737,7 +738,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         # ── Auth — forgot password ──────────────────────────────────────────
         "forgot_title": "Gleymdirðu lykilorðinu?",
         "forgot_sub": "Sláðu inn netfangið þitt og við sendum þér endurstillingartengil",
-        "forgot_sent": "Ef reikningur er til fyrir þetta netfang er endurstillingartengill á leiðinni. Skoðaðu pósthólfið þitt (og ruslpóst).",
+        "forgot_sent": "Endurstillingartengill sendur! Skoðaðu pósthólfið þitt (og ruslpóst).",
+        "forgot_not_found": "Ekkert aðgangsreikningur fannst fyrir þetta netfang. <a href='/register'>Stofna aðgang</a>?",
         "forgot_back_login": "Til baka á innskráningu",
         "forgot_email": "Netfang",
         "forgot_btn": "Senda endurstillingartengil",

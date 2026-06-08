@@ -279,17 +279,19 @@ def forgot_password(
 ):
     user = db.query(models.User).filter(models.User.email == email.strip().lower()).first()
 
-    # Always show the same success message to avoid revealing whether an email exists
-    if user:
-        token   = secrets.token_urlsafe(32)
-        expires = datetime.utcnow() + timedelta(hours=1)
-        user.reset_token         = token
-        user.reset_token_expires = expires
-        db.commit()
-        mailer.password_reset(user, token)
+    if not user:
+        return templates.TemplateResponse("auth/forgot_password.html",
+            {**ctx, "error": None, "sent": False, "not_found": True})
+
+    token   = secrets.token_urlsafe(32)
+    expires = datetime.utcnow() + timedelta(hours=1)
+    user.reset_token         = token
+    user.reset_token_expires = expires
+    db.commit()
+    mailer.password_reset(user, token)
 
     return templates.TemplateResponse("auth/forgot_password.html",
-        {**ctx, "error": None, "sent": True})
+        {**ctx, "error": None, "sent": True, "not_found": False})
 
 
 @router.get("/reset-password", response_class=HTMLResponse)
