@@ -20,6 +20,8 @@
     <!-- Left: profile info -->
     <div class="profile-main">
 
+      {{ completion_card(completion) }}
+
       <!-- Profile card -->
       <div class="profile-card">
         <div class="profile-card__avatar-wrap">
@@ -294,8 +296,6 @@
         </div>
         <a href="/profile/export" class="btn btn-outline btn-sm" style="white-space:nowrap;">{{ _t('profile_download_btn') }}</a>
       </div>
-
-      {{ completion_card(completion) }}
 
       <!-- Danger zone -->
       <div class="danger-zone">
