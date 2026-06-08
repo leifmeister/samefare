@@ -57,9 +57,6 @@
       <p class="dash-card__value">{{ "{:,}".format(confirmed_bookings) }}</p>
       <p class="dash-card__sub">
         +{{ bookings_7d }} this week
-        {% if pending_bookings %}
-          · <span class="dash-card__warn">{{ pending_bookings }} pending</span>
-        {% endif %}
       </p>
     </div>
 
@@ -97,7 +94,7 @@
     <div class="dash-card dash-card--sm">
       <p class="dash-card__label">Pending bookings</p>
       <p class="dash-card__value dash-card__value--md {% if pending_bookings %}dash-card__value--warn{% endif %}">{{ pending_bookings }}</p>
-      <p class="dash-card__sub"><a href="/admin/users" class="link">Review →</a></p>
+      <p class="dash-card__sub" title="Booking requests waiting for driver approval across the platform — only the relevant driver can action these">Awaiting driver approval</p>
     </div>
 
   </div>
