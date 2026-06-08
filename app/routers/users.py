@@ -63,15 +63,9 @@ def profile_completion(user: models.User) -> dict:
             "url":   "/verify",
         })
         steps.append({
-            "key":   "kennitala",
-            "label": "Add your kennitala",
-            "done":  bool(user.kennitala),
-            "url":   "/profile#payout",
-        })
-        steps.append({
-            "key":   "iban",
-            "label": "Add your Icelandic IBAN",
-            "done":  bool(user.blikk_account_iban),
+            "key":   "payout",
+            "label": "Set up payout details",
+            "done":  bool(user.kennitala and user.blikk_account_iban),
             "url":   "/profile#payout",
         })
 

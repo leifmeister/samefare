@@ -20,8 +20,6 @@
     <!-- Left: profile info -->
     <div class="profile-main">
 
-      {{ completion_card(completion) }}
-
       <!-- Profile card -->
       <div class="profile-card">
         <div class="profile-card__avatar-wrap">
@@ -73,6 +71,8 @@
           {% else %}{{ _t('profile_id_not_verified') }}{% endif %}
         </a>
       </div>
+
+      {{ completion_card(completion) }}
 
       <!-- Edit profile -->
       <details class="details-card">
