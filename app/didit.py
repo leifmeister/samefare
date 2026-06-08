@@ -109,11 +109,10 @@ def verify_webhook_signature(
                 f"Webhook timestamp out of acceptable range (age={age}s)"
             )
 
-    # V2 canonical form: sort keys, preserve Unicode
-    canonical = json.dumps(payload, sort_keys=True, ensure_ascii=False)
+    # Didit signs over the raw request body bytes (not re-serialised JSON)
     expected = hmac.new(
         secret.encode("utf-8"),
-        canonical.encode("utf-8"),
+        payload_bytes,
         hashlib.sha256,
     ).hexdigest()
 

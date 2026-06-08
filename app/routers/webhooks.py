@@ -592,10 +592,6 @@ async def didit_webhook(request: Request):
     s          = get_settings()
 
     # ── 1. Signature verification ─────────────────────────────────────────────
-    # Debug: log all headers and raw body to diagnose signature mismatches
-    log.warning("Didit webhook headers: %s", dict(request.headers))
-    log.warning("Didit webhook body: %s", body_bytes.decode("utf-8", errors="replace")[:500])
-
     signature = request.headers.get("x-signature-v2", "")
     if not signature:
         log.warning("Didit webhook missing X-Signature-V2 header — rejected")
