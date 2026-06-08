@@ -49,30 +49,27 @@
           {% if current_user.bio %}
             <p class="profile-card__bio">{{ current_user.bio }}</p>
           {% endif %}
+          <!-- Verification badges — inline under name -->
+          <div class="verify-summary" style="margin-top:.75rem;">
+            <a href="/verify" class="verify-summary__item verify-summary__item--{{ current_user.id_verification }}">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h2"/></svg>
+              {{ _t('profile_id_label') }}
+              {% if current_user.id_verification == 'approved' %}{{ _t('profile_id_verified') }}
+              {% elif current_user.id_verification == 'pending' %}{{ _t('profile_id_under_review') }}
+              {% elif current_user.id_verification == 'rejected' %}{{ _t('profile_id_rejected') }}
+              {% else %}{{ _t('profile_id_not_verified') }}{% endif %}
+            </a>
+            <a href="/verify" class="verify-summary__item verify-summary__item--{{ current_user.license_verification }}">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>
+              {{ _t('profile_licence_label') }}
+              {% if current_user.license_verification == 'approved' %}{{ _t('profile_id_verified') }}
+              {% elif current_user.license_verification == 'pending' %}{{ _t('profile_id_under_review') }}
+              {% elif current_user.license_verification == 'rejected' %}{{ _t('profile_id_rejected') }}
+              {% else %}{{ _t('profile_id_not_verified') }}{% endif %}
+            </a>
+          </div>
         </div>
       </div>
-
-      <!-- Verification status -->
-      <div class="verify-summary">
-        <a href="/verify" class="verify-summary__item verify-summary__item--{{ current_user.id_verification }}">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h2"/></svg>
-          {{ _t('profile_id_label') }}
-          {% if current_user.id_verification == 'approved' %}{{ _t('profile_id_verified') }}
-          {% elif current_user.id_verification == 'pending' %}{{ _t('profile_id_under_review') }}
-          {% elif current_user.id_verification == 'rejected' %}{{ _t('profile_id_rejected') }}
-          {% else %}{{ _t('profile_id_not_verified') }}{% endif %}
-        </a>
-        <a href="/verify" class="verify-summary__item verify-summary__item--{{ current_user.license_verification }}">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>
-          {{ _t('profile_licence_label') }}
-          {% if current_user.license_verification == 'approved' %}{{ _t('profile_id_verified') }}
-          {% elif current_user.license_verification == 'pending' %}{{ _t('profile_id_under_review') }}
-          {% elif current_user.license_verification == 'rejected' %}{{ _t('profile_id_rejected') }}
-          {% else %}{{ _t('profile_id_not_verified') }}{% endif %}
-        </a>
-      </div>
-
-      {{ completion_card(completion) }}
 
       <!-- Edit profile -->
       <details class="details-card">
@@ -289,10 +286,6 @@
         <a href="/forgot-password" class="btn btn-outline btn-sm" style="white-space:nowrap;">{{ _t('profile_send_reset') }}</a>
       </div>
 
-      <div style="padding:1rem 0;">
-        <a href="/my-trips" class="btn btn-outline">{{ _t('profile_view_trips') }}</a>
-      </div>
-
       <!-- Data export -->
       <div class="details-card" style="display:flex; align-items:center; justify-content:space-between; gap:1rem;">
         <div>
@@ -301,6 +294,8 @@
         </div>
         <a href="/profile/export" class="btn btn-outline btn-sm" style="white-space:nowrap;">{{ _t('profile_download_btn') }}</a>
       </div>
+
+      {{ completion_card(completion) }}
 
       <!-- Danger zone -->
       <div class="danger-zone">
