@@ -25,6 +25,14 @@ settings = get_settings()
 templates = Jinja2Templates(directory="templates")
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
+# Statuses that represent a booking occupying seats on the trip.
+# Must stay in sync with the equivalent constant in trips.py.
+_SEAT_HOLDING_STATUSES = frozenset({
+    models.BookingStatus.awaiting_payment,
+    models.BookingStatus.confirmed,
+    models.BookingStatus.card_saved,
+})
+
 
 def _refresh_seats(trip: "models.Trip", db: "Session") -> None:
     """Recompute trip.seats_available from current active bookings (segment-aware)."""

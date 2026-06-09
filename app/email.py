@@ -12,6 +12,7 @@ import urllib.parse
 import urllib.request
 import urllib.error
 
+from app import models
 from app.config import get_settings
 
 log = logging.getLogger(__name__)
