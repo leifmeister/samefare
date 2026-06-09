@@ -82,12 +82,12 @@ def _sign(method: str, path: str, salt: str, ts: str, body: str) -> str:
         + s.rapyd_secret_key
         + body
     )
-    raw = hmac.new(
+    hexdig = hmac.new(
         s.rapyd_secret_key.encode("utf-8"),
         to_sign.encode("utf-8"),
         hashlib.sha256,
-    ).digest()
-    return b64encode(raw).decode("utf-8")
+    ).hexdigest()
+    return b64encode(hexdig.encode("utf-8")).decode("utf-8")
 
 
 def _headers(
@@ -100,6 +100,15 @@ def _headers(
     salt = _make_salt()
     ts   = str(int(time.time()))
     sig  = _sign(method, path, salt, ts, body)
+    log.warning(
+        "Rapyd auth debug: sandbox=%s access_key_len=%d access_key_prefix=%r "
+        "secret_key_len=%d sig_prefix=%r",
+        s.rapyd_sandbox,
+        len(s.rapyd_access_key),
+        s.rapyd_access_key[:6] if s.rapyd_access_key else "(empty)",
+        len(s.rapyd_secret_key),
+        sig[:10],
+    )
     headers: dict = {
         "Content-Type": "application/json",
         "access_key":   s.rapyd_access_key,
