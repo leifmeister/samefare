@@ -121,6 +121,7 @@ def book_trip_page(
         **ctx, "trip": trip, "error": None, "has_discount": has_discount,
         "segment_pickup": segment_pickup, "segment_dropoff": segment_dropoff,
         "segment_price": segment_price, "less_than_24h": less_than_24h,
+        "instant_book": trip.instant_book,
         "booking_available_seats": booking_available_seats,
         "blikk_payments": settings.blikk_payments,
     })

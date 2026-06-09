@@ -104,7 +104,12 @@
           {% if less_than_24h %}
           <div class="alert alert--warning" role="alert" style="margin-bottom:1rem;">
             <strong>{{ _t('booking_lt_24h_warning') }}</strong>
-            {{ _t('booking_lt_24h_sub') }} <strong>{{ _t('booking_lt_24h_nonrefund') }}</strong>.
+            {% if instant_book %}
+              {{ _t('booking_lt_24h_sub') }}
+            {% else %}
+              {{ _t('booking_lt_24h_sub_request') }}
+            {% endif %}
+            <strong>{{ _t('booking_lt_24h_nonrefund') }}</strong>.
           </div>
           {% endif %}
 
@@ -179,7 +184,11 @@
               <span x-show="method !== 'blikk'">
               {% endif %}
                 {% if less_than_24h %}
-                  {{ _t('booking_ack_lt24') }} <strong>{{ _t('booking_ack_lt24_bold') }}</strong> {{ _t('booking_ack_lt24_end') }}
+                  {% if instant_book %}
+                    {{ _t('booking_ack_lt24') }} <strong>{{ _t('booking_ack_lt24_bold') }}</strong> {{ _t('booking_ack_lt24_end') }}
+                  {% else %}
+                    {{ _t('booking_ack_lt24_request') }} <strong>{{ _t('booking_ack_lt24_bold') }}</strong> {{ _t('booking_ack_lt24_end') }}
+                  {% endif %}
                 {% else %}
                   {{ _t('booking_ack_pre24') }} <strong>{{ _t('booking_ack_pre24_bold') }}</strong> {{ _t('booking_ack_pre24_end') }}
                 {% endif %}
