@@ -82,12 +82,12 @@ def _sign(method: str, path: str, salt: str, ts: str, body: str) -> str:
         + s.rapyd_secret_key
         + body
     )
-    hexdig = hmac.new(
+    raw = hmac.new(
         s.rapyd_secret_key.encode("utf-8"),
         to_sign.encode("utf-8"),
         hashlib.sha256,
-    ).hexdigest()
-    return b64encode(hexdig.encode("utf-8")).decode("utf-8")
+    ).digest()
+    return b64encode(raw).decode("utf-8")
 
 
 def _headers(
