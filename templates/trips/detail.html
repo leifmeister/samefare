@@ -441,7 +441,7 @@
           {% if trip.instant_book %}
           <a href="/bookings/trip/{{ trip.id }}{% if segment_pickup and segment_dropoff %}?pickup={{ segment_pickup | urlencode }}&dropoff={{ segment_dropoff | urlencode }}{% endif %}"
              class="btn btn-primary btn-block btn-lg">
-            {{ _t('detail_book_seat_btn') }} {{ "{:,}".format(_display_price) }} ISK
+            {{ _t('detail_book_seat_btn') }} {{ "{:,}".format(_display_total) }} ISK
           </a>
           <div class="what-next">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
@@ -450,7 +450,7 @@
           {% else %}
           <a href="/bookings/trip/{{ trip.id }}{% if segment_pickup and segment_dropoff %}?pickup={{ segment_pickup | urlencode }}&dropoff={{ segment_dropoff | urlencode }}{% endif %}"
              class="btn btn-primary btn-block btn-lg">
-            {{ _t('detail_request_book_btn') }} {{ "{:,}".format(_display_price) }} ISK
+            {{ _t('detail_request_book_btn') }} {{ "{:,}".format(_display_total) }} ISK
           </a>
           <div class="what-next">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
@@ -461,30 +461,13 @@
           {% else %}
           <!-- Not logged in -->
           <div class="booking-widget__price">
-            <span class="booking-widget__amount">{{ "{:,}".format(_display_price) }}</span>
+            <span class="booking-widget__amount">{{ "{:,}".format(_display_total) }}</span>
             <span class="booking-widget__unit"> {{ _t('detail_isk_seat') }}</span>
           </div>
           <a href="/login?next={{ request.url.path | urlencode }}" class="btn btn-primary btn-block btn-lg">{{ _t('detail_login_to_book') }}</a>
           <p class="cta-hint">{{ _t('detail_no_account') }} <a href="/register">{{ _t('detail_join_free') }}</a></p>
           {% endif %}
 
-          <!-- Price breakdown (non-driver, non-booked states only) -->
-          {% if not _is_driver and not (current_user_booking and current_user_booking.status in ('pending','card_saved','confirmed')) %}
-          <div class="booking-widget__fees">
-            <div class="price-row price-row--muted">
-              <span>{{ _t('detail_price_per_seat') }}</span>
-              <span>{{ "{:,}".format(_display_price) }} ISK</span>
-            </div>
-            <div class="price-row price-row--muted">
-              <span>{{ _t('detail_service_fee') }}</span>
-              <span>{{ "{:,}".format(_display_fee) }} ISK</span>
-            </div>
-            <div class="price-row price-row--total">
-              <span>{{ _t('detail_total_per_seat') }}</span>
-              <span>{{ "{:,}".format(_display_total) }} ISK</span>
-            </div>
-          </div>
-          {% endif %}
 
         {% elif trip.status == 'active' and ((segment_available_seats is not none and segment_available_seats == 0) or (segment_available_seats is none and trip.seats_available == 0)) %}
         <div class="booking-state booking-state--full">
