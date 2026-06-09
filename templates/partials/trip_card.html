@@ -7,6 +7,9 @@
 {% set _is_partial = trip.is_partial %}
 {% set _card_href %}{% if _is_partial %}/trips/{{ trip.id }}?pickup={{ trip.pickup_city | urlencode }}&dropoff={{ trip.dropoff_city | urlencode }}{% else %}/trips/{{ trip.id }}{% endif %}{% endset %}
 {% set _driver_trips = trip.driver.total_trips_as_driver %}
+{% set _base_price  = trip.segment_price if trip.segment_price else trip.price_per_seat %}
+{% set _raw_fee     = [(_base_price * 0.18) | round | int, 200] | max %}
+{% set _card_total  = (((_base_price + _raw_fee + 49) // 50) * 50) | int %}
 <article class="trip-card{% if _is_partial %} trip-card--partial{% endif %}">
   <a href="{{ _card_href }}" class="trip-card__link"
      aria-label="{{ trip.origin }} to {{ trip.destination }}{% if _is_partial %} (boards {{ trip.pickup_city }}, exits {{ trip.dropoff_city }}){% endif %}">
@@ -26,7 +29,7 @@
         <span class="trip-card__city trip-card__city--to">{{ trip.destination }}</span>
       </div>
       <div class="trip-card__price">
-        <span class="trip-card__price-amount">{{ "{:,}".format(trip.price_per_seat) }}</span>
+        <span class="trip-card__price-amount">{{ "{:,}".format(_card_total) }}</span>
         <span class="trip-card__price-unit">ISK / seat</span>
       </div>
     </div>

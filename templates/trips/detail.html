@@ -427,7 +427,7 @@
           {% elif current_user %}
           <!-- Logged in, new booking -->
           <div class="booking-widget__price">
-            <span class="booking-widget__amount">{{ "{:,}".format(_display_price) }}</span>
+            <span class="booking-widget__amount">{{ "{:,}".format(_display_total) }}</span>
             <span class="booking-widget__unit"> {{ _t('detail_isk_seat') }}</span>
           </div>
 
