@@ -1212,6 +1212,7 @@ def trip_detail(
     if current_user and current_user.id != trip.driver_id:
         current_user_booking = (
             db.query(models.Booking)
+            .options(joinedload(models.Booking.payment))
             .filter(
                 models.Booking.trip_id      == trip.id,
                 models.Booking.passenger_id == current_user.id,
@@ -1333,6 +1334,14 @@ def trip_detail(
         "has_return_trip": has_return_trip,
         "driver_summary": driver_summary,
         "current_user_booking": current_user_booking,
+        "booking_needs_card_setup": (
+            current_user_booking is not None
+            and current_user_booking.status == models.BookingStatus.pending
+            and (
+                current_user_booking.payment is None
+                or current_user_booking.payment.status != models.PaymentStatus.card_saved
+            )
+        ),
         "structured_data": structured_data,
         "segment_pickup":           segment_pickup,
         "segment_dropoff":          segment_dropoff,
