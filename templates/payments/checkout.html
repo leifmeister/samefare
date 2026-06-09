@@ -112,29 +112,15 @@
         <div style="padding:1.25rem 1.5rem 0;">
           <div class="booking-summary">
             <h3 class="booking-summary__title">{{ _t('checkout_price_breakdown') }}</h3>
-            <div class="price-row">
-              <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }} × {{ "{:,}".format(booking.trip.price_per_seat) }} ISK</span>
-              <span>{{ "{:,}".format(contribution) }} ISK</span>
-            </div>
-            {% if service_fee > 0 %}
-            <div class="price-row price-row--muted">
-              <span>{{ _t('checkout_service_fee') }}</span>
-              <span>{{ "{:,}".format(service_fee) }} ISK</span>
-            </div>
-            {% else %}
-            <div class="price-row price-row--muted" style="color:var(--c-success);">
-              <span>{{ _t('checkout_service_fee') }}</span>
-              <span>{{ _t('checkout_waived') }}</span>
+            {% if service_fee == 0 %}
+            <div class="price-row price-row--muted" style="color:var(--c-success); font-size:.875rem; margin-bottom:.5rem;">
+              <span>🎉 {{ _t('checkout_waived') }}</span>
             </div>
             {% endif %}
             <div class="price-row price-row--total">
-              <span>{{ _t('checkout_total_reserved') }}</span>
+              <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }}</span>
               <span>{{ "{:,}".format(total) }} ISK</span>
             </div>
-            <p class="price-note">
-              {{ _t('checkout_driver_receives') }} {{ "{:,}".format(driver_payout) }} ISK.
-              {% if service_fee > 0 %}{{ _t('checkout_service_fee_nonrefund') }}{% endif %}
-            </p>
           </div>
         </div>
 
