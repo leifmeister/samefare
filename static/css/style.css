@@ -4220,11 +4220,9 @@ button, input, select, textarea { font: inherit; }
   background: #FFFBEB;
   border: 1px solid #F59E0B;
   color: #92400E;
-  display: flex;
-  gap: .75rem;
-  align-items: flex-start;
+  display: block;
   padding: 1rem 1.25rem;
-  border-radius: var(--radius);
+  border-radius: var(--r-md);
   font-size: .9375rem;
   line-height: 1.6;
 }
