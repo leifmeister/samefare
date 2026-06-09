@@ -100,15 +100,6 @@ def _headers(
     salt = _make_salt()
     ts   = str(int(time.time()))
     sig  = _sign(method, path, salt, ts, body)
-    log.warning(
-        "Rapyd auth debug: sandbox=%s access_key_len=%d access_key_prefix=%r "
-        "secret_key_len=%d sig_prefix=%r",
-        s.rapyd_sandbox,
-        len(s.rapyd_access_key),
-        s.rapyd_access_key[:6] if s.rapyd_access_key else "(empty)",
-        len(s.rapyd_secret_key),
-        sig[:10],
-    )
     headers: dict = {
         "Content-Type": "application/json",
         "access_key":   s.rapyd_access_key,
@@ -140,7 +131,7 @@ def _request(
     (checkout creation, MIT, capture, refund).  Rapyd enforces deduplication
     via the 'idempotency' request header; body-level fields are not enforced.
     """
-    body    = json.dumps(payload, separators=(",", ":")) if payload is not None else ""
+    body    = json.dumps(payload, separators=(",", ":"), ensure_ascii=False) if payload is not None else ""
     url     = _base_url() + path
     headers = _headers(method, path, body, idempotency_key)
     data    = body.encode("utf-8") if body else None
