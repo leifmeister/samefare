@@ -103,13 +103,14 @@
 
           {% if less_than_24h %}
           <div class="alert alert--warning" role="alert" style="margin-bottom:1rem;">
-            <strong>{{ _t('booking_lt_24h_warning') }}</strong>
-            {% if instant_book %}
-              {{ _t('booking_lt_24h_sub') }}
-            {% else %}
-              {{ _t('booking_lt_24h_sub_request') }}
-            {% endif %}
-            <strong>{{ _t('booking_lt_24h_nonrefund') }}</strong>.
+            <p style="font-weight:700; margin:0 0 .25rem;">{{ _t('booking_lt_24h_warning') }}</p>
+            <p style="margin:0;">
+              {% if instant_book %}
+                {{ _t('booking_lt_24h_sub') }} {{ _t('booking_lt_24h_nonrefund') }}.
+              {% else %}
+                {{ _t('booking_lt_24h_sub_request') }} {{ _t('booking_lt_24h_nonrefund') }}.
+              {% endif %}
+            </p>
           </div>
           {% endif %}
 
