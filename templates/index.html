@@ -38,14 +38,24 @@
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><circle cx="10" cy="10" r="3"/><path d="M10 2a8 8 0 100 16A8 8 0 0010 2z" fill-opacity=".15"/></svg>
             {{ _t('hero_from') }}
           </label>
-          <input id="hero-origin" name="origin" type="text" class="search-field__input"
-                 placeholder="Reykjavík" autocomplete="off" list="cities-list" />
+          <div class="city-picker" x-data="cityPicker('')">
+            <input id="hero-origin" name="origin" type="text" class="search-field__input"
+                   placeholder="Reykjavík" autocomplete="off"
+                   x-model="query" @input="onInput()" @focus="onFocus()"
+                   @blur="onBlur()" @keydown="onKey($event)" />
+            <ul class="city-picker__list" x-show="open && list.length" x-cloak>
+              <template x-for="(city, i) in list" :key="city">
+                <li class="city-picker__option" :class="{'city-picker__option--hi': i===hi}"
+                    @mousedown.prevent="pick(city)" x-text="city"></li>
+              </template>
+            </ul>
+          </div>
         </div>
 
         <button type="button" class="search-swap-btn"
                 aria-label="Swap origin and destination"
                 title="Swap"
-                onclick="var o=document.getElementById('hero-origin'),d=document.getElementById('hero-dest'),t=o.value;o.value=d.value;d.value=t">
+                onclick="var o=document.getElementById('hero-origin'),d=document.getElementById('hero-dest'),t=o.value;o.value=d.value;d.value=t;o.dispatchEvent(new Event('input',{bubbles:true}));d.dispatchEvent(new Event('input',{bubbles:true}))">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                stroke="currentColor" stroke-width="2" width="16" height="16" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round"
@@ -58,8 +68,18 @@
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
             {{ _t('hero_to') }}
           </label>
-          <input id="hero-dest" name="destination" type="text" class="search-field__input"
-                 placeholder="Akureyri" autocomplete="off" list="cities-list" />
+          <div class="city-picker" x-data="cityPicker('')">
+            <input id="hero-dest" name="destination" type="text" class="search-field__input"
+                   placeholder="Akureyri" autocomplete="off"
+                   x-model="query" @input="onInput()" @focus="onFocus()"
+                   @blur="onBlur()" @keydown="onKey($event)" />
+            <ul class="city-picker__list" x-show="open && list.length" x-cloak>
+              <template x-for="(city, i) in list" :key="city">
+                <li class="city-picker__option" :class="{'city-picker__option--hi': i===hi}"
+                    @mousedown.prevent="pick(city)" x-text="city"></li>
+              </template>
+            </ul>
+          </div>
         </div>
 
         <div class="search-field search-field--date">
@@ -151,25 +171,6 @@
       </button>
     </form>
 
-    <datalist id="cities-list">
-      <option value="Reykjavík"/>
-      <option value="Akureyri"/>
-      <option value="Keflavík"/>
-      <option value="Selfoss"/>
-      <option value="Vík"/>
-      <option value="Höfn"/>
-      <option value="Egilsstaðir"/>
-      <option value="Ísafjörður"/>
-      <option value="Borgarnes"/>
-      <option value="Hveragerði"/>
-      <option value="Húsavík"/>
-      <option value="Sauðárkrókur"/>
-      <option value="Landeyjahöfn"/>
-      <option value="Landmannalaugar"/>
-      <option value="Seyðisfjörður"/>
-      <option value="Skógarfoss"/>
-      <option value="Varmahlíð"/>
-    </datalist>
   </div>
 </section>
 
