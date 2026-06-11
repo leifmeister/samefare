@@ -98,8 +98,11 @@ def create_channel_payout(
             "iban": creditor_iban.upper().replace(" ", ""),
         },
     }
-    if reference:
-        payload["reference"] = reference
+    # NB: the Payment Channel POST /payment body is strict (additionalProperties:
+    # false) and has no reference/description field, so we must NOT send one —
+    # including it gets the whole request rejected. `reference` is accepted as a
+    # param for call-site compatibility but is intentionally not transmitted.
+    _ = reference
 
     with _client() as c:
         resp = c.post("/payment", json=payload)
