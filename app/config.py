@@ -80,6 +80,26 @@ class Settings(BaseSettings):
             )
         return self
 
+    @model_validator(mode="after")
+    def _check_rapyd_environment(self) -> "Settings":
+        # A production deploy with Rapyd keys must NOT point at the sandbox URL:
+        # production keys only authenticate against api.rapyd.net, so talking to
+        # sandboxapi.rapyd.net silently 401s every payment. RAPYD_SANDBOX defaults
+        # to True, so an unset/stale value on a prod box is the failure mode this
+        # guard catches — fail loudly at boot instead of at every checkout.
+        if (
+            self.base_url.startswith("https://")
+            and self.rapyd_access_key
+            and self.rapyd_secret_key
+            and self.rapyd_sandbox
+        ):
+            raise ValueError(
+                "RAPYD_SANDBOX is true on a production deployment with Rapyd keys "
+                "configured. Production keys only work against api.rapyd.net — set "
+                "RAPYD_SANDBOX=false (or unset the keys for a sandbox/dev box)."
+            )
+        return self
+
     @property
     def secure_cookies(self) -> bool:
         """Set the Secure flag on auth cookies when serving over HTTPS."""
