@@ -569,6 +569,15 @@ button, input, select, textarea { font: inherit; }
   align-items: center;
   gap: var(--space-10);
 }
+
+/* Tuck the first content section up so the hero's wavy edge falls partly
+   behind the "Offer a ride" card. Transparent bg lets the wave show around it. */
+.hero + .section {
+  margin-top: -68px;
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
 .hero__text { text-align: center; }
 .hero__title {
   font-size: clamp(2.25rem, 5vw, 3.5rem);
