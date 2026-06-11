@@ -473,7 +473,7 @@ button, input, select, textarea { font: inherit; }
 /* ── Hero ────────────────────────────────────────────────────── */
 .hero {
   position: relative;
-  background: linear-gradient(145deg, #0A1628 0%, #0E2D28 35%, #0A1628 65%, #1A0A2E 100%);
+  background: linear-gradient(180deg, #BFE3F0 0%, #D6ECF4 48%, #EAF6FB 100%);
   padding: 5rem 0 4rem;
   /* overflow must stay visible so the search-bar dropdowns can extend past the
      hero's bottom edge. The decorative ::before / __aurora layers are inset:0,
@@ -481,26 +481,25 @@ button, input, select, textarea { font: inherit; }
   overflow: visible;
 }
 
-/* Aurora shimmer overlay */
+/* Soft sun-side warmth + sky highlight */
 .hero::before {
   content: "";
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 60% at 20% 50%, rgba(0,168,134,.12) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 80% at 80% 30%, rgba(91,33,182,.10) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 50% 90%, rgba(14,165,233,.08) 0%, transparent 60%);
+    radial-gradient(ellipse 50% 45% at 84% 15%, rgba(255,242,205,.60) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 50% at 20% 0%,  rgba(255,255,255,.45) 0%, transparent 55%);
   pointer-events: none;
 }
+/* Soft atmospheric haze at the horizon, behind the mountains */
 .hero__aurora {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 40%,
-    rgba(0,108,91,.06) 70%, rgba(0,108,91,.14) 100%);
+  background: linear-gradient(180deg, transparent 58%, rgba(255,255,255,.42) 100%);
   pointer-events: none;
 }
 
-/* ── Hero decorative night scene ─────────────────────────────── */
+/* ── Hero decorative daytime scene ───────────────────────────── */
 .hero__scene {
   position: absolute;
   inset: 0;
@@ -508,17 +507,19 @@ button, input, select, textarea { font: inherit; }
   pointer-events: none;
   z-index: 0;
 }
-.hero__ribbons {
+.hero__sun {
   position: absolute;
-  top: -4%; left: 0;
-  width: 100%; height: 62%;
+  top: 9%; right: 12%;
+  width: 130px; height: 130px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #FFF6DE 0%, #FFE9B0 42%, rgba(255,233,176,0) 72%);
 }
-.hero__stars {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 72%;
-}
-.hero__star { opacity: .5; }
+.hero__cloud { position: absolute; }
+.hero__cloud svg { display: block; width: 100%; height: auto;
+  filter: drop-shadow(0 6px 10px rgba(120,150,170,.16)); }
+.hero__cloud--1 { width: 150px; top: 18%; left: 4%;  }
+.hero__cloud--2 { width: 105px; top: 11%; left: 40%; opacity: .78; }
+.hero__cloud--3 { width: 132px; top: 29%; left: 66%; opacity: .9; }
 .hero__mountains {
   position: absolute;
   bottom: 52px; left: 0;
@@ -526,7 +527,7 @@ button, input, select, textarea { font: inherit; }
 }
 .hero__pin {
   position: absolute;
-  filter: drop-shadow(0 8px 14px rgba(0,0,0,.45));
+  filter: drop-shadow(0 8px 12px rgba(60,90,110,.28));
 }
 .hero__pin svg { display: block; }
 .hero__pin--a { left: 5.5%; top: 33%; }
@@ -542,15 +543,16 @@ button, input, select, textarea { font: inherit; }
   z-index: 0;
 }
 
-@keyframes heroFloat   { 0%,100% { transform: translateY(0); }    50% { transform: translateY(-12px); } }
-@keyframes heroTwinkle { 0%,100% { opacity: .2; }                 50% { opacity: .9; } }
-@keyframes heroShimmer { 0%,100% { opacity: .5; }                 50% { opacity: 1; } }
+@keyframes heroFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+@keyframes heroDrift { from { transform: translateX(0); } to { transform: translateX(46px); } }
+@keyframes heroSun   { 0%,100% { opacity: .85; } 50% { opacity: 1; } }
 
 @media (prefers-reduced-motion: no-preference) {
-  .hero__pin       { animation: heroFloat 6s ease-in-out infinite; animation-delay: var(--d, 0s); }
-  .hero__star--tw  { animation: heroTwinkle 4.5s ease-in-out infinite; }
-  .hero__ribbon--1 { animation: heroShimmer 14s ease-in-out infinite; }
-  .hero__ribbon--2 { animation: heroShimmer 19s ease-in-out infinite; }
+  .hero__pin      { animation: heroFloat 6s ease-in-out infinite; animation-delay: var(--d, 0s); }
+  .hero__cloud--1 { animation: heroDrift 26s ease-in-out infinite alternate; }
+  .hero__cloud--2 { animation: heroDrift 34s ease-in-out infinite alternate; }
+  .hero__cloud--3 { animation: heroDrift 30s ease-in-out infinite alternate; }
+  .hero__sun      { animation: heroSun 7s ease-in-out infinite; }
 }
 
 /* Side pins live in the page gutters — hide once the layout narrows. */
@@ -571,11 +573,11 @@ button, input, select, textarea { font: inherit; }
   font-size: clamp(2.25rem, 5vw, 3.5rem);
   font-weight: 900;
   line-height: 1.1;
-  color: #fff;
+  color: #103A36;
   letter-spacing: -.03em;
 }
 .hero__title-accent {
-  background: linear-gradient(90deg, #00D4A8, #5EEAD4);
+  background: linear-gradient(90deg, #006C5B, #00A886);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -583,7 +585,7 @@ button, input, select, textarea { font: inherit; }
 .hero__subtitle {
   margin-top: var(--space-4);
   font-size: 1.125rem;
-  color: rgba(255,255,255,.7);
+  color: #3D5C5E;
   max-width: 540px;
   margin-inline: auto;
   line-height: 1.65;
@@ -596,7 +598,7 @@ button, input, select, textarea { font: inherit; }
   background: var(--c-surface);
   border-radius: var(--r-xl);
   padding: 1.25rem 1.5rem;
-  box-shadow: 0 20px 60px rgba(0,0,0,.35), 0 4px 16px rgba(0,0,0,.2);
+  box-shadow: 0 20px 50px rgba(30,70,90,.16), 0 4px 14px rgba(30,70,90,.10);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -971,12 +973,11 @@ button, input, select, textarea { font: inherit; }
 /* ── Sections ────────────────────────────────────────────────── */
 .section { padding: var(--space-16) 0; }
 .section--light { background: var(--c-surface); }
-/* Lower-page "Icelandic night" zone — one unified dark palette so How it works,
-   Stats and the CTA read as a single cohesive block (matching the hero) rather
-   than three clashing full-bleed bands. */
-.section--teal  { background: #0A1628; position: relative; }
-.section--dark  { background: #0A1628; }
-.section--cta   { background: linear-gradient(160deg, #0A1628 0%, #0E2D28 100%); }
+/* Lower-page light zone — soft mint tint so the Coverage map, How it works and
+   Stats read as one cohesive band, with a gentle green-tinted CTA accent. */
+.section--teal  { background: #EDF5F2; position: relative; }
+.section--dark  { background: #EDF5F2; }
+.section--cta   { background: #E0F2EE; }
 
 /* Wave bridging the light content above into the dark night zone. */
 .section-wave-top {
@@ -987,12 +988,12 @@ button, input, select, textarea { font: inherit; }
   pointer-events: none;
 }
 .section--cta .btn-outline {
-  color: #fff;
-  border-color: rgba(255,255,255,0.55);
+  color: var(--c-primary-dark);
+  border-color: rgba(0,108,91,0.4);
 }
 .section--cta .btn-outline:hover {
-  background: rgba(255,255,255,0.1);
-  border-color: #fff;
+  background: rgba(0,108,91,0.08);
+  border-color: var(--c-primary);
 }
 
 .driver-card-cta {
@@ -1124,8 +1125,8 @@ button, input, select, textarea { font: inherit; }
 .how-card__icon--1 { background: rgba(0,212,168,.15); color: #00D4A8; }
 .how-card__icon--2 { background: rgba(212,160,23,.15);  color: var(--c-accent); }
 .how-card__icon--3 { background: rgba(94,234,212,.15);  color: #5EEAD4; }
-.how-card__title { font-size: 1.125rem; font-weight: 700; color: #fff; margin-bottom: var(--space-3); }
-.how-card__body  { font-size: .9375rem; color: rgba(255,255,255,.65); line-height: 1.7; }
+.how-card__title { font-size: 1.125rem; font-weight: 700; color: var(--c-text); margin-bottom: var(--space-3); }
+.how-card__body  { font-size: .9375rem; color: var(--c-text-muted); line-height: 1.7; }
 
 /* ── Stats ───────────────────────────────────────────────────── */
 .stats-grid {
@@ -1134,8 +1135,8 @@ button, input, select, textarea { font: inherit; }
   gap: var(--space-6);
 }
 .stat-card { text-align: center; }
-.stat-card__num   { font-size: 2.5rem; font-weight: 900; color: #fff; line-height: 1; margin-bottom: var(--space-2); }
-.stat-card__label { font-size: .9375rem; color: rgba(255,255,255,.55); }
+.stat-card__num   { font-size: 2.5rem; font-weight: 900; color: var(--c-primary); line-height: 1; margin-bottom: var(--space-2); }
+.stat-card__label { font-size: .9375rem; color: var(--c-text-muted); }
 
 /* ── CTA section ─────────────────────────────────────────────── */
 .cta-inner {
@@ -1144,8 +1145,8 @@ button, input, select, textarea { font: inherit; }
   justify-content: space-between;
   gap: var(--space-8);
 }
-.cta-title   { font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: var(--space-3); }
-.cta-sub     { color: rgba(255,255,255,.65); font-size: 1.0625rem; }
+.cta-title   { font-size: 2rem; font-weight: 800; color: var(--c-text); margin-bottom: var(--space-3); }
+.cta-sub     { color: var(--c-text-muted); font-size: 1.0625rem; }
 .cta-actions { display: flex; gap: var(--space-3); flex-wrap: wrap; flex-shrink: 0; }
 .cta-hint    { font-size: .875rem; color: var(--c-text-muted); margin-top: var(--space-3); text-align: center; }
 .cta-hint a  { color: var(--c-primary); font-weight: 600; }
@@ -1325,24 +1326,16 @@ button, input, select, textarea { font: inherit; }
   margin-top: 1.75rem;
   border-radius: var(--r-lg);
   overflow: hidden;
-  background: #0A1628;
-  border: 1px solid rgba(255,255,255,.10);
-  box-shadow: 0 14px 50px rgba(0,0,0,.45);
+  background: #EAF6FB;
+  border: 1px solid rgba(16,58,54,.12);
+  box-shadow: 0 14px 40px rgba(30,70,90,.16);
 }
-.coverage__map .leaflet-container { background: #0A1628; font-family: inherit; }
-/* Dark-style the OSM tiles to fit the night zone — tiles only, not markers. */
-.coverage__map .leaflet-tile-pane {
-  filter: invert(1) hue-rotate(185deg) brightness(.92) contrast(.9) saturate(.85);
-}
-/* Glow the green pins against the dark map. */
+.coverage__map .leaflet-container { background: #EAF6FB; font-family: inherit; }
+/* Green pins on the light map, with a soft halo. */
 .coverage__map .map-marker--from {
   width: 16px; height: 16px;
-  box-shadow: 0 0 0 4px rgba(0,168,134,.22), 0 1px 6px rgba(0,0,0,.55);
+  box-shadow: 0 0 0 4px rgba(0,168,134,.18), 0 1px 5px rgba(0,0,0,.30);
 }
-.coverage__map .leaflet-control-attribution {
-  background: rgba(10,22,40,.7); color: rgba(255,255,255,.55);
-}
-.coverage__map .leaflet-control-attribution a { color: rgba(255,255,255,.8); }
 @media (max-width: 640px) { .coverage__map { height: 360px; } }
 
 .detail-cards { display: flex; flex-direction: column; gap: var(--space-4); }
@@ -2012,7 +2005,7 @@ button, input, select, textarea { font: inherit; }
 
 /* ── Newsletter homepage section ─────────────────────────────── */
 .section--newsletter {
-  background: linear-gradient(160deg, #0A1628 0%, #0E2D28 100%);
+  background: linear-gradient(160deg, #006C5B 0%, #00A886 100%);
   padding: 4rem 0;
 }
 .newsletter-section__inner {
