@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app import models
 from app.config import get_settings
 from app.database import get_db
+from app.utils import _CANONICAL_CITIES
 
 settings = get_settings()
 
@@ -139,4 +140,7 @@ def get_template_context(request: Request, db: Session = Depends(get_db)):
         "is_newsletter_subscriber": is_newsletter_subscriber,
         "lang":                     lang,
         "_t":                       get_translations(lang),
+        # Canonical city list for the shared search-bar city pickers (base.html).
+        # Same source the offer-a-ride form uses, so both stay in sync.
+        "canonical_cities":         list(_CANONICAL_CITIES),
     }

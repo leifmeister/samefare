@@ -292,40 +292,49 @@
   </footer>
 
   <script>
-  // Alpine component: city autocomplete picker
-  // Replaces native <datalist> to fix: Enter submitting form, dropdown not reopening.
-  const _CITIES = ['Reykjavík','Akureyri','Keflavík','Selfoss','Vík','Höfn',
-                   'Egilsstaðir','Ísafjörður','Borgarnes','Hveragerði','Húsavík',
-                   'Sauðárkrókur','Landeyjahöfn','Landmannalaugar','Seyðisfjörður',
-                   'Skógarfoss','Varmahlíð'];
-  function cityPicker(init) {
+  // Alpine component: city autocomplete combo box.
+  // Same behaviour as the "Offer a ride" route picker (chevron toggle, substring
+  // match, arrow-key navigation, Enter selects the top/highlighted match instead
+  // of submitting the form, reopens reliably). Canonical city list comes from the
+  // server (app/utils._CANONICAL_CITIES) so it stays in sync with the trip form.
+  const _CITIES = {{ (canonical_cities | default([])) | tojson }};
+  function cityCombo(init, cities) {
     return {
       query: init || '',
       open: false,
-      hi: -1,
-      get list() {
+      showAll: false,
+      cursor: -1,
+      cities: cities || _CITIES,
+      get filtered() {
         const q = this.query.toLowerCase();
-        return q ? _CITIES.filter(c => c.toLowerCase().startsWith(q)) : _CITIES;
+        return (this.showAll || !this.query)
+          ? this.cities
+          : this.cities.filter(c => c.toLowerCase().includes(q));
       },
-      pick(city) { this.query = city; this.open = false; this.hi = -1; },
-      onInput() { this.open = true; this.hi = -1; },
-      onFocus() { this.open = true; },
-      onBlur()  { setTimeout(() => { this.open = false; this.hi = -1; }, 160); },
-      onKey(e) {
-        if (e.key === 'ArrowDown') {
-          e.preventDefault(); this.open = true;
-          this.hi = Math.min(this.hi + 1, this.list.length - 1);
-        } else if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          this.hi = Math.max(this.hi - 1, 0);
-        } else if (e.key === 'Enter') {
-          if (this.open && this.list.length) {
-            e.preventDefault(); e.stopPropagation();
-            this.pick(this.hi >= 0 ? this.list[this.hi] : this.list[0]);
-          }
-        } else if (e.key === 'Escape') {
-          this.open = false;
+      toggle() {
+        if (this.open && this.showAll) { this.open = false; return; }
+        this.showAll = true; this.cursor = -1; this.open = true;
+      },
+      pick(city) {
+        if (!city) return;
+        this.query = city; this.open = false; this.showAll = false; this.cursor = -1;
+      },
+      onInput() { this.showAll = false; this.cursor = -1; this.open = true; },
+      onEnter(e) {
+        // Select the highlighted (or top) match instead of submitting the form.
+        // When the list is closed (already chosen), let Enter submit normally.
+        if (this.open && this.filtered.length) {
+          e.preventDefault(); e.stopPropagation();
+          this.pick(this.filtered[this.cursor >= 0 ? this.cursor : 0]);
         }
+      },
+      onDown(e) {
+        e.preventDefault(); this.open = true;
+        this.cursor = Math.min(this.cursor + 1, this.filtered.length - 1);
+      },
+      onUp(e) {
+        e.preventDefault();
+        this.cursor = Math.max(this.cursor - 1, 0);
       },
     };
   }

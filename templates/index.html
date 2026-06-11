@@ -38,16 +38,25 @@
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><circle cx="10" cy="10" r="3"/><path d="M10 2a8 8 0 100 16A8 8 0 0010 2z" fill-opacity=".15"/></svg>
             {{ _t('hero_from') }}
           </label>
-          <div class="city-picker" x-data="cityPicker('')">
-            <input id="hero-origin" name="origin" type="text" class="search-field__input"
+          <div class="city-combo" x-data="cityCombo('', _CITIES)" @click.outside="open=false">
+            <input id="hero-origin" name="origin" type="text" class="search-field__input city-combo__input"
                    placeholder="Reykjavík" autocomplete="off"
-                   x-model="query" @input="onInput()" @focus="onFocus()"
-                   @blur="onBlur()" @keydown="onKey($event)" />
-            <ul class="city-picker__list" x-show="open && list.length" x-cloak>
-              <template x-for="(city, i) in list" :key="city">
-                <li class="city-picker__option" :class="{'city-picker__option--hi': i===hi}"
+                   x-model="query" @input="onInput()" @focus="open=true"
+                   @keydown.escape.prevent="open=false"
+                   @keydown.enter="onEnter($event)"
+                   @keydown.arrow-down="onDown($event)"
+                   @keydown.arrow-up="onUp($event)" />
+            <span class="city-combo__btn" @mousedown.prevent="toggle()">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+            </span>
+            <ul class="city-combo__list" x-show="open && (filtered.length || (query.length > 1 && !showAll))" x-cloak>
+              <template x-for="(city, i) in filtered" :key="city">
+                <li class="city-combo__option" :class="{'city-combo__option--active': i===cursor}"
                     @mousedown.prevent="pick(city)" x-text="city"></li>
               </template>
+              <li x-show="!filtered.length && query.length > 1" class="city-combo__no-match">
+                No city found — pick from the list
+              </li>
             </ul>
           </div>
         </div>
@@ -68,16 +77,25 @@
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
             {{ _t('hero_to') }}
           </label>
-          <div class="city-picker" x-data="cityPicker('')">
-            <input id="hero-dest" name="destination" type="text" class="search-field__input"
+          <div class="city-combo" x-data="cityCombo('', _CITIES)" @click.outside="open=false">
+            <input id="hero-dest" name="destination" type="text" class="search-field__input city-combo__input"
                    placeholder="Akureyri" autocomplete="off"
-                   x-model="query" @input="onInput()" @focus="onFocus()"
-                   @blur="onBlur()" @keydown="onKey($event)" />
-            <ul class="city-picker__list" x-show="open && list.length" x-cloak>
-              <template x-for="(city, i) in list" :key="city">
-                <li class="city-picker__option" :class="{'city-picker__option--hi': i===hi}"
+                   x-model="query" @input="onInput()" @focus="open=true"
+                   @keydown.escape.prevent="open=false"
+                   @keydown.enter="onEnter($event)"
+                   @keydown.arrow-down="onDown($event)"
+                   @keydown.arrow-up="onUp($event)" />
+            <span class="city-combo__btn" @mousedown.prevent="toggle()">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+            </span>
+            <ul class="city-combo__list" x-show="open && (filtered.length || (query.length > 1 && !showAll))" x-cloak>
+              <template x-for="(city, i) in filtered" :key="city">
+                <li class="city-combo__option" :class="{'city-combo__option--active': i===cursor}"
                     @mousedown.prevent="pick(city)" x-text="city"></li>
               </template>
+              <li x-show="!filtered.length && query.length > 1" class="city-combo__no-match">
+                No city found — pick from the list
+              </li>
             </ul>
           </div>
         </div>

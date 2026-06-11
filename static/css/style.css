@@ -598,36 +598,10 @@ button, input, select, textarea { font: inherit; }
 }
 .search-field__input:focus-visible { outline: none; }
 
-/* City picker autocomplete dropdown */
-.city-picker { position: relative; }
-.city-picker__list {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0; right: 0;
-  background: #fff;
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-md);
-  list-style: none;
-  margin: 0; padding: 4px 0;
-  z-index: 200;
-  max-height: 220px;
-  overflow-y: auto;
-  box-shadow: 0 4px 20px rgba(0,0,0,.12);
-}
-.city-picker__option {
-  padding: 9px 14px;
-  cursor: pointer;
-  font-size: .9375rem;
-  color: var(--c-text);
-}
-.city-picker__option:hover,
-.city-picker__option--hi {
-  background: var(--c-primary-light);
-  color: var(--c-primary-dark);
-}
-/* List-page variant uses .input class instead of .search-field__input */
-.search-bar__field .city-picker,
-.search-field     .city-picker { flex: 1; }
+/* Search-bar city combo boxes share the .city-combo component (see below).
+   In the flex search bars they must grow to fill their field. */
+.search-bar__field .city-combo,
+.search-field     .city-combo { flex: 1; }
 
 .btn-search {
   align-self: flex-end;

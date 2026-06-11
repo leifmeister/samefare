@@ -877,8 +877,14 @@ def sitemap():
 
 def _lc(request: Request) -> dict:
     """Return lang + _t context keys for routes that build their own context dict."""
+    from app.utils import _CANONICAL_CITIES
     lang = detect_lang(request)
-    return {"lang": lang, "_t": get_translations(lang)}
+    return {
+        "lang": lang,
+        "_t": get_translations(lang),
+        # Shared search-bar city pickers (base.html) need this on every page.
+        "canonical_cities": list(_CANONICAL_CITIES),
+    }
 
 
 @app.get("/terms", response_class=HTMLResponse)
