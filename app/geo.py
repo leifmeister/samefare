@@ -44,6 +44,7 @@ CITY_COORDS: dict[str, tuple[float, float]] = {
     "Varmahlíð":             (65.5430, -19.4630),
     "Vík":                   (63.4187, -19.0054),
     "Vopnafjörður":          (65.7553, -14.8410),
+    "Þingvellir":            (64.2559, -21.1295),
 }
 
 _OSRM_BASE = "https://router.project-osrm.org/route/v1/driving"
@@ -172,6 +173,12 @@ _BRANCH: dict[str, dict] = {
     "Landmannalaugar": {
         "ring_idx": 17,
         "exit": [[63.993, -19.067]],
+    },
+    # Route 36 (Þingvallavegur) NE from the Reykjavík/Mosfellsbær area, over
+    # Mosfellsheiði, down to Þingvellir (Golden Circle).
+    "Þingvellir": {
+        "ring_idx": 0,
+        "exit": [[64.167, -21.690], [64.205, -21.380], [64.2559, -21.1295]],
     },
 }
 

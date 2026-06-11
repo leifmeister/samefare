@@ -19,7 +19,7 @@ _CANONICAL_CITIES: tuple[str, ...] = (
     "Höfn", "Húsavík", "Hveragerði", "Ísafjörður", "Keflavík",
     "Kirkjubæjarklaustur", "Landeyjahöfn", "Landmannalaugar", "Mývatn", "Ólafsvík", "Reykjavík",
     "Sauðárkrókur", "Selfoss", "Seyðisfjörður", "Siglufjörður", "Skógarfoss", "Stykkishólmur",
-    "Varmahlíð", "Vík",
+    "Varmahlíð", "Vík", "Þingvellir",
 )
 
 
