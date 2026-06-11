@@ -403,13 +403,25 @@
 {% endif %}
 
 <!-- ═══════════════════════════════════════
-     HOW IT WORKS
+     COVERAGE MAP — all supported destinations
 ═══════════════════════════════════════ -->
-<section class="section section--teal">
+<section class="section section--teal coverage">
   <!-- Flowing edge from the light content into the dark night zone -->
   <svg class="section-wave-top" viewBox="0 0 1440 70" preserveAspectRatio="none" aria-hidden="true">
     <path d="M0,40 C240,4 470,64 720,38 C980,10 1210,58 1440,30 L1440,70 L0,70 Z" fill="#0A1628"/>
   </svg>
+  <div class="container">
+    <h2 class="section-title section-title--light">{{ _t('coverage_title') }}</h2>
+    <p class="section-sub section-sub--light">{{ _t('coverage_sub') }}</p>
+    <div class="coverage__map" id="iceland-map" role="img"
+         aria-label="Map of Iceland showing all supported SameFare destinations"></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     HOW IT WORKS
+═══════════════════════════════════════ -->
+<section class="section section--teal">
   <div class="container">
     <h2 class="section-title section-title--light">{{ _t('how_title') }}</h2>
     <p class="section-sub section-sub--light">{{ _t('how_sub') }}</p>
@@ -484,4 +496,63 @@
 </section>
 {% endif %}
 
+{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+(function () {
+  var CITIES = {{ supported_cities | default({}) | tojson }};
+  var el = document.getElementById('iceland-map');
+  if (!window.L || !el || !CITIES) return;
+
+  var map = L.map(el, {
+    zoomControl: true,
+    scrollWheelZoom: false,   // don't hijack page scroll
+    attributionControl: true,
+  }).setView([64.96, -18.7], 6);  // all-Iceland base view
+
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 11, minZoom: 5,
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  }).addTo(map);
+
+  var pinIcon = L.divIcon({
+    className: '',
+    html: '<div class="map-marker map-marker--from"></div>',
+    iconSize: [16, 16], iconAnchor: [8, 8],
+  });
+
+  var pts = [];
+  Object.keys(CITIES).forEach(function (name) {
+    var ll = CITIES[name];
+    pts.push(ll);
+    L.marker(ll, { icon: pinIcon, title: name })
+      .bindTooltip(name, { direction: 'top', offset: [0, -6] })
+      .bindPopup('<strong>' + name + '</strong><br><a href="/trips?destination=' +
+                 encodeURIComponent(name) + '">{{ _t('coverage_see_rides') }} →</a>')
+      .addTo(map);
+  });
+
+  // Fit to all stops once the container is laid out. invalidateSize() guards
+  // against Leaflet measuring the off-screen container at zero size on init.
+  function fitAll() {
+    map.invalidateSize();
+    map.fitBounds(pts, { padding: [34, 34], maxZoom: 7 });
+  }
+  map.whenReady(fitAll);
+  setTimeout(fitAll, 350);
+  // Re-fit the first time the section scrolls into view (handles deferred layout).
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      if (entries[0].isIntersecting) { fitAll(); io.disconnect(); }
+    }, { threshold: 0.2 });
+    io.observe(el);
+  }
+}());
+</script>
 {% endblock %}

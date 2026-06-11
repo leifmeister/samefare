@@ -986,12 +986,18 @@ def home(request: Request):
     finally:
         db.close()
 
+    # Coordinates for every supported destination, for the coverage map.
+    supported_cities = {
+        c: list(CITY_COORDS[c]) for c in trips.ICELANDIC_CITIES if c in CITY_COORDS
+    }
+
     return templates.TemplateResponse("index.html", {
         **_lc(request),
-        "request":       request,
-        "current_user":  current_user,
-        "upcoming_trips": upcoming_trips,
-        "stats":         stats,
+        "request":          request,
+        "current_user":     current_user,
+        "upcoming_trips":    upcoming_trips,
+        "stats":            stats,
+        "supported_cities": supported_cities,
     })
 
 
