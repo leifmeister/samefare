@@ -17,8 +17,12 @@ or locally with BLIKK_CHANNEL_API_KEY + BLIKK_SCA_KENNITALA in the environment.
 """
 import argparse
 import json
+import os
 import sys
 import time
+
+# Make the repo root importable so `app` resolves when run as a script path.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def _dump(obj) -> str:
