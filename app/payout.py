@@ -442,6 +442,16 @@ def _send_blikk_payout(batch: DriverPayout, driver: models.User) -> str:
     if not payment_id:
         raise PayoutProviderError("Blikk returned no payment ID.")
 
+    # Blikk may accept the HTTP call (200/201) but already report a terminal
+    # *failure* in the body — e.g. insufficient funds rejected immediately.
+    # Raise so the batch is marked failed instead of being recorded as `sent`.
+    if (blikk_client.channel_payment_is_terminal(result)
+            and not blikk_client.channel_payment_succeeded(result)):
+        raise PayoutProviderError(
+            f"Blikk rejected payout {payment_id} at submission: "
+            f"status={result.get('status')!r}"
+        )
+
     return payment_id
 
 
@@ -585,25 +595,35 @@ def send_driver_payout(db: Session, batch: DriverPayout) -> bool:
         return True
 
     except (NotImplementedError, PayoutProviderError) as exc:
-        batch.status         = DriverPayoutStatus.failed
-        batch.failed_at      = datetime.utcnow()
-        batch.failure_reason = str(exc)
-
-        for item in batch.items:
-            item.status = PayoutItemStatus.payout_failed
-
-        write_ledger_entry(
-            db, LedgerEntryType.driver_payout_failed,
-            amount           = batch.amount,
-            driver_payout_id = batch.id,
-            driver_id        = driver.id,
-            note             = str(exc),
-        )
-        log.error(
-            "DriverPayout %s FAILED for driver %s via %s: %s",
-            batch.id, driver.id, batch.payout_method, exc,
-        )
+        _mark_payout_failed(db, batch, str(exc))
         return False
+
+
+def _mark_payout_failed(db: Session, batch: DriverPayout, reason: str) -> None:
+    """
+    Move a DriverPayout and its items into the failed state and record it on the
+    ledger. Used both when submission is rejected and when a previously `sent`
+    batch is later found to have failed at the bank (e.g. insufficient funds).
+    Items land in `payout_failed` for operator-driven recovery. Caller commits.
+    """
+    batch.status         = DriverPayoutStatus.failed
+    batch.failed_at      = datetime.utcnow()
+    batch.failure_reason = reason
+
+    for item in batch.items:
+        item.status = PayoutItemStatus.payout_failed
+
+    write_ledger_entry(
+        db, LedgerEntryType.driver_payout_failed,
+        amount           = batch.amount,
+        driver_payout_id = batch.id,
+        driver_id        = batch.driver_id,
+        note             = reason,
+    )
+    log.error(
+        "DriverPayout %s FAILED for driver %s via %s: %s",
+        batch.id, batch.driver_id, batch.payout_method, reason,
+    )
 
 
 def confirm_driver_payout(db: Session, batch: DriverPayout) -> None:
@@ -637,3 +657,52 @@ def confirm_driver_payout(db: Session, batch: DriverPayout) -> None:
         "DriverPayout %s confirmed for driver %s — %s ISK via %s",
         batch.id, batch.driver_id, batch.amount, batch.payout_method,
     )
+
+
+def reconcile_blikk_payout(db: Session, batch: DriverPayout) -> bool:
+    """
+    Poll Blikk for the terminal status of a `sent` Blikk payout and reconcile it.
+
+    Blikk Payment Channel transfers settle asynchronously: create_channel_payout()
+    returns once the order is accepted, but the bank can still REJECT it on
+    settlement (e.g. insufficient funds in SameFare's account). Without this,
+    the batch would sit in `sent` forever and the ledger would wrongly show the
+    driver as paid.
+
+        SUCCESS                       → confirm_driver_payout()
+        REJECTED / ERROR / CANCELLED  → _mark_payout_failed() (items → payout_failed)
+        still in flight / fetch error → leave as-is, retry next tick
+
+    Returns True if the batch reached a terminal state on this call. Caller commits.
+    """
+    if batch.status != DriverPayoutStatus.sent or batch.payout_method != PayoutMethod.blikk:
+        return False
+    if not batch.provider_payout_id:
+        log.warning("reconcile_blikk_payout: batch %s is sent but has no provider id", batch.id)
+        return False
+
+    from app import blikk as blikk_client
+    from app.blikk import BlikkError
+
+    try:
+        payment = blikk_client.get_channel_payment(batch.provider_payout_id)
+    except BlikkError as exc:
+        # Transient (network / provider hiccup) — leave `sent`, reconcile next tick.
+        log.warning(
+            "reconcile_blikk_payout: could not fetch Blikk payment %s for batch %s: %s",
+            batch.provider_payout_id, batch.id, exc,
+        )
+        return False
+
+    if not blikk_client.channel_payment_is_terminal(payment):
+        return False  # still pending at the bank — check again next tick
+
+    if blikk_client.channel_payment_succeeded(payment):
+        confirm_driver_payout(db, batch)
+        return True
+
+    _mark_payout_failed(
+        db, batch,
+        f"Blikk reported {payment.get('status')!r} for payment {batch.provider_payout_id}",
+    )
+    return True

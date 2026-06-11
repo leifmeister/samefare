@@ -987,6 +987,44 @@ def _run_send_driver_payouts() -> None:
         db.close()
 
 
+def _run_reconcile_driver_payouts() -> None:
+    """
+    Reconcile `sent` Blikk DriverPayout batches against their final bank status.
+
+    Blikk Payment Channel transfers settle asynchronously, so a batch Blikk
+    accepted can still be REJECTED at the bank (e.g. insufficient funds in
+    SameFare's account). This polls each sent Blikk batch and either confirms it
+    (SUCCESS) or fails it (REJECTED/ERROR/CANCELLED → items back to payout_failed
+    for operator-driven recovery). Not gated on PAYOUT_ENABLED: if any batch was
+    ever sent it must be reconciled regardless of the flag's current value.
+    """
+    from app.payout import reconcile_blikk_payout
+
+    db = SessionLocal()
+    try:
+        sent_batches = (
+            db.query(models.DriverPayout)
+            .filter(
+                models.DriverPayout.status == models.DriverPayoutStatus.sent,
+                models.DriverPayout.payout_method == models.PayoutMethod.blikk,
+            )
+            .options(joinedload(models.DriverPayout.items))
+            .all()
+        )
+        for batch in sent_batches:
+            try:
+                if reconcile_blikk_payout(db, batch):
+                    db.commit()
+            except Exception as exc:
+                log.error("Failed to reconcile DriverPayout %s: %s", batch.id, exc)
+                db.rollback()
+    except Exception as exc:
+        log.warning("Reconcile driver payouts task failed: %s", exc)
+        db.rollback()
+    finally:
+        db.close()
+
+
 # ── Fuel price refresh ────────────────────────────────────────────────────────
 
 _fuel_price_last_refreshed: datetime | None = None
@@ -1355,6 +1393,7 @@ async def auto_complete_loop() -> None:
         _run_create_payout_items()      # pair captured+completed → PayoutItem
         _run_advance_payout_items()     # pending → payout_ready when bank details added
         _run_send_driver_payouts()      # batch and submit (no-op until PAYOUT_ENABLED=true)
+        _run_reconcile_driver_payouts() # confirm/fail sent Blikk payouts by bank settlement status
         # ── Pricing data ────────────────────────────────────────────────────────
         _run_refresh_fuel_price()       # cache apis.is p80 petrol price (once/day)
         # ── Daily once-per-day checks ────────────────────────────────────────────
