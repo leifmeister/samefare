@@ -531,7 +531,7 @@ button, input, select, textarea { font: inherit; }
 /* ── Search box (hero) ───────────────────────────────────────── */
 .search-box {
   width: 100%;
-  max-width: 860px;
+  max-width: 960px;
   background: var(--c-surface);
   border-radius: var(--r-xl);
   padding: 1.25rem 1.5rem;
@@ -542,7 +542,8 @@ button, input, select, textarea { font: inherit; }
 }
 .search-box__fields {
   display: grid;
-  grid-template-columns: 1fr auto 1fr 170px 130px;
+  /* From | swap | To | Date | Passengers | Search (inline, far right) */
+  grid-template-columns: 1fr auto 1fr 160px 130px auto;
   gap: var(--space-3);
   align-items: end;
 }
@@ -968,6 +969,19 @@ button, input, select, textarea { font: inherit; }
 }
 .section-title         { font-size: 1.875rem; font-weight: 800; color: var(--c-text); margin-bottom: var(--space-2); }
 .section-title--light  { color: #fff; }
+
+/* Brand display font (Nunito) on prominent headings — matches the SameFare
+   wordmark and hero title for typographic coherence. Body copy and small
+   labels stay Inter. Nunito is loaded at weights 700/800/900. */
+.section-title,
+.driver-card-cta__title,
+.cta-title,
+.how-card__title,
+.page-header__title,
+.success-hero__title,
+.footer__brand {
+  font-family: var(--font-display);
+}
 .section-sub           { color: var(--c-text-muted); font-size: 1.0625rem; }
 .section-sub--light    { color: rgba(255,255,255,.7); }
 
