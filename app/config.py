@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     twilio_auth_token:   str = Field(default="", alias="TWILIO_AUTH_TOKEN")
     twilio_from_number:  str = Field(default="", alias="TWILIO_FROM_NUMBER")
     twilio_sender_id:    str = Field(default="Samefare", alias="TWILIO_SENDER_ID")
+    # Operator phone for critical operational alerts (e.g. failed driver payouts).
+    # Override with ADMIN_ALERT_PHONE; set blank to disable SMS alerts.
+    admin_alert_phone:   str = Field(default="+3546257175", alias="ADMIN_ALERT_PHONE")
 
     # Rapyd payment processing (https://rapyd.net)
     rapyd_access_key: str  = Field(default="", alias="RAPYD_ACCESS_KEY")

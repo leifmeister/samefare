@@ -127,6 +127,20 @@ def send_otp(phone: str, code: str) -> tuple[bool, str]:
     return _send(phone, f"Your SameFare verification code is: {code}\n\nExpires in 10 minutes.")
 
 
+def admin_alert(message: str) -> None:
+    """
+    Fire-and-forget critical operational alert to the operator phone
+    (ADMIN_ALERT_PHONE). No-op when the number isn't configured.
+    """
+    phone = get_settings().admin_alert_phone
+    if not phone:
+        log.debug("admin_alert skipped — ADMIN_ALERT_PHONE not set: %s", message)
+        return
+    ok, err = _send(phone, message)
+    if not ok:
+        log.error("admin_alert SMS failed: %s — message was: %s", err, message)
+
+
 def trip_cancelled_to_passenger(booking) -> None:
     """
     Sent immediately when a driver cancels a trip with confirmed passengers.

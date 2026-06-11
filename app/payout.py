@@ -625,6 +625,17 @@ def _mark_payout_failed(db: Session, batch: DriverPayout, reason: str) -> None:
         batch.id, batch.driver_id, batch.payout_method, reason,
     )
 
+    # Critical: a driver wasn't paid. Alert the operator by SMS (best-effort).
+    try:
+        from app import sms
+        sms.admin_alert(
+            f"SameFare ALERT: driver payout FAILED. Batch {batch.id}, "
+            f"driver {batch.driver_id}, {batch.amount} ISK via {batch.payout_method}. "
+            f"Reason: {reason}. Check the payout ledger."
+        )
+    except Exception as exc:  # never let alerting break failure handling
+        log.error("admin_alert raised while reporting payout failure: %s", exc)
+
 
 def confirm_driver_payout(db: Session, batch: DriverPayout) -> None:
     """
