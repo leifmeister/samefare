@@ -25,6 +25,37 @@ from app.config import get_settings
 log = logging.getLogger(__name__)
 
 
+# ── Phone normalisation ───────────────────────────────────────────────────────
+
+# Default country for bare, country-code-less numbers. This is an Iceland-first
+# product and every legacy/seed row missing a code is Icelandic.
+_DEFAULT_DIAL_CODE = "+354"
+
+
+def normalize_phone(raw: str | None) -> str | None:
+    """
+    Coerce a stored phone number to E.164 (e.g. '+3546184321').
+
+    Twilio rejects anything that isn't strict E.164 with 21211 'Invalid To'.
+    Stored values are messy — some have a space ('+354 6184321'), some are
+    bare with no country code ('6184321'). Both must end up as '+3546184321'.
+
+    - strips spaces and hyphens (dial codes like '+1-809' become '+1809')
+    - '00' international prefix → '+'
+    - no leading '+' → assume the default country code
+    """
+    if not raw:
+        return raw
+    p = raw.strip().replace(" ", "").replace("-", "")
+    if not p:
+        return None
+    if p.startswith("00"):
+        p = "+" + p[2:]
+    if not p.startswith("+"):
+        p = _DEFAULT_DIAL_CODE + p
+    return p
+
+
 # ── Low-level sender ──────────────────────────────────────────────────────────
 
 def _send(to: str, body: str) -> tuple[bool, str]:
@@ -36,6 +67,10 @@ def _send(to: str, body: str) -> tuple[bool, str]:
     if not to:
         log.debug("No phone number — skipping SMS")
         return False, "No phone number provided."
+
+    # Defensive: never hand Twilio a non-E.164 number — a country-code-less
+    # value (e.g. '6184321') triggers a 21211 rejection.
+    to = normalize_phone(to)
 
     # Use alphanumeric sender ID only for countries registered in Twilio.
     # Falls back to the phone number for all others so messages are never

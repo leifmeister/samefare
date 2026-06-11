@@ -9,7 +9,7 @@ from jose import jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-from app import models, email as mailer
+from app import models, email as mailer, sms
 from app.config import get_settings
 from app.database import get_db
 from app.dependencies import get_current_user_optional, get_template_context
@@ -130,6 +130,7 @@ def register(
 
     ctx = {**_lc(request), "request": request, "current_user": None, "is_newsletter_subscriber": False}
     email = email.strip().lower()
+    phone = sms.normalize_phone(phone or None) or ""
 
     current_year = date.today().year
     _reg_ctx = {**ctx, "current_year": current_year}

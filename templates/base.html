@@ -360,7 +360,7 @@
     }
     return {
       code, local,
-      get full() { return this.local.trim() ? this.code + ' ' + this.local.trim() : ''; }
+      get full() { return this.local.trim() ? this.code + this.local.replace(/[\s-]/g, '') : ''; }
     };
   }
 

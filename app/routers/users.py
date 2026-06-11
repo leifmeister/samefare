@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload, selectinload
 
-from app import models
+from app import models, sms
 from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
 from app.fuel import active_policy
@@ -283,7 +283,7 @@ def edit_profile(
 ):
     current_user.full_name = full_name
 
-    new_phone = phone or None
+    new_phone = sms.normalize_phone(phone or None)
     if new_phone != current_user.phone:
         # Number changed — verification is no longer valid
         current_user.phone            = new_phone
