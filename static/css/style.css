@@ -536,7 +536,10 @@ button, input, select, textarea { font: inherit; }
   left: 0; bottom: -1px;
   width: 100%; height: 88px;
   display: block;
-  z-index: 2;
+  /* z-index 0 keeps the wave above the background scene (also z-0, earlier in
+     the DOM) but below .hero__inner (z-1) so the search-box dropdowns, which
+     open downward over the wave, are never covered by it. */
+  z-index: 0;
 }
 
 @keyframes heroFloat   { 0%,100% { transform: translateY(0); }    50% { transform: translateY(-12px); } }
