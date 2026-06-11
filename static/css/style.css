@@ -699,22 +699,6 @@ button, input, select, textarea { font: inherit; }
   background: var(--c-primary);
   color: #fff;
 }
-/* Chip row inside the hero search box card */
-.search-box__chips {
-  display: flex;
-  align-items: center;
-  gap: .4rem;
-  flex-wrap: wrap;
-  padding-top: .1rem;
-}
-.search-box__chips-label {
-  font-size: .78rem;
-  font-weight: 600;
-  color: var(--c-text-muted);
-  margin-right: .1rem;
-  white-space: nowrap;
-}
-
 /* ── List page layout ────────────────────────────────────────── */
 .list-layout {
   display: grid;
@@ -4198,6 +4182,36 @@ button, input, select, textarea { font: inherit; }
 .date-popover-enter-start   { opacity: 0; transform: translateY(-4px); }
 .date-popover-enter-end     { opacity: 1; transform: translateY(0); }
 .date-popover__chips        { margin-top: .6rem; padding-top: .6rem; border-top: 1px solid var(--c-border-light); }
+
+/* Custom passenger/seat dropdown — shares the date control's look so the whole
+   search bar (From/To/Date/Passengers) is one visual language. */
+.seat-select { position: relative; }
+/* Rightmost field — anchor to the right edge so a wider menu can't overflow. */
+.seat-popover {
+  left: auto;
+  right: 0;
+  min-width: 160px;
+  padding: .375rem;
+}
+.seat-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  white-space: nowrap;
+  padding: .5rem .75rem;
+  border: none;
+  background: transparent;
+  border-radius: var(--r-md);
+  font-size: .9rem;
+  color: var(--c-text);
+  cursor: pointer;
+}
+.seat-option:hover { background: var(--c-primary-light); color: var(--c-primary-dark); }
+.seat-option--active {
+  background: var(--c-primary-light);
+  color: var(--c-primary-dark);
+  font-weight: 600;
+}
 
 /* Same-city search error */
 .search-bar__same-city-error {

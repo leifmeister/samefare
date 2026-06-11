@@ -338,6 +338,21 @@
       },
     };
   }
+  // Alpine component: custom passenger/seat dropdown. Replaces the lone native
+  // <select> in the search bars so the whole bar (From/To/Date/Passengers) shares
+  // one visual language — styled like the date control. options is [[value,label]…].
+  function seatSelect(initial, options) {
+    return {
+      open: false,
+      seats: initial,
+      options: options,
+      get label() {
+        const o = this.options.find(o => o[0] === this.seats);
+        return o ? o[1] : this.seats;
+      },
+      pick(v) { this.seats = v; this.open = false; },
+    };
+  }
   // Alpine component: parses an existing "+354 7654321" into {code, local}
   // Codes are sorted longest-first so "+1-809" matches before "+1"
   function phoneField(existing) {

@@ -129,7 +129,11 @@
 
             <!-- Date flex popover -->
             <div class="date-popover" x-show="open" x-cloak
-                 @click.outside="open = false">
+                 @click.outside="open = false"
+                 x-transition:enter="date-popover-enter"
+                 x-transition:enter-start="date-popover-enter-start"
+                 x-transition:enter-end="date-popover-enter-end">
+              <!-- Segmented flex control -->
               <div class="date-flex-seg" role="group" aria-label="Date flexibility">
                 <button type="button" class="date-flex-seg__btn"
                         :class="{'date-flex-seg__btn--active': flex === 'exact'}"
@@ -141,10 +145,23 @@
                         :class="{'date-flex-seg__btn--active': flex === 'this_week'}"
                         @click="setFlex('this_week')">{{ _t('list_this_week') }}</button>
               </div>
+              <!-- Native date picker — hidden for week/weekend flex modes -->
               <div x-show="flex !== 'this_week' && flex !== 'weekend'"
                    style="margin-top:.6rem;">
                 <input type="date" class="search-field__input" x-model="date"
                        @change="pickDate()" style="width:100%;" aria-label="Select date" />
+              </div>
+              <!-- Quick-pick shortcuts inside the popover -->
+              <div class="date-chips date-popover__chips">
+                <button type="button" class="date-chip"
+                        :class="{'date-chip--active': date === today && flex === 'exact'}"
+                        @click="setDate(today)">{{ _t('hero_today') }}</button>
+                <button type="button" class="date-chip"
+                        :class="{'date-chip--active': date === tomorrow && flex === 'exact'}"
+                        @click="setDate(tomorrow)">{{ _t('hero_tomorrow') }}</button>
+                <button type="button" class="date-chip"
+                        :class="{'date-chip--active': flex === 'weekend'}"
+                        @click="flex === 'weekend' ? clearDate() : setFlex('weekend')">{{ _t('hero_weekend') }}</button>
               </div>
             </div>
 
@@ -155,30 +172,34 @@
         </div>
 
         <div class="search-field search-field--seats">
-          <label for="hero-seats" class="search-field__label">
+          <label class="search-field__label">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
             {{ _t('hero_passengers') }}
           </label>
-          <select id="hero-seats" name="seats" class="search-field__input">
-            <option value="1">{{ _t('list_1_passenger') }}</option>
-            <option value="2">{{ _t('list_2_passengers') }}</option>
-            <option value="3">{{ _t('list_3_passengers') }}</option>
-          </select>
+          <div class="seat-select"
+               x-data='seatSelect({{ seats | default(1) }}, {{ [[1, _t("list_1_passenger")], [2, _t("list_2_passengers")], [3, _t("list_3_passengers")]] | tojson }})'
+               @click.outside="open=false">
+            <button type="button" class="search-field__input date-trigger date-trigger--has-value"
+                    @click="open=!open" aria-haspopup="true" :aria-expanded="open">
+              <span x-text="label"></span>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                   width="14" height="14" class="date-trigger__caret" aria-hidden="true">
+                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/>
+              </svg>
+            </button>
+            <div class="date-popover seat-popover" x-show="open" x-cloak
+                 x-transition:enter="date-popover-enter"
+                 x-transition:enter-start="date-popover-enter-start"
+                 x-transition:enter-end="date-popover-enter-end">
+              <template x-for="opt in options" :key="opt[0]">
+                <button type="button" class="seat-option"
+                        :class="{'seat-option--active': seats===opt[0]}"
+                        @click="pick(opt[0])" x-text="opt[1]"></button>
+              </template>
+            </div>
+            <input type="hidden" name="seats" :value="seats">
+          </div>
         </div>
-      </div>
-
-      <!-- Date quick-picks — separate row, doesn't affect grid alignment -->
-      <div class="search-box__chips">
-        <span class="search-box__chips-label">{{ _t('hero_quick_pick') }}</span>
-        <button type="button" class="date-chip"
-                :class="{'date-chip--active': date === today && flex === 'exact'}"
-                @click="setDate(today)">{{ _t('hero_today') }}</button>
-        <button type="button" class="date-chip"
-                :class="{'date-chip--active': date === tomorrow && flex === 'exact'}"
-                @click="setDate(tomorrow)">{{ _t('hero_tomorrow') }}</button>
-        <button type="button" class="date-chip"
-                :class="{'date-chip--active': flex === 'weekend'}"
-                @click="flex === 'weekend' ? clearDate() : setFlex('weekend')">{{ _t('hero_weekend') }}</button>
       </div>
 
       <button type="submit" class="btn btn-primary btn-search">

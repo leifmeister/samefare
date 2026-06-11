@@ -167,15 +167,33 @@
         </div>
 
         <div class="search-bar__field search-bar__field--xs">
-          <label for="s-seats" class="search-bar__label">
+          <label class="search-bar__label">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="12" height="12" aria-hidden="true"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
             {{ _t('list_seats') }}
           </label>
-          <select id="s-seats" name="seats" class="input">
-            <option value="1" {% if seats == 1 %}selected{% endif %}>{{ _t('list_1_seat') }}</option>
-            <option value="2" {% if seats == 2 %}selected{% endif %}>{{ _t('list_2_seats') }}</option>
-            <option value="3" {% if seats == 3 %}selected{% endif %}>{{ _t('list_3_seats') }}</option>
-          </select>
+          <div class="seat-select"
+               x-data='seatSelect({{ seats | default(1) }}, {{ [[1, _t("list_1_seat")], [2, _t("list_2_seats")], [3, _t("list_3_seats")]] | tojson }})'
+               @click.outside="open=false">
+            <button type="button" class="input date-trigger date-trigger--has-value"
+                    @click="open=!open" aria-haspopup="true" :aria-expanded="open">
+              <span x-text="label"></span>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                   width="14" height="14" class="date-trigger__caret" aria-hidden="true">
+                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/>
+              </svg>
+            </button>
+            <div class="date-popover seat-popover" x-show="open" x-cloak
+                 x-transition:enter="date-popover-enter"
+                 x-transition:enter-start="date-popover-enter-start"
+                 x-transition:enter-end="date-popover-enter-end">
+              <template x-for="opt in options" :key="opt[0]">
+                <button type="button" class="seat-option"
+                        :class="{'seat-option--active': seats===opt[0]}"
+                        @click="pick(opt[0])" x-text="opt[1]"></button>
+              </template>
+            </div>
+            <input type="hidden" name="seats" :value="seats">
+          </div>
         </div>
 
         <div class="search-bar__submit">
