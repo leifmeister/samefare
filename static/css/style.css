@@ -473,8 +473,8 @@ button, input, select, textarea { font: inherit; }
 /* ── Hero ────────────────────────────────────────────────────── */
 .hero {
   position: relative;
-  background: linear-gradient(180deg, #BFE3F0 0%, #D6ECF4 48%, #EAF6FB 100%);
-  padding: 5rem 0 4rem;
+  background: linear-gradient(180deg, #BFE3F0 0%, #D6ECF4 52%, #EAF6FB 100%);
+  padding: 5rem 0 7.5rem;
   /* overflow must stay visible so the search-bar dropdowns can extend past the
      hero's bottom edge. The decorative ::before / __aurora layers are inset:0,
      so they're already bounded by the hero box and don't need clipping. */
@@ -522,20 +522,21 @@ button, input, select, textarea { font: inherit; }
 .hero__cloud--3 { width: 132px; top: 29%; left: 66%; opacity: .9; }
 .hero__mountains {
   position: absolute;
-  bottom: 52px; left: 0;
+  bottom: 78px; left: 0;
   width: 100%; height: 120px;
 }
-.hero__pin {
+.hero__bird {
   position: absolute;
-  filter: drop-shadow(0 8px 12px rgba(60,90,110,.28));
+  opacity: .82;
 }
-.hero__pin svg { display: block; }
-.hero__pin--a { left: 5.5%; top: 33%; }
-.hero__pin--b { right: 6%;  top: 24%; }
+.hero__bird svg { display: block; }
+.hero__bird--1 { top: 23%; left: 13%; }
+.hero__bird--2 { top: 17%; left: 21%; }
+.hero__bird--3 { top: 29%; right: 17%; }
 .hero__wave {
   position: absolute;
   left: 0; bottom: -1px;
-  width: 100%; height: 88px;
+  width: 100%; height: 92px;
   display: block;
   /* z-index 0 keeps the wave above the background scene (also z-0, earlier in
      the DOM) but below .hero__inner (z-1) so the search-box dropdowns, which
@@ -548,16 +549,16 @@ button, input, select, textarea { font: inherit; }
 @keyframes heroSun   { 0%,100% { opacity: .85; } 50% { opacity: 1; } }
 
 @media (prefers-reduced-motion: no-preference) {
-  .hero__pin      { animation: heroFloat 6s ease-in-out infinite; animation-delay: var(--d, 0s); }
+  .hero__bird     { animation: heroFloat 6s ease-in-out infinite; animation-delay: var(--d, 0s); }
   .hero__cloud--1 { animation: heroDrift 26s ease-in-out infinite alternate; }
   .hero__cloud--2 { animation: heroDrift 34s ease-in-out infinite alternate; }
   .hero__cloud--3 { animation: heroDrift 30s ease-in-out infinite alternate; }
   .hero__sun      { animation: heroSun 7s ease-in-out infinite; }
 }
 
-/* Side pins live in the page gutters — hide once the layout narrows. */
-@media (max-width: 1024px) {
-  .hero__pin { display: none; }
+/* Thin out the flock on narrow screens to avoid crowding the headline. */
+@media (max-width: 768px) {
+  .hero__bird--2 { display: none; }
 }
 
 .hero__inner {
