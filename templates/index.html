@@ -14,6 +14,68 @@
 ═══════════════════════════════════════ -->
 <section class="hero">
   <div class="hero__aurora"></div>
+
+  <!-- Decorative Icelandic-night scene: aurora ribbons, stars, mountains and
+       two gently-floating journey pins. Purely decorative; hidden from a11y. -->
+  <div class="hero__scene" aria-hidden="true">
+    <svg class="hero__ribbons" viewBox="0 0 1440 460" preserveAspectRatio="xMidYMin slice">
+      <defs>
+        <linearGradient id="auroraA" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0"   stop-color="#00A886" stop-opacity="0"/>
+          <stop offset=".5"  stop-color="#34D399" stop-opacity=".55"/>
+          <stop offset="1"   stop-color="#5EEAD4" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="auroraB" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0"   stop-color="#5EEAD4" stop-opacity="0"/>
+          <stop offset=".5"  stop-color="#A78BFA" stop-opacity=".40"/>
+          <stop offset="1"   stop-color="#34D399" stop-opacity="0"/>
+        </linearGradient>
+        <filter id="auroraGlow" x="-20%" y="-50%" width="140%" height="200%">
+          <feGaussianBlur stdDeviation="20"/>
+        </filter>
+      </defs>
+      <path class="hero__ribbon hero__ribbon--1" d="M-120,140 C260,40 560,180 880,100 S1380,60 1580,150"
+            stroke="url(#auroraA)" stroke-width="46" fill="none" filter="url(#auroraGlow)"/>
+      <path class="hero__ribbon hero__ribbon--2" d="M-120,210 C320,290 660,120 1020,210 S1460,210 1580,200"
+            stroke="url(#auroraB)" stroke-width="34" fill="none" filter="url(#auroraGlow)"/>
+    </svg>
+
+    <svg class="hero__stars" viewBox="0 0 1440 460" preserveAspectRatio="xMidYMin slice" fill="#fff">
+      <circle class="hero__star hero__star--tw" cx="130"  cy="70"  r="1.6"/>
+      <circle class="hero__star"                cx="250"  cy="120" r="1.1"/>
+      <circle class="hero__star hero__star--tw" cx="360"  cy="60"  r="1.3"/>
+      <circle class="hero__star"                cx="520"  cy="100" r="1"/>
+      <circle class="hero__star hero__star--tw" cx="700"  cy="50"  r="1.5"/>
+      <circle class="hero__star"                cx="820"  cy="110" r="1.1"/>
+      <circle class="hero__star hero__star--tw" cx="980"  cy="70"  r="1.3"/>
+      <circle class="hero__star"                cx="1120" cy="120" r="1"/>
+      <circle class="hero__star hero__star--tw" cx="1260" cy="60"  r="1.5"/>
+      <circle class="hero__star"                cx="1340" cy="110" r="1.1"/>
+      <circle class="hero__star"                cx="190"  cy="200" r="1"/>
+      <circle class="hero__star hero__star--tw" cx="440"  cy="180" r="1.2"/>
+      <circle class="hero__star"                cx="900"  cy="190" r="1"/>
+      <circle class="hero__star hero__star--tw" cx="1180" cy="210" r="1.3"/>
+    </svg>
+
+    <span class="hero__pin hero__pin--a" style="--d:0s">
+      <svg viewBox="0 0 40 52" width="38" height="50" aria-hidden="true">
+        <path d="M20 1C10.6 1 3 8.4 3 17.8 3 30 20 50 20 50s17-20 17-32.2C37 8.4 29.4 1 20 1Z" fill="#00A886"/>
+        <circle cx="20" cy="18" r="6.5" fill="#06241F"/>
+      </svg>
+    </span>
+    <span class="hero__pin hero__pin--b" style="--d:-2.4s">
+      <svg viewBox="0 0 40 52" width="34" height="44" aria-hidden="true">
+        <path d="M20 1C10.6 1 3 8.4 3 17.8 3 30 20 50 20 50s17-20 17-32.2C37 8.4 29.4 1 20 1Z" fill="#FBBF24"/>
+        <circle cx="20" cy="18" r="6.5" fill="#3B2A06"/>
+      </svg>
+    </span>
+
+    <svg class="hero__mountains" viewBox="0 0 1440 220" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0,220 L0,150 L140,90 L300,150 L440,70 L620,150 L780,60 L980,150 L1140,90 L1320,150 L1440,110 L1440,220 Z" fill="#0C211E"/>
+      <path d="M0,220 L0,185 L180,130 L360,185 L520,120 L700,185 L900,115 L1100,185 L1280,135 L1440,185 L1440,220 Z" fill="#081814"/>
+    </svg>
+  </div>
+
   <div class="container hero__inner">
     <div class="hero__text">
       <h1 class="hero__title">{{ _t('hero_title_1') }}<br><span class="hero__title-accent">{{ _t('hero_title_2') }}</span></h1>
@@ -212,6 +274,11 @@
     </form>
 
   </div>
+
+  <!-- Flowing edge into the page body -->
+  <svg class="hero__wave" viewBox="0 0 1440 100" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0,34 C240,96 470,4 720,42 C980,82 1210,104 1440,38 L1440,100 L0,100 Z" fill="#FAFAF7"/>
+  </svg>
 </section>
 
 <!-- ═══════════════════════════════════════

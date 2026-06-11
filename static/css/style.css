@@ -500,6 +500,61 @@ button, input, select, textarea { font: inherit; }
   pointer-events: none;
 }
 
+/* ── Hero decorative night scene ─────────────────────────────── */
+.hero__scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;          /* clip decor to the hero box */
+  pointer-events: none;
+  z-index: 0;
+}
+.hero__ribbons {
+  position: absolute;
+  top: -4%; left: 0;
+  width: 100%; height: 62%;
+}
+.hero__stars {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 72%;
+}
+.hero__star { opacity: .5; }
+.hero__mountains {
+  position: absolute;
+  bottom: 52px; left: 0;
+  width: 100%; height: 120px;
+}
+.hero__pin {
+  position: absolute;
+  filter: drop-shadow(0 8px 14px rgba(0,0,0,.45));
+}
+.hero__pin svg { display: block; }
+.hero__pin--a { left: 5.5%; top: 33%; }
+.hero__pin--b { right: 6%;  top: 24%; }
+.hero__wave {
+  position: absolute;
+  left: 0; bottom: -1px;
+  width: 100%; height: 88px;
+  display: block;
+  z-index: 2;
+}
+
+@keyframes heroFloat   { 0%,100% { transform: translateY(0); }    50% { transform: translateY(-12px); } }
+@keyframes heroTwinkle { 0%,100% { opacity: .2; }                 50% { opacity: .9; } }
+@keyframes heroShimmer { 0%,100% { opacity: .5; }                 50% { opacity: 1; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero__pin       { animation: heroFloat 6s ease-in-out infinite; animation-delay: var(--d, 0s); }
+  .hero__star--tw  { animation: heroTwinkle 4.5s ease-in-out infinite; }
+  .hero__ribbon--1 { animation: heroShimmer 14s ease-in-out infinite; }
+  .hero__ribbon--2 { animation: heroShimmer 19s ease-in-out infinite; }
+}
+
+/* Side pins live in the page gutters — hide once the layout narrows. */
+@media (max-width: 1024px) {
+  .hero__pin { display: none; }
+}
+
 .hero__inner {
   position: relative;
   z-index: 1;
