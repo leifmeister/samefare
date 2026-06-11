@@ -475,7 +475,10 @@ button, input, select, textarea { font: inherit; }
   position: relative;
   background: linear-gradient(145deg, #0A1628 0%, #0E2D28 35%, #0A1628 65%, #1A0A2E 100%);
   padding: 5rem 0 4rem;
-  overflow: hidden;
+  /* overflow must stay visible so the search-bar dropdowns can extend past the
+     hero's bottom edge. The decorative ::before / __aurora layers are inset:0,
+     so they're already bounded by the hero box and don't need clipping. */
+  overflow: visible;
 }
 
 /* Aurora shimmer overlay */
@@ -606,6 +609,9 @@ button, input, select, textarea { font: inherit; }
 
 .btn-search {
   align-self: flex-end;
+  /* Lift by the button's 4px bottom shadow so the button + shadow line up with
+     the bottom of the input fields (which have no shadow). */
+  margin-bottom: 4px;
   padding: .65rem 1.5rem;
   font-size: .9375rem;
   border-radius: var(--r-md);
@@ -634,6 +640,8 @@ button, input, select, textarea { font: inherit; }
 .search-bar__field--xs    { /* width controlled by grid column */ }
 /* Submit cell — button sits flush with the bottom of the row */
 .search-bar__submit       { display: flex; align-items: flex-end; }
+/* Lift by the 4px bottom shadow so button + shadow align with the inputs. */
+.search-bar__submit .btn  { margin-bottom: 4px; }
 
 .search-bar__label {
   display: flex;
@@ -4804,6 +4812,10 @@ button, input, select, textarea { font: inherit; }
   user-select: none;
 }
 .city-combo__btn:hover { color: #475569; background: #f1f5f9; }
+/* Rotate the chevron when the dropdown is open — matches the date/passenger
+   triggers so all search-bar fields behave consistently. */
+.city-combo__btn svg { transition: transform var(--t-fast); }
+.city-combo__btn--open svg { transform: rotate(180deg); }
 
 .city-combo__list {
   position: absolute;
