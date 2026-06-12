@@ -1,3 +1,4 @@
+import logging
 import secrets
 from datetime import date, datetime, timedelta
 from typing import Optional
@@ -20,6 +21,7 @@ settings = get_settings()
 templates = Jinja2Templates(directory="templates")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 router = APIRouter(tags=["auth"])
+log = logging.getLogger(__name__)
 
 
 def _lc(request: Request) -> dict:
@@ -278,21 +280,25 @@ def forgot_password(
     db:    Session = Depends(get_db),
     _rl=rate_limit(5, 3600),
 ):
-    user = db.query(models.User).filter(models.User.email == email.strip().lower()).first()
+    addr = email.strip().lower()
+    user = db.query(models.User).filter(models.User.email == addr).first()
 
-    if not user:
-        return templates.TemplateResponse("auth/forgot_password.html",
-            {**ctx, "error": None, "sent": False, "not_found": True})
+    if user:
+        token   = secrets.token_urlsafe(32)
+        expires = datetime.utcnow() + timedelta(hours=1)
+        user.reset_token         = token
+        user.reset_token_expires = expires
+        db.commit()
+        mailer.password_reset(user, token)
+    else:
+        # Do NOT reveal whether the email is registered — that enables account
+        # enumeration. Keep the precise reason server-side (logs only); the
+        # response is identical to the registered case.
+        log.info("Password reset requested for unregistered email: %s", addr)
 
-    token   = secrets.token_urlsafe(32)
-    expires = datetime.utcnow() + timedelta(hours=1)
-    user.reset_token         = token
-    user.reset_token_expires = expires
-    db.commit()
-    mailer.password_reset(user, token)
-
+    # Same generic response regardless of whether an account exists.
     return templates.TemplateResponse("auth/forgot_password.html",
-        {**ctx, "error": None, "sent": True, "not_found": False})
+        {**ctx, "error": None, "sent": True})
 
 
 @router.get("/reset-password", response_class=HTMLResponse)
