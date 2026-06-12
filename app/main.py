@@ -252,6 +252,7 @@ _MIGRATIONS = [
     )""",
     "CREATE INDEX IF NOT EXISTS ix_driver_payouts_driver_id ON driver_payouts(driver_id)",
     "CREATE INDEX IF NOT EXISTS ix_driver_payouts_status    ON driver_payouts(status)",
+    "ALTER TABLE driver_payouts ADD COLUMN IF NOT EXISTS approval_url TEXT",
     # Repair migration for deployments that ran the original CREATE TABLE before
     # the payout_method type was corrected (it was wrongly driverpayoutstatus).
     # Only executes when the column has the wrong type; fails loudly if the ALTER

@@ -28,10 +28,13 @@ payout method (Blikk IBAN or Stripe Connect account ID).
 
 Provider integration
 --------------------
-_send_blikk_payout() and _send_stripe_connect_payout() are intentional
-stubs that raise NotImplementedError until credentials are wired up.
-The rest of the ledger machinery runs in dry-run mode until
-PAYOUT_ENABLED=true is set in the environment.
+_send_blikk_payout() is live: it submits via the Blikk Payment Channel and
+returns (payment_id, approval_url). Blikk payouts require the account holder
+(scaUserSsn) to approve each transfer at the returned redirectUrl before money
+moves, so send_driver_payout() stores the URL and SMS-alerts the approver;
+reconcile_blikk_payout() confirms the batch once approved.
+_send_stripe_connect_payout() is still a stub (raises NotImplementedError).
+The whole pipeline stays dry until PAYOUT_ENABLED=true in the environment.
 """
 
 import hashlib
@@ -392,13 +395,16 @@ class PayoutProviderError(Exception):
     """Raised when a Blikk or Stripe Connect API call fails."""
 
 
-def _send_blikk_payout(batch: DriverPayout, driver: models.User) -> str:
+def _send_blikk_payout(batch: DriverPayout, driver: models.User) -> tuple[str, str | None]:
     """
     Submit an A2A transfer via the Blikk Payment Channel API.
     Platform's bank account is pre-configured in the channel; driver identified
     by kennitala + IBAN.
 
-    Returns the Blikk payment ID on success.
+    Returns (blikk_payment_id, approval_url) on success. approval_url is the
+    redirectUrl Blikk returns with SCA_REQUIRED / USER_ONBOARDING_REQUIRED — the
+    account holder (scaUserSsn) must open it to approve the transfer before money
+    moves. It is None only if Blikk settles without an approval step.
     Raises PayoutProviderError on failure.
 
     scaUserSsn is the kennitala of the person at SameFare with transfer authority
@@ -452,7 +458,10 @@ def _send_blikk_payout(batch: DriverPayout, driver: models.User) -> str:
             f"status={result.get('status')!r}"
         )
 
-    return payment_id
+    # SCA_REQUIRED / USER_ONBOARDING_REQUIRED come back with a redirectUrl the
+    # account holder must open to approve. Surface it so the batch can alert the
+    # approver and reconcile can finish once approved.
+    return payment_id, result.get("redirectUrl")
 
 
 def _send_stripe_connect_payout(batch: DriverPayout, driver: models.User) -> str:
@@ -570,14 +579,16 @@ def send_driver_payout(db: Session, batch: DriverPayout) -> bool:
     driver = batch.driver
 
     try:
+        approval_url = None
         if batch.payout_method == PayoutMethod.blikk:
-            provider_id = _send_blikk_payout(batch, driver)
+            provider_id, approval_url = _send_blikk_payout(batch, driver)
         elif batch.payout_method == PayoutMethod.stripe_connect:
             provider_id = _send_stripe_connect_payout(batch, driver)
         else:
             raise PayoutProviderError(f"Unrecognised payout method: {batch.payout_method}")
 
         batch.provider_payout_id = provider_id
+        batch.approval_url       = approval_url
         batch.status             = DriverPayoutStatus.sent
         batch.sent_at            = datetime.utcnow()
 
@@ -589,14 +600,40 @@ def send_driver_payout(db: Session, batch: DriverPayout) -> bool:
             note             = f"Provider ref: {provider_id}",
         )
         log.info(
-            "DriverPayout %s sent via %s to driver %s (ref: %s)",
+            "DriverPayout %s sent via %s to driver %s (ref: %s)%s",
             batch.id, batch.payout_method, driver.id, provider_id,
+            " — awaiting SCA approval" if approval_url else "",
         )
+
+        # Blikk payouts need the account holder to approve at the redirectUrl
+        # before money moves. Alert the approver with the link; reconcile then
+        # confirms the batch once they approve.
+        if approval_url:
+            _alert_payout_approval(batch, driver, approval_url)
+
         return True
 
     except (NotImplementedError, PayoutProviderError) as exc:
         _mark_payout_failed(db, batch, str(exc))
         return False
+
+
+def _alert_payout_approval(batch: DriverPayout, driver: models.User, approval_url: str) -> None:
+    """
+    SMS the account holder that a driver payout is waiting for their SCA
+    approval, with the Blikk link to approve it. Best-effort; never raises.
+    Goes to ADMIN_ALERT_PHONE (the person who holds prókúra on the Blikk
+    account — the same scaUserSsn that must approve).
+    """
+    try:
+        from app import sms
+        sms.admin_alert(
+            f"SameFare: a driver payout needs your approval. "
+            f"{batch.amount} ISK to {driver.full_name} (batch {batch.id}). "
+            f"Approve here: {approval_url}"
+        )
+    except Exception as exc:  # never let alerting break the send path
+        log.error("admin_alert raised while requesting payout approval: %s", exc)
 
 
 def _mark_payout_failed(db: Session, batch: DriverPayout, reason: str) -> None:
@@ -652,6 +689,7 @@ def confirm_driver_payout(db: Session, batch: DriverPayout) -> None:
 
     batch.status       = DriverPayoutStatus.confirmed
     batch.confirmed_at = datetime.utcnow()
+    batch.approval_url = None   # approved & settled — link no longer actionable
 
     for item in batch.items:
         if item.status == PayoutItemStatus.payout_sent:

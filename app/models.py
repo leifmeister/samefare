@@ -733,6 +733,10 @@ class DriverPayout(Base):
     idempotency_key    = Column(String(64), nullable=False, unique=True)
     provider_payout_id = Column(String(255), nullable=True)  # Blikk ref / Stripe transfer ID
     provider_response  = Column(Text, nullable=True)          # raw JSON from provider
+    # Blikk returns SCA_REQUIRED + a redirectUrl that the account holder must
+    # open to approve the transfer. Stored so it can be re-surfaced (SMS/admin)
+    # and so we know a batch is awaiting manual approval. NULL once not needed.
+    approval_url       = Column(Text, nullable=True)
 
     # Outcome timestamps
     sent_at            = Column(DateTime, nullable=True)
