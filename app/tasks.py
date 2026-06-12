@@ -82,9 +82,18 @@ def _run_auto_complete() -> None:
 
 def _run_expire_payments() -> None:
     """
-    Cancel awaiting_payment bookings whose 24-hour payment window has passed.
-    Releases held seats back to the trip so they can be booked by someone else.
-    The cleanup task runs every 10 minutes, so maximum overshoot is ~10 minutes.
+    Cancel stale bookings whose window has passed:
+
+    1. awaiting_payment bookings past their 24-hour payment deadline — these
+       hold seats, which are released back to the trip.
+    2. pending (request-to-book) bookings on a trip that has already departed —
+       the driver can no longer accept them, so the request would otherwise hang
+       as "Pending approval" forever. These hold no seats and have no
+       payment_deadline (so the query above never catches them), and no charge
+       was ever made (the card was only saved, never authorised), so cancelling
+       is clean — no seat release or refund needed.
+
+    Runs every 10 minutes, so maximum overshoot is ~10 minutes.
     """
     now = datetime.utcnow()
     db  = SessionLocal()
@@ -120,9 +129,26 @@ def _run_expire_payments() -> None:
                     trip.seats_available = recompute_seats_available(
                         graph, trip.seats_total, active, trip.origin, trip.destination,
                     )
-        if expired:
+
+        # Stale pending request-to-book bookings on departed trips.
+        stale_pending = (
+            db.query(models.Booking)
+            .join(models.Trip, models.Booking.trip_id == models.Trip.id)
+            .filter(
+                models.Booking.status          == models.BookingStatus.pending,
+                models.Trip.departure_datetime <= now,
+            )
+            .all()
+        )
+        for booking in stale_pending:
+            booking.status = models.BookingStatus.cancelled
+
+        if expired or stale_pending:
             db.commit()
-            log.info("Expired %d unpaid booking(s) and released seats", len(expired))
+            log.info(
+                "Expired %d unpaid booking(s); cancelled %d stale pending request(s) on departed trips",
+                len(expired), len(stale_pending),
+            )
     except Exception as exc:
         log.warning("Payment expiry task failed: %s", exc)
         db.rollback()
