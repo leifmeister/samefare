@@ -1394,19 +1394,22 @@ def cancel_trip(
                             models.BookingStatus.awaiting_payment,
                             models.BookingStatus.card_saved):
             continue
-        # Capture before mutating so we can branch on the original state below.
-        was_card_saved = b.status == models.BookingStatus.card_saved
         b.status = models.BookingStatus.cancelled
         if b.payment:
-            if was_card_saved:
-                # Card tokenized for MIT but never charged — nothing to refund.
-                b.payment.status = models.PaymentStatus.failed
-            else:
+            # Refund only if money actually moved. A real charge always carries a
+            # Rapyd payment id (pre-auth / MIT / capture). A card_saved booking has
+            # none — including an accepted Case B booking that is already
+            # `confirmed` but whose MIT hasn't fired yet — so there is nothing to
+            # refund. Branching on booking.status alone would fake-refund those.
+            if b.payment.rapyd_payment_id:
                 # Full refund for driver-initiated cancellations (including service fee).
                 # _issue_rapyd_refund owns refund_amount and status — do not pre-set them.
                 _issue_rapyd_refund(
                     db, b, b.payment.passenger_total, reason="driver_cancelled"
                 )
+            else:
+                # Card tokenized for MIT (or pre-auth not yet placed) — never charged.
+                b.payment.status = models.PaymentStatus.failed
         affected.append(b)
 
     # ── Driver accountability: track cancellations and enforce suspension thresholds ──
