@@ -153,11 +153,16 @@
   <div class="bk-strip bk-strip--muted">
     <svg class="bk-strip__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
     <div>
-      <strong>{{ _t('strip_cancelled_title') }}</strong>
-      {% if booking.payment and booking.payment.refund_amount > 0 %}
-        {{ _t('strip_cancelled_refund') }} <strong>{{ "{:,}".format(booking.payment.refund_amount) }} ISK</strong> {{ _t('strip_cancelled_refund_end') }}
+      {% if booking.cancellation_reason == 'request_expired' %}
+        <strong>{{ _t('strip_expired_title') }}</strong>
+        {{ _t('strip_expired_text') }}
       {% else %}
-        {{ _t('strip_cancelled_no_charge') }}
+        <strong>{{ _t('strip_cancelled_title') }}</strong>
+        {% if booking.payment and booking.payment.refund_amount > 0 %}
+          {{ _t('strip_cancelled_refund') }} <strong>{{ "{:,}".format(booking.payment.refund_amount) }} ISK</strong> {{ _t('strip_cancelled_refund_end') }}
+        {% else %}
+          {{ _t('strip_cancelled_no_charge') }}
+        {% endif %}
       {% endif %}
     </div>
   </div>

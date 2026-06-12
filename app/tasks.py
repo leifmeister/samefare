@@ -142,6 +142,7 @@ def _run_expire_payments() -> None:
         )
         for booking in stale_pending:
             booking.status = models.BookingStatus.cancelled
+            booking.cancellation_reason = "request_expired"
 
         if expired or stale_pending:
             db.commit()

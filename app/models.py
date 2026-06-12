@@ -435,6 +435,11 @@ class Booking(Base):
     status           = Column(Enum(BookingStatus), nullable=False,
                               default=BookingStatus.pending)
     payment_deadline = Column(DateTime, nullable=True)   # set when status→awaiting_payment
+    # Why a booking was cancelled, when it helps the passenger understand it.
+    # NULL for ordinary cancellations (generic "no charge" message). Set e.g. to
+    # 'request_expired' when an unanswered request-to-book is auto-cancelled
+    # because the trip departed.
+    cancellation_reason = Column(String(40), nullable=True)
     created_at       = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at       = Column(DateTime, nullable=False, default=datetime.utcnow,
                               onupdate=datetime.utcnow)
