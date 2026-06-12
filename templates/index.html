@@ -9,6 +9,25 @@
 </div>
 {% endif %}
 
+{% if current_user and pending_request_count %}
+<div class="container" style="margin-top:1rem;">
+  <a href="/my-trips?tab=rides"
+     style="display:flex; align-items:center; gap:.85rem; padding:.9rem 1.15rem;
+            background:#ecfdf5; border:1px solid var(--c-success, #059669);
+            border-radius:14px; text-decoration:none; color:inherit;">
+    <span style="font-size:1.6rem; line-height:1;" aria-hidden="true">🚗</span>
+    <span style="flex:1; min-width:0;">
+      <strong style="display:block; color:#065f46;">
+        {{ pending_request_count }}
+        {{ _t('home_requests_title') if pending_request_count == 1 else _t('home_requests_title_pl') }}
+      </strong>
+      <span style="font-size:.9rem; color:#475569;">{{ _t('home_requests_sub') }}</span>
+    </span>
+    <span class="btn btn-primary btn-sm" style="flex-shrink:0;">{{ _t('home_requests_cta') }}</span>
+  </a>
+</div>
+{% endif %}
+
 <!-- ═══════════════════════════════════════
      HERO
 ═══════════════════════════════════════ -->
