@@ -11,7 +11,7 @@ Payout ledger tasks
 -------------------
 _run_create_payout_items   Pair newly captured+completed payments to driver PayoutItems.
 _run_advance_payout_items  Move pending items to payout_ready when bank details are added.
-_run_send_driver_payouts   Batch and submit payout_ready items (no-op until PAYOUT_ENABLED=true).
+_run_prepare_driver_payouts  Daily: batch payout_ready items + digest SMS (approve on-demand in admin).
 """
 import asyncio
 import datetime as _dt_module
@@ -914,28 +914,29 @@ _last_payout_send_date = None
 
 def _send_payout_approval_digest() -> None:
     """
-    Send ONE SMS summarising all driver payouts currently awaiting the account
-    holder's SCA approval, with a link to the admin approvals page. Best-effort.
+    Send ONE SMS summarising the driver payouts ready for the account holder to
+    approve (pending Blikk batches), linking to the admin approvals page where
+    each is submitted + approved on demand. Best-effort.
     """
     from app.config import get_settings
     from app import sms
 
     db = SessionLocal()
     try:
-        awaiting = (
+        ready = (
             db.query(models.DriverPayout)
             .filter(
-                models.DriverPayout.status       == models.DriverPayoutStatus.sent,
-                models.DriverPayout.approval_url  != None,  # noqa: E711
+                models.DriverPayout.status        == models.DriverPayoutStatus.pending,
+                models.DriverPayout.payout_method == models.PayoutMethod.blikk,
             )
             .all()
         )
-        if not awaiting:
+        if not ready:
             return
-        total = sum(b.amount for b in awaiting)
+        total = sum(b.amount for b in ready)
         base  = get_settings().base_url.rstrip("/")
         sms.admin_alert(
-            f"SameFare: {len(awaiting)} driver payout(s) awaiting your approval "
+            f"SameFare: {len(ready)} driver payout(s) ready for your approval "
             f"— {total:,} ISK total. Approve at {base}/admin/payouts"
         )
     except Exception as exc:
@@ -944,55 +945,39 @@ def _send_payout_approval_digest() -> None:
         db.close()
 
 
-def _run_send_driver_payouts() -> None:
+def _run_prepare_driver_payouts() -> None:
     """
-    Batch all `payout_ready` PayoutItems per driver and submit each batch
-    through the driver's configured payout rail (Blikk or Stripe Connect).
+    Once a day, batch the day's `payout_ready` PayoutItems per driver into
+    `pending` DriverPayout records and send the approver one digest SMS.
 
-    This task is a no-op when PAYOUT_ENABLED=False (the default) so the
-    ledger can be exercised end-to-end in staging without accidentally moving
-    money before the provider integrations are wired up.
+    Payouts are deliberately NOT submitted to Blikk here. A Blikk SCA approval
+    link is valid only briefly, so a link pre-created now would expire before the
+    approver acts. Instead the admin /admin/payouts page submits each batch
+    ON DEMAND when the approver clicks Approve, generating a fresh link at that
+    moment. This task only prepares the batches and notifies.
 
-    When ready to go live: set PAYOUT_ENABLED=true in the environment and
-    implement _send_blikk_payout() / _send_stripe_connect_payout() in payout.py.
+    No-op when PAYOUT_ENABLED=False (the default).
 
-    Two-phase execution — each phase has its own db.commit()
-    ─────────────────────────────────────────────────────────
-    Phase 1 — Persist batches (no provider call):
-        Group payout_ready items by driver, call build_driver_payout_batch(),
-        and commit.  Items move to payout_sent; each DriverPayout is created
-        in `pending` status with a deterministic idempotency key derived from
-        the committed PayoutItem IDs.  If the process crashes here, Phase 2
-        on the next run will find the pending batch and submit it.
-
-    Phase 2 — Submit pending batches:
-        Query every `pending` DriverPayout (including any left over from
-        previous crashed runs) and call send_driver_payout() for each.
-        Commit after each submission.  If the provider accepted the call but
-        the commit fails, the next run re-submits the same stored idempotency
-        key and the provider de-duplicates — preventing a second real transfer.
+    Daily window: building once a day (at/after PAYOUT_RUN_HOUR UTC) bundles all
+    of a driver's rides that settled that day into a single batch/approval and
+    means the approver gets one digest rather than an all-day trickle.
     """
     from app.config import get_settings
-    from app.payout import build_driver_payout_batch, send_driver_payout
 
     settings = get_settings()
     if not settings.payout_enabled:
         return
 
-    # Daily batch window: submit payouts once a day (at/after PAYOUT_RUN_HOUR UTC)
-    # instead of every 10-min tick, so the approver clears them in one session and
-    # same-driver rides settled that day bundle into a single transfer/approval.
     global _last_payout_send_date
     now = datetime.utcnow()
     if now.hour < settings.payout_run_hour or _last_payout_send_date == now.date():
         return
     _last_payout_send_date = now.date()
 
+    from app.payout import build_driver_payout_batch
+
     db = SessionLocal()
     try:
-        # ── Phase 1: Build and persist batches ────────────────────────────────
-        # Commit BEFORE touching any provider.  Items become payout_sent here;
-        # the batch sits in `pending` until Phase 2 submits it.
         ready_items = (
             db.query(models.PayoutItem)
             .filter(models.PayoutItem.status == models.PayoutItemStatus.payout_ready)
@@ -1007,59 +992,27 @@ def _run_send_driver_payouts() -> None:
         def _batch_key(item: models.PayoutItem):
             return (item.driver_id, str(item.payout_method))
 
+        built = 0
         for (driver_id, _method), group in groupby(ready_items, key=_batch_key):
             items = list(group)
             driver = items[0].driver
             try:
                 batch = build_driver_payout_batch(db, driver, items)
                 if batch:
-                    db.commit()   # durable before any provider call
+                    db.commit()
+                    built += 1
             except Exception as exc:
-                log.error(
-                    "Failed to build DriverPayout for driver %s: %s", driver_id, exc
-                )
+                log.error("Failed to build DriverPayout for driver %s: %s", driver_id, exc)
                 db.rollback()
 
-        # ── Phase 2: Submit every pending batch ───────────────────────────────
-        # Picks up batches just created above AND any stuck in `pending` from
-        # previous runs (e.g. crashed between provider success and db.commit()).
-        # The stored idempotency key guarantees provider-side deduplication.
-        pending_batches = (
-            db.query(models.DriverPayout)
-            .filter(models.DriverPayout.status == models.DriverPayoutStatus.pending)
-            .options(
-                joinedload(models.DriverPayout.driver),
-                joinedload(models.DriverPayout.items),
-            )
-            .all()
-        )
-
-        sent = 0
-        for batch in pending_batches:
-            try:
-                success = send_driver_payout(db, batch)
-                db.commit()
-                if success:
-                    sent += 1
-                else:
-                    log.error(
-                        "DriverPayout %s for driver %s failed — see payout_ledger",
-                        batch.id, batch.driver_id,
-                    )
-            except Exception as exc:
-                log.error(
-                    "Failed to submit DriverPayout %s for driver %s: %s",
-                    batch.id, batch.driver_id, exc,
-                )
-                db.rollback()
-
-        if sent:
-            log.info("Submitted %d DriverPayout batch(es)", sent)
-            # One digest SMS for everything now awaiting the approver's SCA sign-off.
-            _send_payout_approval_digest()
+        if built:
+            log.info("Prepared %d driver payout batch(es) for approval", built)
+        # One digest covering everything currently awaiting approval (includes any
+        # batches left unapproved from a previous day).
+        _send_payout_approval_digest()
 
     except Exception as exc:
-        log.warning("Send driver payouts task failed: %s", exc)
+        log.warning("Prepare driver payouts task failed: %s", exc)
         db.rollback()
     finally:
         db.close()
@@ -1470,7 +1423,7 @@ async def auto_complete_loop() -> None:
         # ── Outgoing payout lifecycle (depends on completed bookings above) ─
         _run_create_payout_items()      # pair captured+completed → PayoutItem
         _run_advance_payout_items()     # pending → payout_ready when bank details added
-        _run_send_driver_payouts()      # batch and submit (no-op until PAYOUT_ENABLED=true)
+        _run_prepare_driver_payouts()   # daily: build batches + digest (approve on-demand in admin)
         _run_reconcile_driver_payouts() # confirm/fail sent Blikk payouts by bank settlement status
         # ── Pricing data ────────────────────────────────────────────────────────
         _run_refresh_fuel_price()       # cache apis.is p80 petrol price (once/day)

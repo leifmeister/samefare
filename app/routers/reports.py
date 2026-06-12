@@ -221,15 +221,26 @@ def admin_payouts(
     db:      Session     = Depends(get_db),
 ):
     """
-    Driver payouts awaiting the account holder's SCA approval, each with an
-    Approve link (the Blikk redirectUrl). Plus recent settled/failed batches.
+    Driver payouts ready for the account holder to approve. Each is submitted to
+    Blikk on demand (fresh SCA link) when Approve is clicked, so links never go
+    stale. Also shows in-flight (submitted, completing) and recent batches.
     """
-    awaiting = (
+    ready = (
         db.query(models.DriverPayout)
         .options(
             joinedload(models.DriverPayout.driver),
             joinedload(models.DriverPayout.items),
         )
+        .filter(
+            models.DriverPayout.status        == models.DriverPayoutStatus.pending,
+            models.DriverPayout.payout_method == models.PayoutMethod.blikk,
+        )
+        .order_by(models.DriverPayout.created_at.asc())
+        .all()
+    )
+    awaiting = (
+        db.query(models.DriverPayout)
+        .options(joinedload(models.DriverPayout.driver))
         .filter(
             models.DriverPayout.status       == models.DriverPayoutStatus.sent,
             models.DriverPayout.approval_url  != None,  # noqa: E711
@@ -240,17 +251,65 @@ def admin_payouts(
     recent = (
         db.query(models.DriverPayout)
         .options(joinedload(models.DriverPayout.driver))
-        .filter(models.DriverPayout.status != models.DriverPayoutStatus.sent)
+        .filter(models.DriverPayout.status.in_([
+            models.DriverPayoutStatus.confirmed,
+            models.DriverPayoutStatus.failed,
+            models.DriverPayoutStatus.reversed,
+        ]))
         .order_by(models.DriverPayout.created_at.desc())
         .limit(20)
         .all()
     )
     return templates.TemplateResponse("admin/payouts.html", {
         **ctx,
+        "ready":          ready,
+        "ready_total":    sum(b.amount for b in ready),
         "awaiting":       awaiting,
-        "awaiting_total": sum(b.amount for b in awaiting),
         "recent":         recent,
     })
+
+
+@router.post("/admin/payouts/{batch_id}/approve")
+def approve_payout(
+    batch_id: int,
+    admin:    models.User = Depends(_require_admin),
+    db:       Session     = Depends(get_db),
+):
+    """
+    Submit a prepared (pending) Blikk payout batch to Blikk NOW — generating a
+    fresh SCA approval link — and redirect the approver straight to it. The link
+    is seconds old, so it never expires before they act. Reconcile confirms the
+    batch once they approve.
+    """
+    from app.config import get_settings
+    from app.payout import send_driver_payout
+
+    batch = (
+        db.query(models.DriverPayout)
+        .options(joinedload(models.DriverPayout.driver), joinedload(models.DriverPayout.items))
+        .filter(models.DriverPayout.id == batch_id)
+        .first()
+    )
+    if not batch:
+        return RedirectResponse("/admin/payouts", status_code=303)
+
+    # Already submitted and still open — just re-open the existing Blikk link.
+    if batch.status == models.DriverPayoutStatus.sent and batch.approval_url:
+        return RedirectResponse(batch.approval_url, status_code=303)
+    # Only pending batches can be submitted; ignore anything else (idempotent).
+    if batch.status != models.DriverPayoutStatus.pending:
+        return RedirectResponse("/admin/payouts", status_code=303)
+    # Safety: never call the provider while payouts are globally disabled.
+    if not get_settings().payout_enabled:
+        return RedirectResponse("/admin/payouts", status_code=303)
+
+    send_driver_payout(db, batch)   # sets status sent + approval_url, or marks failed
+    db.commit()
+
+    if batch.status == models.DriverPayoutStatus.sent and batch.approval_url:
+        return RedirectResponse(batch.approval_url, status_code=303)
+    # Settled instantly (no SCA) or failed — back to the list either way.
+    return RedirectResponse("/admin/payouts", status_code=303)
 
 
 @router.get("/admin/city-suggestions", response_class=HTMLResponse)

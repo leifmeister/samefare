@@ -8,8 +8,8 @@
     <div>
       <h1 class="page-title">Driver payouts</h1>
       <p style="margin:.25rem 0 0; color:var(--c-text-muted); font-size:.9rem;">
-        {{ awaiting|length }} awaiting your approval
-        {% if awaiting %}· {{ "{:,}".format(awaiting_total) }} ISK total{% endif %}
+        {{ ready|length }} ready to approve
+        {% if ready %}· {{ "{:,}".format(ready_total) }} ISK total{% endif %}
       </p>
     </div>
     <div class="admin-nav-tabs">
@@ -24,38 +24,65 @@
     </div>
   </div>
 
-  <!-- ── Awaiting approval ───────────────────────────────────────────── -->
-  {% if not awaiting %}
+  <!-- ── Ready to approve ────────────────────────────────────────────── -->
+  {% if not ready and not awaiting %}
   <div class="empty-state" style="margin-top:2rem;">
-    <h3 class="empty-state__title">Nothing awaiting approval</h3>
+    <h3 class="empty-state__title">Nothing to approve</h3>
     <p class="empty-state__body">
-      When driver payouts are submitted, the ones needing your Blikk SCA approval
-      appear here. You'll also get an SMS with a link to this page.
+      When driver payouts are prepared (once a day), the ones needing your Blikk
+      approval appear here. You'll also get an SMS with a link to this page.
     </p>
   </div>
-  {% else %}
+  {% endif %}
+
+  {% if ready %}
   <div class="alert" style="margin-top:1.5rem; background:#fffbeb; border:1px solid #f59e0b; color:#78350f;">
-    <strong>Action needed:</strong> each payout below must be approved in Blikk before
-    the money moves. Click <strong>Approve in Blikk</strong>, authenticate as the
-    account holder, and it settles within a few minutes. This page updates as they clear.
+    <strong>Action needed:</strong> click <strong>Approve</strong> on each payout — that
+    opens a fresh Blikk approval page. Authenticate as the account holder and the
+    transfer settles within a few minutes. The link is generated when you click, so
+    it never expires while it sits here.
   </div>
 
   <div style="margin-top:1.25rem; display:flex; flex-direction:column; gap:.75rem;">
-    {% for b in awaiting %}
+    {% for b in ready %}
     <div class="form-card" style="display:flex; align-items:center; gap:1rem; padding:1rem 1.25rem;">
       <div style="flex:1; min-width:0;">
         <p style="margin:0; font-weight:700;">{{ b.driver.full_name }}</p>
         <p style="margin:.2rem 0 0; color:var(--c-text-muted); font-size:.85rem;">
           Batch #{{ b.id }} · {{ b.items|length }} ride{{ 's' if b.items|length != 1 }}
           · {{ b.payout_method.value if b.payout_method else '—' }}
-          {% if b.sent_at %}· submitted {{ b.sent_at.strftime("%-d %b %H:%M") }}{% endif %}
         </p>
       </div>
       <div style="font-weight:800; font-size:1.05rem; white-space:nowrap;">
         {{ "{:,}".format(b.amount) }} ISK
       </div>
+      <form method="post" action="/admin/payouts/{{ b.id }}/approve" style="flex-shrink:0; margin:0;">
+        <button type="submit" class="btn btn-primary btn-sm">Approve →</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- ── Submitted, completing ───────────────────────────────────────── -->
+  {% if awaiting %}
+  <h2 style="margin-top:2.5rem; font-size:1.1rem;">Submitted — completing</h2>
+  <p style="margin:.25rem 0 0; color:var(--c-text-muted); font-size:.85rem;">
+    Approved/submitted to Blikk; confirming settlement (usually within minutes).
+    If you didn't finish authenticating, re-open the link.
+  </p>
+  <div style="margin-top:.75rem; display:flex; flex-direction:column; gap:.75rem;">
+    {% for b in awaiting %}
+    <div class="form-card" style="display:flex; align-items:center; gap:1rem; padding:.9rem 1.25rem;">
+      <div style="flex:1; min-width:0;">
+        <p style="margin:0; font-weight:600;">{{ b.driver.full_name }}</p>
+        <p style="margin:.2rem 0 0; color:var(--c-text-muted); font-size:.82rem;">
+          Batch #{{ b.id }}{% if b.sent_at %} · submitted {{ b.sent_at.strftime("%-d %b %H:%M") }}{% endif %}
+        </p>
+      </div>
+      <div style="font-weight:700; white-space:nowrap;">{{ "{:,}".format(b.amount) }} ISK</div>
       <a href="{{ b.approval_url }}" target="_blank" rel="noopener"
-         class="btn btn-primary btn-sm" style="flex-shrink:0;">Approve in Blikk →</a>
+         class="btn btn-outline btn-sm" style="flex-shrink:0;">Re-open link</a>
     </div>
     {% endfor %}
   </div>

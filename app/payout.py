@@ -605,9 +605,9 @@ def send_driver_payout(db: Session, batch: DriverPayout) -> bool:
             " — awaiting SCA approval" if approval_url else "",
         )
         # Blikk payouts need the account holder to approve at batch.approval_url
-        # before money moves. The daily send task emits a single digest SMS for
-        # all batches awaiting approval (see _run_send_driver_payouts) and the
-        # admin /admin/payouts page lists them with Approve links.
+        # before money moves. This runs on demand from the admin /admin/payouts
+        # Approve action, so the link is fresh; the approver is redirected
+        # straight to it and reconcile_blikk_payout confirms once they approve.
         return True
 
     except (NotImplementedError, PayoutProviderError) as exc:
