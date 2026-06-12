@@ -471,7 +471,7 @@ def card_saved_pending_to_passenger(booking) -> None:
 def mit_auth_failed_to_passenger(booking, retry_deadline) -> None:
     """
     Case B: MIT authorisation declined 24 h before departure.
-    Passenger has 2 hours to update card.  +5 % surcharge notice included.
+    Passenger has 2 hours to update their card. No surcharge — fee unchanged.
     """
     import html as _html
     s    = get_settings()
@@ -488,8 +488,7 @@ def mit_auth_failed_to_passenger(booking, retry_deadline) -> None:
         f'Please update your payment card by <strong>{deadline_str}</strong> '
         f'to keep your seat.</p>'
         f'<p style="margin:8px 0 0;font-size:.875rem;color:#78350F;">'
-        f'A 5% late-authorisation fee now applies. New total: '
-        f'<strong>{booking.total_price:,} ISK</strong>.</p>'
+        f'The amount is unchanged: <strong>{booking.total_price:,} ISK</strong>.</p>'
         f'</div>' +
         _p("If you don't update your card within 2 hours, your booking will be "
            "cancelled and your seat released to other passengers.") +

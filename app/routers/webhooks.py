@@ -272,8 +272,11 @@ def _handle_checkout_completed(
 
     Case A: payment.status == "ACT" (authorised, capture=false)
         → mark payment as authorised, confirm booking
-    Case B: checkout was a save-card (amount=0, save_payment_method=true)
+    Case B (LEGACY): an old amount=0 save-card checkout.
         → store customer_id + payment_method_id, move booking → card_saved
+        Save-card now uses the Hosted Card page, which fires
+        CUSTOMER_PAYMENT_METHOD_CREATED (see _handle_payment_method_created), so
+        this branch is retained only for defensive/back-compat handling.
 
     All state changes (including _mark_seen) land in a single db.commit() so
     that a rollback on failure leaves no partially-applied state and the

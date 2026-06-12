@@ -177,8 +177,7 @@ def trip_reminder_to_driver(trip, passenger_count: int) -> None:
 def mit_auth_failed_to_passenger(booking, retry_deadline) -> None:
     """
     Case B: MIT authorisation declined 24 h before departure.
-    Passenger has 2 hours to update their payment card.
-    Includes the +5 % surcharge notice.
+    Passenger has 2 hours to update their payment card. No surcharge.
     """
     if not booking.passenger.phone:
         return
@@ -190,7 +189,6 @@ def mit_auth_failed_to_passenger(booking, retry_deadline) -> None:
         f"SameFare: your payment for {trip.origin} → {trip.destination} "
         f"({trip.departure_datetime.strftime('%-d %b')}) could not be authorised. "
         f"Please update your card by {deadline} to keep your seat. "
-        f"Note: a 5% late fee now applies. "
         f"{s.base_url}/payments/auth-failed/{booking.id}",
     )
 

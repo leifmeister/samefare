@@ -405,8 +405,9 @@ def _apply_mit_failure(
     # Confirmed bookings (accepted pending trips whose driver approved before T-24h)
     # must be demoted — a confirmed+retry_pending booking looks fully paid to all UIs.
     # awaiting_payment is the correct state: seat is still held, card is on file,
-    # passenger needs to take action.  The retry webhook (_handle_checkout_completed
-    # Case B) accepts awaiting_payment and moves it to card_saved for a fresh MIT.
+    # passenger needs to take action. When they add a new card via the Hosted Card
+    # page, card_saved_page()/CUSTOMER_PAYMENT_METHOD_CREATED moves awaiting_payment
+    # to card_saved and the MIT re-fires.
     if booking.status == models.BookingStatus.confirmed:
         booking.status = models.BookingStatus.awaiting_payment
 
@@ -426,7 +427,7 @@ def _run_mit_authorizations() -> None:
     ---------------
     Rapyd status ACT  → payment authorised, booking confirmed, passenger notified.
     Rapyd status other (PEN / ERR / CAN / …)
-                      → retry window opened, +5 % surcharge applied.
+                      → retry window opened (no surcharge; fee unchanged).
                         A successful API call is NOT the same as an authorised
                         payment — only ACT guarantees the card is held.
     RapydError        → same retry-window path as non-ACT status.

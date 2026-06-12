@@ -121,18 +121,18 @@
       <ol>
         <li>Passenger is notified immediately by SMS and email.</li>
         <li>A <strong>2-hour window</strong> opens for the passenger to update their card via the platform.</li>
-        <li>The passenger returns to the platform, completes a new SCA-authenticated checkout (<strong>customer-initiated transaction</strong>) for the revised amount, and confirms.</li>
-        <li>The revised amount includes a <strong>5% retry surcharge</strong> on the service fee (total fee: 23%), covering notification and retry processing costs. The new total is shown to the passenger before they confirm — consent is explicit and SCA-authenticated.</li>
+        <li>The passenger returns to the platform, saves a new card via an SCA-authenticated hosted card page (<strong>customer-initiated transaction</strong>), and the merchant-initiated authorisation re-fires.</li>
+        <li>The amount is <strong>unchanged</strong> from the original booking — there is no retry surcharge. The total is the same one the passenger already consented to.</li>
         <li>If the passenger does not update their card within 2 hours, the booking is automatically cancelled, the seat is released, and no charge is made.</li>
       </ol>
-      <p>Because the retry is a fresh CIT with new SCA for the revised amount, there is no MIT authorisation for an amount exceeding the original passenger consent. Chargeback risk on the surcharge is minimal.</p>
+      <p>Because the retry re-uses the original consented amount with fresh SCA on the new card, no authorisation ever exceeds the passenger's original consent. Chargeback risk is minimal.</p>
 
       <h3>3.5 Transaction flow summary</h3>
       <ol>
         <li>Passenger books a seat → SCA / 3-D Secure challenge issued; card validated with a 0 ISK charge.</li>
         <li>Card tokenised in PSP vault; booking confirmed pending pre-authorisation.</li>
         <li>T−24h: MIT pre-authorisation for full booking amount placed automatically. (Exception: if departure is ≤24h from booking time, pre-authorisation is folded into the CIT at step 1 — no separate MIT is issued.)</li>
-        <li>If pre-auth fails: passenger notified; 2-hour window for <strong>one CIT retry attempt</strong> (23% fee). If retry is also declined, or window expires unused: booking cancelled, no charge.</li>
+        <li>If pre-auth fails: passenger notified; 2-hour window for <strong>one CIT retry attempt</strong> (same amount, 18% fee — no surcharge). If retry is also declined, or window expires unused: booking cancelled, no charge.</li>
         <li>Scheduled departure time reached → capture instruction sent automatically to PSP (no driver action required).</li>
         <li>PSP confirms capture → the PSP routes 82% to driver sub-merchant account and 18% to SameFare in a single split transaction.</li>
       </ol>
@@ -209,7 +209,7 @@
       <h3>5.2 PSP capture mechanics</h3>
       <p>No partial captures are required. Every PSP action is either a <strong>full capture</strong> or a <strong>void</strong> of the pre-authorisation. This eliminates split-capture complexity entirely.</p>
       <p><strong>Driver no-show.</strong> Capture fires at departure as scheduled — the PSP sees a standard full capture and routes funds to the driver's sub-merchant account as normal. The passenger's remedy is a chargeback filed with their card issuer against the driver's sub-merchant account. SameFare's platform records (booking confirmation, scheduled departure timestamp, no-show report) are available to the issuer or acquirer on request. SameFare does not process a platform-level refund for driver no-shows; the card scheme chargeback mechanism is the designated resolution path.</p>
-      <p><strong>Retry transaction amounts.</strong> In the pre-auth failure retry scenario, the passenger completes a new CIT for the revised amount (contribution + 23% service fee). The PSP will see two distinct authorisation attempts on the same card: the failed MIT and the subsequent successful CIT at the higher amount. Both are tied to the same booking reference in SameFare's records.</p>
+      <p><strong>Retry transaction amounts.</strong> In the pre-auth failure retry scenario, the passenger saves a new card and the authorisation re-fires for the <strong>same amount</strong> as the original booking (contribution + 18% service fee — no surcharge). The PSP will see two distinct authorisation attempts on the same card: the failed MIT and the subsequent successful authorisation at the same amount. Both are tied to the same booking reference in SameFare's records.</p>
     </section>
 
     <!-- ── 6. Chargeback & Dispute Management ────────────────────────────────── -->

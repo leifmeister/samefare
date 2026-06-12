@@ -385,10 +385,11 @@ def handle_refund_payout_impact(
         )
 
 
-# ── Provider stubs ─────────────────────────────────────────────────────────────
-# These raise NotImplementedError until real credentials and API docs are
-# available.  The surrounding batch/send logic is fully implemented and will
-# activate automatically once the stubs are replaced.
+# ── Provider integrations ──────────────────────────────────────────────────────
+# Blikk (_send_blikk_payout) is live. Stripe Connect (_send_stripe_connect_payout)
+# is still a stub that raises NotImplementedError until a platform account is set
+# up. The surrounding batch/send/reconcile logic is fully implemented; the whole
+# pipeline stays dry until PAYOUT_ENABLED=true.
 
 
 class PayoutProviderError(Exception):
