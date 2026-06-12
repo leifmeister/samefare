@@ -400,6 +400,11 @@
       {% endif %}
     </div>
     {% endif %}
+    {% if request.query_params.get('cancel_unavailable') %}
+    <div class="alert alert--warning" style="margin-bottom:1.5rem;">
+      {{ _t('flash_cancel_unavailable') }}
+    </div>
+    {% endif %}
     {% if request.query_params.get('driver_no_show') %}
     <div class="alert alert--success" style="margin-bottom:1.5rem;">
       {{ _t('flash_driver_no_show') }}

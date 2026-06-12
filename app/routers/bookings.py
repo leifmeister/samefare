@@ -423,6 +423,25 @@ def cancel_booking(
     if booking.status not in cancellable:
         return RedirectResponse("/bookings", status_code=303)
 
+    # Block cancellation once the ride has departed, or once the payment's money
+    # state is provider-confirmed / in-flight. Capture fires at departure (the
+    # capture task) or earlier via a Rapyd CLO webhook, so a confirmed booking can
+    # already be `captured`. Letting the no-charge branch below run on such a
+    # payment would overwrite `captured` → `failed`, erasing provider-confirmed
+    # money and preventing the driver payout item. After departure there is also
+    # nothing left to cancel. (Mainly guards a direct/stale cancel POST; the UI
+    # hides cancel after departure.)
+    money_locked = booking.payment and booking.payment.status in (
+        models.PaymentStatus.captured,
+        models.PaymentStatus.capture_requested,
+        models.PaymentStatus.refund_requested,
+        models.PaymentStatus.refund_failed,
+        models.PaymentStatus.refunded,
+        models.PaymentStatus.partial_refund,
+    )
+    if booking.trip.departure_datetime <= datetime.utcnow() or money_locked:
+        return RedirectResponse("/bookings?cancel_unavailable=1", status_code=303)
+
     # Capture the pre-cancellation status before mutating it so the payment
     # block below can distinguish card_saved (no MIT yet) from charged states.
     original_status = booking.status
