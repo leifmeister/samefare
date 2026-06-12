@@ -215,6 +215,50 @@ def create_checkout_page(
                     idempotency_key=idempotency_key)
 
 
+def create_card_token_page(
+    *,
+    customer_id:           str,
+    complete_url:          str,
+    cancel_url:            str,
+    complete_payment_url:  str,
+    error_payment_url:     str,
+    currency:              str = "ISK",
+    country:               str = "IS",
+    language:              str = "en",
+    idempotency_key:       str,
+) -> dict:
+    """
+    Create a Rapyd Hosted Card (card-token) page — POST /v1/hosted/collect/card.
+
+    This is the correct endpoint for SAVING/tokenising a card for a later
+    merchant-initiated charge (our Case B request-to-book flow). The checkout
+    page (/v1/hosted/collect/checkout) is for collecting a payment now; using it
+    with amount=0 to save a card returns UNAUTHORIZED_API_CALL on accounts that
+    only have the card-token page enabled.
+
+    `card_fields.recurrence_type = "unscheduled"` records cardholder consent for
+    future unscheduled merchant-initiated transactions (the MIT we fire when the
+    driver accepts), per PSD2.
+
+    Returns the hosted-page dict: data.id (starts "hp_card_") and
+    data.redirect_url (the page the customer is sent to). The tokenised card is
+    attached to `customer_id`; retrieve it afterwards via retrieve_customer().
+    """
+    payload = {
+        "customer":              customer_id,
+        "country":               country,
+        "currency":              currency,
+        "language":              language,
+        "complete_url":          complete_url,
+        "cancel_url":            cancel_url,
+        "complete_payment_url":  complete_payment_url,
+        "error_payment_url":     error_payment_url,
+        "card_fields":           {"recurrence_type": "unscheduled"},
+    }
+    return _request("post", "/v1/hosted/collect/card", payload,
+                    idempotency_key=idempotency_key)
+
+
 # ── Customer management ────────────────────────────────────────────────────────
 
 def create_customer(*, email: str, name: str, idempotency_key: str) -> str:
@@ -311,6 +355,19 @@ def create_refund(
 def get_payment(payment_id: str) -> dict:
     """Fetch a Rapyd payment object by ID."""
     return _request("get", f"/v1/payments/{payment_id}")
+
+
+def retrieve_customer(customer_id: str) -> dict:
+    """
+    Fetch a Rapyd customer object — GET /v1/customers/{id}.
+
+    Used after the Hosted Card page redirects back: the tokenised card is
+    attached to the customer, so we read it from here (authoritative) rather
+    than trusting the redirect. Returns the customer dict, which includes
+    `default_payment_method` (a card_ id) and `payment_methods.data` (the list
+    of saved methods, each with id/last4/bin_details).
+    """
+    return _request("get", f"/v1/customers/{customer_id}")
 
 
 # ── Webhook signature verification ────────────────────────────────────────────

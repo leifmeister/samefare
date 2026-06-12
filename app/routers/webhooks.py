@@ -242,6 +242,8 @@ async def rapyd_webhook(request: Request):
             _handle_payment_failed(db, webhook_id, event_data)
         elif event_type in ("PAYMENT_EXPIRED", "CHECKOUT_EXPIRED"):
             _handle_payment_expired(db, webhook_id, event_data)
+        elif event_type == "CUSTOMER_PAYMENT_METHOD_CREATED":
+            _handle_payment_method_created(db, webhook_id, event_data)
         else:
             log.debug("Rapyd webhook type %s — no handler, ignoring", event_type)
     except Exception as exc:
@@ -405,6 +407,69 @@ def _handle_checkout_completed(
             "Booking %s: card saved (booking status=%s) — MIT fires on driver acceptance",
             booking.id, booking.status.value,
         )
+
+
+def _handle_payment_method_created(
+    db: Session, webhook_id: str, data: dict
+) -> None:
+    """
+    CUSTOMER_PAYMENT_METHOD_CREATED — a card was tokenised via the Hosted Card
+    page (Case B save-card). The redirect handler (card_saved_page) is the
+    primary finaliser; this webhook is the backup for passengers who close the
+    tab before being redirected back.
+
+    The card-token page accepts no booking metadata, so we correlate by the
+    customer id (which we created and stored on the payment). Idempotent: the
+    `status != card_saved` guard makes re-delivery a no-op.
+    """
+    pm_id       = data.get("id")
+    customer_id = data.get("customer")
+    if not pm_id or not customer_id:
+        log.info("CUSTOMER_PAYMENT_METHOD_CREATED: no pm/customer id in payload — ignoring")
+        return
+
+    payment = (
+        db.query(models.Payment)
+        .filter(
+            models.Payment.rapyd_customer_id == customer_id,
+            models.Payment.status != models.PaymentStatus.card_saved,
+        )
+        .order_by(models.Payment.id.desc())
+        .first()
+    )
+    if not payment:
+        log.info(
+            "CUSTOMER_PAYMENT_METHOD_CREATED: no pending payment for customer %s — ignoring",
+            customer_id,
+        )
+        return
+
+    booking = payment.booking
+    if booking.status not in _CASE_B_CARD_SAVE_STATES:
+        log.warning(
+            "CUSTOMER_PAYMENT_METHOD_CREATED: booking %s in state %r — card %s not stored",
+            booking.id, str(booking.status), pm_id,
+        )
+        return
+
+    payment.rapyd_payment_method_id = pm_id
+    payment.card_last4 = data.get("last4")
+    payment.card_brand = (data.get("bin_details") or {}).get("brand") or data.get("brand")
+    payment.status     = models.PaymentStatus.card_saved
+
+    was_pending = booking.status == models.BookingStatus.pending
+    if booking.status == models.BookingStatus.awaiting_payment:
+        booking.status = models.BookingStatus.card_saved
+    db.commit()
+    db.refresh(booking)
+
+    if booking.status == models.BookingStatus.card_saved:
+        mailer.card_saved_to_passenger(booking)
+    elif was_pending:
+        mailer.card_saved_pending_to_passenger(booking)
+
+    log.info("Booking %s: card saved via CUSTOMER_PAYMENT_METHOD_CREATED webhook (pm=%s)",
+             booking.id, pm_id)
 
 
 def _handle_payment_captured(
