@@ -877,7 +877,7 @@ def _run_create_payout_items() -> None:
 def _run_advance_payout_items() -> None:
     """
     Move `pending` PayoutItems to `payout_ready` for drivers who have
-    since configured their bank details (Blikk IBAN or Stripe Connect).
+    since configured their bank details (Blikk Icelandic IBAN).
 
     Safe to run frequently — advance_payout_item() is a no-op when the
     driver has no payout method or the item is already past `pending`.

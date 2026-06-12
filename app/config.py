@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     rapyd_secret_key: str  = Field(default="", alias="RAPYD_SECRET_KEY")
     rapyd_sandbox:    bool = Field(default=True, alias="RAPYD_SANDBOX")
 
-    # Payout rails — set True only after Blikk / Stripe Connect credentials are wired up.
+    # Payout rail — set True only after Blikk credentials are wired up (Iceland-only; Blikk is the only rail).
     # While False the ledger runs in full (items are created and advanced) but the
     # background task that submits outbound transfers is skipped so no money moves.
     payout_enabled: bool = Field(default=False, alias="PAYOUT_ENABLED")

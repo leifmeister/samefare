@@ -111,8 +111,8 @@ class TripPaymentMethod(_StrEnum):
 
 
 class PayoutMethod(_StrEnum):
-    blikk          = "blikk"           # Icelandic real-time bank transfer (IS IBAN)
-    stripe_connect = "stripe_connect"  # Stripe Connect for non-Icelandic accounts
+    blikk          = "blikk"           # Icelandic real-time bank transfer (IS IBAN) — the only offered rail
+    stripe_connect = "stripe_connect"  # NOT offered; reserved for schema stability, never routed to
 
 
 class PayoutItemStatus(_StrEnum):
@@ -197,13 +197,12 @@ class User(Base):
     reset_token_expires = Column(DateTime)
 
     # Payout configuration
-    # Drivers with an Icelandic bank account (IS IBAN) are paid via Blikk.
-    # Others set up a Stripe Connect account and receive payouts in their local currency
-    # (with FX fees applied by Stripe — their choice, disclosed at onboarding).
+    # SameFare is Iceland-only: drivers are paid via Blikk and an Icelandic IBAN
+    # is required. Stripe Connect is not offered (the column below is unused).
     payout_method      = Column(Enum(PayoutMethod), nullable=True)
     kennitala          = Column(String(20),  nullable=True)   # Icelandic SSN (kennitala) — required for Blikk payouts
     blikk_account_iban = Column(String(34),  nullable=True)   # e.g. IS14 0159 2600 7654 5510 7303
-    stripe_account_id  = Column(String(255), nullable=True)   # Stripe Connect acct_xxx ID
+    stripe_account_id  = Column(String(255), nullable=True)   # unused — Stripe Connect not offered
 
     # Identity & licence verification
     id_verification          = Column(Enum(VerificationStatus), nullable=False,

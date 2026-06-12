@@ -3,18 +3,20 @@ app/payout.py — Payout ledger and outbound transfer logic.
 
 SameFare uses Rapyd to collect passenger payments.  Once a payment is
 captured (funds settled), this module pairs it to the driver's entitlement
-and routes the outbound transfer through either:
+and routes the outbound transfer through:
 
-  • Blikk          — Icelandic real-time account-to-account (IS IBAN required)
-  • Stripe Connect — for drivers without an Icelandic bank account
-                     (FX fees apply and are the driver's responsibility)
+  • Blikk — Icelandic real-time account-to-account (IS IBAN required)
+
+SameFare is Iceland-only, so Blikk is the only payout rail. Stripe Connect is
+NOT offered: the PayoutMethod.stripe_connect enum value and its stub sender
+remain for schema stability but are never routed to (resolve_payout_method
+returns Blikk or None).
 
 Architecture rule
 -----------------
-Rapyd, Blikk, and Stripe are payment rails.  The payout ledger is the
-source of truth for pairing and reconciliation.  Never calculate "who
-should be paid" from Booking rows on the fly; always derive it from
-PayoutItem / PayoutLedgerEntry.
+Rapyd and Blikk are payment rails.  The payout ledger is the source of truth
+for pairing and reconciliation.  Never calculate "who should be paid" from
+Booking rows on the fly; always derive it from PayoutItem / PayoutLedgerEntry.
 
 Payout eligibility
 ------------------
@@ -94,18 +96,15 @@ def write_ledger_entry(
 
 def resolve_payout_method(driver: models.User) -> PayoutMethod | None:
     """
-    Determine which rail to use for a driver, or None if not yet configured.
+    Determine the payout rail for a driver, or None if not yet configured.
 
-    Preference order:
-      1. Blikk  — if the driver has an Icelandic IBAN (starts with 'IS')
-      2. Stripe Connect — if the driver has a Stripe account ID
-
-    Drivers without either are held in `pending` until they complete onboarding.
+    SameFare is Iceland-only and the single rail is Blikk, which requires an
+    Icelandic IBAN. Stripe Connect is NOT offered — the enum value and stub
+    remain only for schema stability and are never routed to. Drivers without an
+    Icelandic IBAN stay `pending` until they add one.
     """
     if driver.blikk_account_iban and driver.blikk_account_iban.upper().startswith("IS"):
         return PayoutMethod.blikk
-    if driver.stripe_account_id:
-        return PayoutMethod.stripe_connect
     return None
 
 
@@ -395,14 +394,15 @@ def handle_refund_payout_impact(
 
 
 # ── Provider integrations ──────────────────────────────────────────────────────
-# Blikk (_send_blikk_payout) is live. Stripe Connect (_send_stripe_connect_payout)
-# is still a stub that raises NotImplementedError until a platform account is set
-# up. The surrounding batch/send/reconcile logic is fully implemented; the whole
+# Blikk (_send_blikk_payout) is the live, only rail. Stripe Connect
+# (_send_stripe_connect_payout) is NOT offered — it stays as a stub that raises
+# NotImplementedError and is never routed to (resolve_payout_method never returns
+# stripe_connect). The batch/send/reconcile logic is fully implemented; the whole
 # pipeline stays dry until PAYOUT_ENABLED=true.
 
 
 class PayoutProviderError(Exception):
-    """Raised when a Blikk or Stripe Connect API call fails."""
+    """Raised when a Blikk (or other) payout API call fails."""
 
 
 def _send_blikk_payout(batch: DriverPayout, driver: models.User) -> tuple[str, str | None]:
@@ -476,21 +476,13 @@ def _send_blikk_payout(batch: DriverPayout, driver: models.User) -> tuple[str, s
 
 def _send_stripe_connect_payout(batch: DriverPayout, driver: models.User) -> str:
     """
-    Transfer funds to driver.stripe_account_id via Stripe Connect.
-    Returns the Stripe Transfer ID on success.
-    Raises PayoutProviderError on failure.
-
-    Important: Rapyd is the incoming processor, so Stripe Connect has no
-    automatic knowledge of these funds.  SameFare must maintain a funded
-    Stripe platform balance and treat this as an outbound transfer, not a
-    destination charge.
-
-    TODO: implement once Stripe Connect platform account is set up.
-    See: https://stripe.com/docs/connect/separate-charges-and-transfers
+    NOT OFFERED. SameFare is Iceland-only and pays out exclusively via Blikk;
+    resolve_payout_method never returns stripe_connect, so this is unreachable in
+    normal operation. Retained only as a defensive guard for any legacy
+    stripe_connect batch — it always raises.
     """
     raise NotImplementedError(
-        "Stripe Connect payout not yet implemented. "
-        "Set up a Stripe Connect platform account and replace this stub."
+        "Stripe Connect payouts are not offered — SameFare pays out via Blikk only."
     )
 
 
