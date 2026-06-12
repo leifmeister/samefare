@@ -16,7 +16,7 @@ from sqlalchemy.orm import joinedload, selectinload, Session
 
 from app.config import get_settings
 from app.database import Base, engine, SessionLocal
-from app.dependencies import get_current_user_optional
+from app.dependencies import get_current_user_optional, get_template_context
 from app.i18n import get_translations, detect_lang
 from app import models  # noqa: F401 — register models before create_all
 from app.routers import alerts, auth, bookings, language, messages, newsletter, payments, phone, reports, reviews, trips, users, verification, webhooks
@@ -959,7 +959,11 @@ def offer_ride_page(request: Request):
 def home(request: Request):
     db: Session = SessionLocal()
     try:
-        current_user = get_current_user_optional(request, db)
+        # Use the shared template context so the home page gets the same nav
+        # badges (pending ride requests, unread messages) and helpers as every
+        # other page — building a bespoke context here previously left the
+        # homepage nav without the request/message counts.
+        ctx = get_template_context(request, db)
 
         upcoming_trips = (
             db.query(models.Trip)
@@ -993,9 +997,7 @@ def home(request: Request):
     }
 
     return templates.TemplateResponse("index.html", {
-        **_lc(request),
-        "request":          request,
-        "current_user":     current_user,
+        **ctx,
         "upcoming_trips":    upcoming_trips,
         "stats":            stats,
         "supported_cities": supported_cities,
