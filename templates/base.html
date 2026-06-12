@@ -65,7 +65,12 @@
             <a href="/trips">{{ _t('nav_find_ride') }}</a>
             <a href="{% if current_user %}/trips/new{% else %}/offer-ride{% endif %}" class="nav-highlight">{{ _t('nav_offer_ride') }}</a>
             {% if current_user %}
-              <a href="/my-trips">{{ _t('nav_my_trips') }}</a>
+              <a href="/my-trips{% if pending_request_count %}?tab=rides{% endif %}" class="nav-messages-link">
+                {{ _t('nav_my_trips') }}
+                {% if pending_request_count %}
+                  <span class="nav-badge" title="{{ _t('nav_requests_badge_title') }}">{{ pending_request_count }}</span>
+                {% endif %}
+              </a>
               <a href="/my-alerts">{{ _t('nav_alerts') }}</a>
               <a href="/messages" class="nav-messages-link">
                 {{ _t('nav_messages') }}
@@ -141,7 +146,12 @@
       <a href="/trips">{{ _t('nav_find_ride') }}</a>
       {% if current_user %}
         <a href="/trips/new">{{ _t('nav_offer_ride') }}</a>
-        <a href="/my-trips">{{ _t('nav_my_trips') }}</a>
+        <a href="/my-trips{% if pending_request_count %}?tab=rides{% endif %}">
+          {{ _t('nav_my_trips') }}
+          {% if pending_request_count %}
+            <span class="nav-badge" title="{{ _t('nav_requests_badge_title') }}">{{ pending_request_count }}</span>
+          {% endif %}
+        </a>
         <a href="/my-alerts">{{ _t('nav_alerts') }}</a>
         <a href="/messages">
           {{ _t('nav_messages') }}

@@ -117,6 +117,25 @@ def get_template_context(request: Request, db: Session = Depends(get_db)):
         except Exception:
             unread_count = 0
         pending_reviews = _pending_reviews(user, db)
+    # Incoming request-to-book bookings awaiting THIS user's approval as a driver.
+    # Drives the nav badge so a driver sees requests from any page — only counts
+    # requests they can still act on (trip active and not yet departed).
+    pending_request_count = 0
+    if user:
+        try:
+            pending_request_count = (
+                db.query(func.count(models.Booking.id))
+                .join(models.Trip, models.Booking.trip_id == models.Trip.id)
+                .filter(
+                    models.Booking.status          == models.BookingStatus.pending,
+                    models.Trip.driver_id          == user.id,
+                    models.Trip.status             == models.TripStatus.active,
+                    models.Trip.departure_datetime > datetime.utcnow(),
+                )
+                .scalar() or 0
+            )
+        except Exception:
+            pending_request_count = 0
     email_unverified = user and not user.email_verified
     is_newsletter_subscriber = False
     if user:
@@ -132,6 +151,7 @@ def get_template_context(request: Request, db: Session = Depends(get_db)):
         "request":                  request,
         "current_user":             user,
         "unread_message_count":     unread_count,
+        "pending_request_count":    pending_request_count,
         "pending_reviews":          pending_reviews,
         "now":                      datetime.utcnow(),
         "beta_mode":                settings.beta_mode,
