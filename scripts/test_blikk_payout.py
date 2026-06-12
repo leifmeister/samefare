@@ -24,6 +24,13 @@ import time
 # Make the repo root importable so `app` resolves when run as a script path.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Stream output line-by-line even when stdout is a pipe (e.g. under `railway run`)
+# so progress is visible instead of looking frozen during polling.
+try:
+    sys.stdout.reconfigure(line_buffering=True)
+except Exception:
+    pass
+
 
 def _dump(obj) -> str:
     return json.dumps(obj, indent=2, ensure_ascii=False)
@@ -36,7 +43,7 @@ def main() -> None:
     ap.add_argument("--ssn", required=True, help="Creditor kennitala (10 digits).")
     ap.add_argument("--iban", required=True, help="Creditor Icelandic IBAN (IS + 24 chars).")
     ap.add_argument("--reference", default="SameFare payout validation")
-    ap.add_argument("--poll-seconds", type=int, default=120, help="Max seconds to poll for a terminal status.")
+    ap.add_argument("--poll-seconds", type=int, default=40, help="Max seconds to poll for a terminal status.")
     ap.add_argument("--yes", action="store_true", help="Skip the confirmation prompt.")
     args = ap.parse_args()
 
@@ -83,11 +90,22 @@ def main() -> None:
     if not payment_id:
         print("✗ No payment id returned — cannot poll."); sys.exit(2)
 
-    if result.get("status") == "SCA_REQUIRED" or result.get("redirectUrl"):
+    status0 = result.get("status")
+    if status0 == "SCA_REQUIRED" or result.get("redirectUrl"):
         print("\n⚠  SCA REQUIRED — the account holder must approve this payout before it settles.")
         print("   redirectUrl:", result.get("redirectUrl"))
-        print("   (If this is the normal flow, fully-automatic payouts are NOT possible —")
-        print("    each payout/batch needs manual SCA approval. Flag this before go-live.)")
+        print("\nRESULT: payouts need manual SCA approval — they are NOT fully automatic.")
+        print("        No money moves unless you approve at that URL. Flag this for go-live.")
+        print("Payment id:", payment_id)
+        return
+
+    if blikk.channel_payment_is_terminal(result):
+        print("\nTERMINAL STATE (at submit):", status0)
+        if blikk.channel_payment_succeeded(result):
+            print("RESULT: ✅ SUCCESS — the Blikk payout integration works end-to-end.")
+        else:
+            print(f"RESULT: ❌ {status0} — inspect the body above.")
+        return
 
     print(f"\n→ polling GET /payment/{payment_id} until terminal (≤{args.poll_seconds}s)…")
     deadline = time.time() + args.poll_seconds
