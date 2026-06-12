@@ -59,15 +59,7 @@
       </div>
 
       {% if booking.payment %}
-      <div class="price-row" style="margin-top:.75rem; padding-top:.75rem; border-top:1px solid var(--color-border);">
-        <span>Cost contribution</span>
-        <span>{{ "{:,}".format(booking.payment.driver_payout) }} ISK</span>
-      </div>
-      <div class="price-row price-row--muted">
-        <span>Service fee</span>
-        <span>{{ "{:,}".format(booking.payment.platform_fee) }} ISK</span>
-      </div>
-      <div class="price-row price-row--total">
+      <div class="price-row price-row--total" style="margin-top:.75rem; padding-top:.75rem; border-top:1px solid var(--color-border);">
         <span>Total paid</span>
         <span>{{ "{:,}".format(booking.payment.passenger_total) }} ISK</span>
       </div>

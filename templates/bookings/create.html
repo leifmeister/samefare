@@ -38,7 +38,7 @@
     {% set effective_pps = segment_price if segment_price else trip.price_per_seat %}
 
     <div class="booking-layout"
-         x-data="bookingFlow({{ effective_pps }})">
+         x-data="bookingFlow({{ effective_pps }}, {{ 'true' if has_discount else 'false' }})">
 
       <form method="post" action="/bookings/trip/{{ trip.id }}" class="form-card">
         {# Carry segment cities so the POST handler can prorate and store them #}
@@ -93,11 +93,7 @@
             <h3 class="booking-summary__title">{{ _t('booking_price_summary') }}</h3>
             <div class="price-row price-row--total">
               <span x-text="seats + ' seat' + (seats > 1 ? 's' : '')"></span>
-              {% if has_discount %}
-              <span x-text="subtotal.toLocaleString() + ' ISK'"></span>
-              {% else %}
               <span x-text="total.toLocaleString() + ' ISK'"></span>
-              {% endif %}
             </div>
           </div>
 
@@ -267,7 +263,7 @@
 
 {% block scripts %}
 <script>
-function bookingFlow(pricePerSeat) {
+function bookingFlow(pricePerSeat, hasDiscount) {
   const FEE_RATE   = 0.18;
   const FEE_FLOOR  = 200;
   const ROUND_UNIT = 50;
@@ -276,13 +272,18 @@ function bookingFlow(pricePerSeat) {
     method:       'card',
     seats:        1,
     pricePerSeat: pricePerSeat,
+    hasDiscount:  hasDiscount,
     get subtotal() { return this.seats * this.pricePerSeat; },
-    get total() {
+    get fullTotal() {
       const rawFee = Math.round(this.subtotal * FEE_RATE);
       const fee    = Math.max(rawFee, FEE_FLOOR);
       return Math.ceil((this.subtotal + fee) / ROUND_UNIT) * ROUND_UNIT;
     },
-    get fee() { return this.total - this.subtotal; },
+    // Opaque pricing: the passenger sees a single price. The first-ride
+    // discount waives the service fee, so the payable total is just the
+    // bare cost contribution — this must hold on EVERY step, not only step 1.
+    get total() { return this.hasDiscount ? this.subtotal : this.fullTotal; },
+    get fee() { return this.fullTotal - this.subtotal; },
   };
 }
 </script>
