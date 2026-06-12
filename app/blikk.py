@@ -57,7 +57,10 @@ def _client() -> httpx.Client:
         raise BlikkError("BLIKK_CHANNEL_API_KEY is not set — required for driver payouts.")
     return httpx.Client(
         base_url=s.blikk_channel_base_url or _CHANNEL_BASE,
-        headers={"Api-Key": s.blikk_channel_api_key, "Content-Type": "application/json"},
+        # .strip() the key: a trailing newline pasted into the env var is an
+        # illegal HTTP header character and makes httpx raise before the request
+        # is even sent (looks like a hang, not a 401).
+        headers={"Api-Key": s.blikk_channel_api_key.strip(), "Content-Type": "application/json"},
         timeout=15.0,
     )
 
