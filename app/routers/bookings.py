@@ -460,6 +460,9 @@ def cancel_booking(
             # _run_capture_payments (every 10 min) picks this up.
             # No refund — full amount forfeited per cancellation policy.
             booking.payment.capture_at = datetime.utcnow()
+            # Mark this as a passenger forfeit so the payout sweep pays the driver
+            # their contribution (create_payout_item_for_payment keys off this).
+            booking.cancellation_reason = "late_forfeit"
 
     db.commit()
     db.refresh(booking)

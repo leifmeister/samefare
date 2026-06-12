@@ -143,7 +143,9 @@ def create_payout_item_for_payment(
 
     Called by _run_create_payout_items() after both:
       • payment.status transitions to `captured`, AND
-      • booking.status reaches a terminal ride state (completed / no_show)
+      • booking.status reaches a terminal ride state (completed / no_show), or a
+        passenger late-cancel forfeit (cancelled + cancellation_reason
+        "late_forfeit"), where the captured fare is still owed to the driver.
 
     Amounts are snapshotted from the Payment record at creation time so that
     later refunds or adjustments to the booking row don't silently alter what
@@ -157,11 +159,18 @@ def create_payout_item_for_payment(
     if payment.status != models.PaymentStatus.captured:
         return None
 
-    # Eligibility: ride outcome must be final
+    # Eligibility: ride outcome must be final, OR a passenger late-cancel forfeit.
+    # A late cancel captures the full fare (no refund) and the driver is still
+    # owed their contribution — but only when it's a genuine passenger forfeit,
+    # flagged on the booking, not any cancellation that happens to be captured.
+    late_forfeit = (
+        booking.status == models.BookingStatus.cancelled
+        and booking.cancellation_reason == "late_forfeit"
+    )
     if booking.status not in (
         models.BookingStatus.completed,
         models.BookingStatus.no_show,
-    ):
+    ) and not late_forfeit:
         return None
 
     # Idempotency: return existing item if already created
