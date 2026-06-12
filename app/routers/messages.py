@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -13,6 +13,11 @@ from app.limiter import rate_limit
 
 templates = Jinja2Templates(directory="templates")
 router    = APIRouter(prefix="/messages", tags=["messages"])
+
+# Don't email the recipient for a new message if the thread has had activity in
+# the last N minutes — debounces an active back-and-forth into at most one email
+# per lull (see send_message).
+NOTIFY_DEBOUNCE_MINUTES = 15
 
 # ── Jinja2 filters ────────────────────────────────────────────────────────────
 
@@ -191,13 +196,33 @@ def send_message(
     if not body:
         return HTMLResponse("", status_code=400)
 
-    # Is this the first message in the thread? If so, email the recipient.
-    existing_count = (
+    # Decide whether to email the recipient — computed BEFORE inserting the new
+    # message. Debounced notifications: email only when the recipient is caught
+    # up (no unread messages from us in this thread) AND there hasn't been any
+    # message in the last NOTIFY_DEBOUNCE_MINUTES. This still emails the first
+    # message and re-notifies after a lull, but stays quiet during an active
+    # back-and-forth and sends at most one email to an away recipient until they
+    # read it (a later reply finds prior messages still unread → no second email).
+    recipient = _other_person(booking, current_user)
+    recipient_unread = (
         db.query(models.Message)
-        .filter(models.Message.booking_id == booking_id)
+        .filter(
+            models.Message.booking_id == booking_id,
+            models.Message.sender_id  != recipient.id,   # messages addressed to the recipient
+            models.Message.is_read    == False,          # noqa: E712
+        )
         .count()
     )
-    first_message = existing_count == 0
+    last_at = (
+        db.query(models.Message.created_at)
+        .filter(models.Message.booking_id == booking_id)
+        .order_by(models.Message.created_at.desc())
+        .first()
+    )
+    should_notify = recipient_unread == 0 and (
+        last_at is None
+        or (datetime.utcnow() - last_at[0]) > timedelta(minutes=NOTIFY_DEBOUNCE_MINUTES)
+    )
 
     msg = models.Message(
         booking_id=booking_id,
@@ -208,8 +233,7 @@ def send_message(
     db.commit()
     db.refresh(msg)
 
-    if first_message:
-        recipient = _other_person(booking, current_user)
+    if should_notify:
         mailer.new_message_to_recipient(msg, recipient)
 
     # Return empty — the client-side poll will fetch and render the new message,
