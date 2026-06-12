@@ -1,18 +1,22 @@
 """
 Payment router — Rapyd-backed authorise-then-capture model.
 
-Case A (ride ≤ 7 days away)
+Case A (instant-book ride ≤ 24 hours away)
     Passenger completes an embedded Rapyd checkout; card is authorised now
     (capture=false).  Seat is confirmed immediately on authorisation.
     Capture fires at departure_datetime via the background task.
 
-Case B (ride > 7 days away)
-    Passenger saves their card via an embedded Rapyd SCA-authenticated checkout
-    (amount=0, save_payment_method=true).  A Rapyd customer & PM token are
-    stored.  A background task fires a merchant-initiated authorisation
-    (MIT) 24 h before departure.  On success the booking is confirmed; on
-    failure the passenger gets a 2-hour SMS window to update their card
-    (+5 % service fee surcharge).
+Case B (ride > 24 hours away, and ALL request-to-book bookings)
+    Passenger saves their card via Rapyd's Hosted Card page
+    (/v1/hosted/collect/card — a card-token page, not the checkout page). A
+    Rapyd customer & payment-method token are stored. A background task fires a
+    merchant-initiated authorisation (MIT) 24 h before departure. On success
+    the booking is confirmed; on failure the passenger gets a 2-hour SMS window
+    to update their card.
+
+The Case A/B boundary is CASE_B_THRESHOLD_HOURS (24h), matching the
+cancellation cut-off — once the pre-auth fires the seat is reserved and the
+full amount is forfeited on cancellation.
 
 Rules
 -----
@@ -114,11 +118,10 @@ def calc_fees(contribution: int) -> tuple[int, int, int]:
 
 def _payment_case(departure_datetime: datetime) -> str:
     """
-    Return 'A' if departure is ≤7 days away, 'B' if further.
+    Return 'A' if departure is ≤ CASE_B_THRESHOLD_HOURS (24h) away, 'B' if further.
 
-    Uses timedelta comparison rather than .days so that fractional days are
-    counted correctly — e.g. 7 days 23 hours is >7 days and must use Case B,
-    because a Case A authorisation would expire before the trip departs.
+    Case A pre-authorises the card now; Case B saves the card and fires the MIT
+    24h before departure. The threshold matches the cancellation cut-off.
     """
     return "A" if (departure_datetime - datetime.utcnow()) <= timedelta(hours=CASE_B_THRESHOLD_HOURS) else "B"
 

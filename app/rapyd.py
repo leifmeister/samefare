@@ -183,14 +183,12 @@ def create_checkout_page(
     Create a Rapyd hosted checkout page for embedding with Rapyd.js.
     Returns the checkout data dict (data.id = checkout_id to pass to RapydCheckoutToolkit).
 
-    Case A (ride ≤7 days):
+    Used for Case A (instant-book, ride ≤24h away):
         amount = passenger total, capture=False
-        Rapyd authorises the card; we capture later at departure.
+        Rapyd authorises the card now; we capture later at departure.
 
-    Case B (ride >7 days):
-        amount = 0, capture=True, save_payment_method=True
-        Triggers SCA-authenticated CIT; card is stored for future MIT.
-        customer_id must be provided (create_customer first).
+    Case B (ride >24h, and all request-to-book) does NOT use this — it saves the
+    card via the Hosted Card page (create_card_token_page) instead.
     """
     payload: dict = {
         "amount":                         amount,
