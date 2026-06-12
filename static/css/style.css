@@ -619,7 +619,9 @@ button, input, select, textarea { font: inherit; }
 .search-box__fields {
   display: grid;
   /* From | swap | To | Date | Passengers | Search (inline, far right) */
-  grid-template-columns: 1fr auto 1fr 160px 130px auto;
+  /* Passengers sizes to its content ("3 passengers") with a floor so the caret
+     isn't pushed out of a too-narrow fixed cell. */
+  grid-template-columns: 1fr auto 1fr 160px minmax(140px, auto) auto;
   gap: var(--space-3);
   align-items: end;
 }
@@ -703,7 +705,9 @@ button, input, select, textarea { font: inherit; }
 .search-bar__fields {
   display: grid;
   /* From | arrow | To | Date | Seats | Search */
-  grid-template-columns: 1fr auto 1fr minmax(140px, 1.4fr) 90px auto;
+  /* Seats track sizes to its content (e.g. "3 passengers") with a floor, so the
+     caret never gets pushed out of a too-narrow fixed cell. */
+  grid-template-columns: 1fr auto 1fr minmax(140px, 1.4fr) minmax(120px, auto) auto;
   gap: var(--space-3);
   align-items: end;
 }
@@ -733,8 +737,13 @@ button, input, select, textarea { font: inherit; }
 }
 .search-bar__date-wrap .input,
 .search-bar__date-wrap .search-field__input {
-  padding-right: 2rem;
   width: 100%;
+}
+/* Reserve room for the × clear button ONLY when a date is selected (that's when
+   the × shows). With no date there is no ×, so the caret sits flush-right like
+   the other fields instead of floating 2rem in from the edge. */
+.search-bar__date-wrap .date-trigger--has-value {
+  padding-right: 2rem;
 }
 .search-bar__date-clear {
   position: absolute;
@@ -4231,6 +4240,8 @@ button, input, select, textarea { font: inherit; }
   /* inherit all .input / .search-field__input visual styles via those classes */
 }
 .date-trigger__placeholder { color: var(--c-text-muted); }
+/* Let the label shrink with an ellipsis rather than push the caret out of the cell. */
+.date-trigger > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .date-trigger__caret {
   flex-shrink: 0;
   color: var(--c-text-muted);
