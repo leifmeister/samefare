@@ -60,6 +60,10 @@ class Settings(BaseSettings):
     # Payment Channel payout — this person authenticates the transfer.
     # Set this to the kennitala of whoever owns/manages the merchants.blikk.tech account.
     blikk_sca_kennitala: str  = Field(default="", alias="BLIKK_SCA_KENNITALA")
+    # Payment Channel API base URL. Sandbox and production use different hosts;
+    # set BLIKK_CHANNEL_BASE_URL to the production endpoint for live payouts.
+    blikk_channel_base_url: str = Field(
+        default="https://api.blikk.tech/paymentchannel", alias="BLIKK_CHANNEL_BASE_URL")
 
     # Didit KYC/AML (https://didit.me)
     # didit_api_key             — from Business Console → API & Webhooks

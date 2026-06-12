@@ -53,7 +53,7 @@ def main() -> None:
 
     s = get_settings()
     print("── Blikk Payment Channel payout validation ──────────────────────────")
-    print("base URL  :", blikk._CHANNEL_BASE)
+    print("base URL  :", s.blikk_channel_base_url)
     print("api key   :", (s.blikk_channel_api_key[:8] + "…") if s.blikk_channel_api_key else "(NOT SET)")
     print("scaUserSsn:", s.blikk_sca_kennitala or "(NOT SET)")
     print(f"payout    : {args.amount} ISK  →  {args.name}  /  {args.iban}")

@@ -56,7 +56,7 @@ def _client() -> httpx.Client:
     if not s.blikk_channel_api_key:
         raise BlikkError("BLIKK_CHANNEL_API_KEY is not set — required for driver payouts.")
     return httpx.Client(
-        base_url=_CHANNEL_BASE,
+        base_url=s.blikk_channel_base_url or _CHANNEL_BASE,
         headers={"Api-Key": s.blikk_channel_api_key, "Content-Type": "application/json"},
         timeout=15.0,
     )
