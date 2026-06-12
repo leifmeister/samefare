@@ -665,7 +665,8 @@ def auth_failed_page(
 ):
     """
     Shown when a Case B MIT authorization fails.
-    Passenger has 2 h to update their card.  The +5 % surcharge is visible here.
+    Passenger has 2 h to update their card. No surcharge — the fee is unchanged
+    from the original booking.
     """
     booking = (
         db.query(models.Booking)
@@ -698,8 +699,9 @@ def retry_payment(
 ):
     """
     Passenger submits a new card during the 2-hour retry window (Case B failure).
-    Creates a fresh Rapyd checkout page for a new save-card flow with the updated
-    service fee already baked in.
+    Creates a fresh Rapyd Hosted Card page (card-token) and redirects the
+    passenger to it; on return, card_saved_page() records the new card and the
+    MIT re-fires. No surcharge — the fee is unchanged from the original booking.
     """
     booking = (
         db.query(models.Booking)
@@ -722,27 +724,29 @@ def retry_payment(
 
     s = get_settings()
     try:
-        # Generate a fresh idempotency key for this new checkout attempt
+        # Fresh card-token page (NOT an amount=0 checkout — that endpoint 401s for
+        # saving a card). Same flow as the initial Case B save-card.
         new_key = generate_idempotency_key()
-        checkout_data = rapyd_client.create_checkout_page(
-            amount               = 0,
-            capture              = True,
+        card_page = rapyd_client.create_card_token_page(
+            customer_id          = payment.rapyd_customer_id,
             complete_url         = f"{s.base_url}/payments/card-saved/{booking_id}",
             cancel_url           = f"{s.base_url}/payments/auth-failed/{booking_id}",
+            complete_payment_url = f"{s.base_url}/payments/card-saved/{booking_id}",
+            error_payment_url    = f"{s.base_url}/payments/auth-failed/{booking_id}?rapyd_error=1",
             idempotency_key      = new_key,
-            metadata             = {"booking_id": booking_id, "case": "B", "retry": True},
-            customer_id          = payment.rapyd_customer_id,
-            save_payment_method  = True,
         )
-        payment.rapyd_checkout_id = checkout_data["id"]
+        payment.rapyd_checkout_id = card_page.get("id")
         payment.idempotency_key   = new_key
         db.commit()
+        redirect_url = card_page.get("redirect_url")
     except RapydError as exc:
-        log.error("Rapyd retry checkout failed for booking %s: %s", booking_id, exc)
+        log.error("Rapyd retry card-token page failed for booking %s: %s", booking_id, exc)
         db.rollback()
         return RedirectResponse(f"/payments/auth-failed/{booking_id}?rapyd_error=1", status_code=303)
 
-    return RedirectResponse(f"/payments/checkout/{booking_id}", status_code=303)
+    if not redirect_url:
+        return RedirectResponse(f"/payments/auth-failed/{booking_id}?rapyd_error=1", status_code=303)
+    return RedirectResponse(redirect_url, status_code=303)
 
 
 # ── Booking status API (for frontend polling) ─────────────────────────────────
