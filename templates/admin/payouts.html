@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block title %}Payouts — Admin{% endblock %}
+
+{% block content %}
+<div class="container" style="margin-top:2rem; margin-bottom:4rem;">
+  <div class="page-section-header">
+    <div>
+      <h1 class="page-title">Driver payouts</h1>
+      <p style="margin:.25rem 0 0; color:var(--c-text-muted); font-size:.9rem;">
+        {{ awaiting|length }} awaiting your approval
+        {% if awaiting %}· {{ "{:,}".format(awaiting_total) }} ISK total{% endif %}
+      </p>
+    </div>
+    <div class="admin-nav-tabs">
+      <a href="/admin"               class="admin-tab">Dashboard</a>
+      <a href="/admin/users"         class="admin-tab">Users</a>
+      <a href="/admin/verifications" class="admin-tab">Verifications</a>
+      <a href="/admin/reports"          class="admin-tab">Reports</a>
+      <a href="/admin/city-suggestions" class="admin-tab">City suggestions</a>
+      <a href="/admin/newsletter"       class="admin-tab">Newsletter</a>
+      <a href="/admin/test-users"    class="admin-tab">Test Users</a>
+      <a href="/admin/payouts"      class="admin-tab admin-tab--active">Payouts</a>
+    </div>
+  </div>
+
+  <!-- ── Awaiting approval ───────────────────────────────────────────── -->
+  {% if not awaiting %}
+  <div class="empty-state" style="margin-top:2rem;">
+    <h3 class="empty-state__title">Nothing awaiting approval</h3>
+    <p class="empty-state__body">
+      When driver payouts are submitted, the ones needing your Blikk SCA approval
+      appear here. You'll also get an SMS with a link to this page.
+    </p>
+  </div>
+  {% else %}
+  <div class="alert" style="margin-top:1.5rem; background:#fffbeb; border:1px solid #f59e0b; color:#78350f;">
+    <strong>Action needed:</strong> each payout below must be approved in Blikk before
+    the money moves. Click <strong>Approve in Blikk</strong>, authenticate as the
+    account holder, and it settles within a few minutes. This page updates as they clear.
+  </div>
+
+  <div style="margin-top:1.25rem; display:flex; flex-direction:column; gap:.75rem;">
+    {% for b in awaiting %}
+    <div class="form-card" style="display:flex; align-items:center; gap:1rem; padding:1rem 1.25rem;">
+      <div style="flex:1; min-width:0;">
+        <p style="margin:0; font-weight:700;">{{ b.driver.full_name }}</p>
+        <p style="margin:.2rem 0 0; color:var(--c-text-muted); font-size:.85rem;">
+          Batch #{{ b.id }} · {{ b.items|length }} ride{{ 's' if b.items|length != 1 }}
+          · {{ b.payout_method.value if b.payout_method else '—' }}
+          {% if b.sent_at %}· submitted {{ b.sent_at.strftime("%-d %b %H:%M") }}{% endif %}
+        </p>
+      </div>
+      <div style="font-weight:800; font-size:1.05rem; white-space:nowrap;">
+        {{ "{:,}".format(b.amount) }} ISK
+      </div>
+      <a href="{{ b.approval_url }}" target="_blank" rel="noopener"
+         class="btn btn-primary btn-sm" style="flex-shrink:0;">Approve in Blikk →</a>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- ── Recent ──────────────────────────────────────────────────────── -->
+  {% if recent %}
+  <h2 style="margin-top:2.5rem; font-size:1.1rem;">Recent payouts</h2>
+  <div class="admin-table-wrap" style="margin-top:.75rem; overflow-x:auto;">
+    <table class="admin-table" style="width:100%; border-collapse:collapse;">
+      <thead>
+        <tr style="text-align:left; color:var(--c-text-muted); font-size:.8rem;">
+          <th style="padding:.5rem .75rem;">Batch</th>
+          <th style="padding:.5rem .75rem;">Driver</th>
+          <th style="padding:.5rem .75rem;">Amount</th>
+          <th style="padding:.5rem .75rem;">Status</th>
+          <th style="padding:.5rem .75rem;">When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in recent %}
+        <tr style="border-top:1px solid var(--c-border, #e5e7eb); font-size:.9rem;">
+          <td style="padding:.5rem .75rem;">#{{ b.id }}</td>
+          <td style="padding:.5rem .75rem;">{{ b.driver.full_name }}</td>
+          <td style="padding:.5rem .75rem;">{{ "{:,}".format(b.amount) }} ISK</td>
+          <td style="padding:.5rem .75rem;">
+            {% set st = b.status.value %}
+            {% if st == 'confirmed' %}
+              <span style="color:#059669; font-weight:600;">✓ confirmed</span>
+            {% elif st == 'failed' %}
+              <span style="color:#dc2626; font-weight:600;">✕ failed</span>
+            {% elif st == 'reversed' %}
+              <span style="color:#b45309; font-weight:600;">↩ reversed</span>
+            {% else %}
+              <span style="color:var(--c-text-muted);">{{ st }}</span>
+            {% endif %}
+            {% if b.failure_reason %}
+              <div style="color:var(--c-text-muted); font-size:.78rem;">{{ b.failure_reason }}</div>
+            {% endif %}
+          </td>
+          <td style="padding:.5rem .75rem; color:var(--c-text-muted);">
+            {{ (b.confirmed_at or b.failed_at or b.created_at).strftime("%-d %b %H:%M") }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

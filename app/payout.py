@@ -604,36 +604,15 @@ def send_driver_payout(db: Session, batch: DriverPayout) -> bool:
             batch.id, batch.payout_method, driver.id, provider_id,
             " — awaiting SCA approval" if approval_url else "",
         )
-
-        # Blikk payouts need the account holder to approve at the redirectUrl
-        # before money moves. Alert the approver with the link; reconcile then
-        # confirms the batch once they approve.
-        if approval_url:
-            _alert_payout_approval(batch, driver, approval_url)
-
+        # Blikk payouts need the account holder to approve at batch.approval_url
+        # before money moves. The daily send task emits a single digest SMS for
+        # all batches awaiting approval (see _run_send_driver_payouts) and the
+        # admin /admin/payouts page lists them with Approve links.
         return True
 
     except (NotImplementedError, PayoutProviderError) as exc:
         _mark_payout_failed(db, batch, str(exc))
         return False
-
-
-def _alert_payout_approval(batch: DriverPayout, driver: models.User, approval_url: str) -> None:
-    """
-    SMS the account holder that a driver payout is waiting for their SCA
-    approval, with the Blikk link to approve it. Best-effort; never raises.
-    Goes to ADMIN_ALERT_PHONE (the person who holds prókúra on the Blikk
-    account — the same scaUserSsn that must approve).
-    """
-    try:
-        from app import sms
-        sms.admin_alert(
-            f"SameFare: a driver payout needs your approval. "
-            f"{batch.amount} ISK to {driver.full_name} (batch {batch.id}). "
-            f"Approve here: {approval_url}"
-        )
-    except Exception as exc:  # never let alerting break the send path
-        log.error("admin_alert raised while requesting payout approval: %s", exc)
 
 
 def _mark_payout_failed(db: Session, batch: DriverPayout, reason: str) -> None:

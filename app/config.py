@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     # While False the ledger runs in full (items are created and advanced) but the
     # background task that submits outbound transfers is skipped so no money moves.
     payout_enabled: bool = Field(default=False, alias="PAYOUT_ENABLED")
+    # Driver payouts are submitted once a day in a single batch run (rather than
+    # trickling every 10 min) so the approver can clear them all in one session.
+    # Hour of day (UTC, 0–23) at/after which the daily run fires. Default 18:00.
+    payout_run_hour: int = Field(default=18, alias="PAYOUT_RUN_HOUR")
 
     # Blikk P2P bank transfers (https://blikk.tech)
     # blikk_api_key         — from Blikk partner dashboard (Api-Key header)

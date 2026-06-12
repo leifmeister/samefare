@@ -213,6 +213,46 @@ def dismiss_report(
     return RedirectResponse("/admin/reports", status_code=303)
 
 
+@router.get("/admin/payouts", response_class=HTMLResponse)
+def admin_payouts(
+    request: Request,
+    ctx:     dict        = Depends(get_template_context),
+    admin:   models.User = Depends(_require_admin),
+    db:      Session     = Depends(get_db),
+):
+    """
+    Driver payouts awaiting the account holder's SCA approval, each with an
+    Approve link (the Blikk redirectUrl). Plus recent settled/failed batches.
+    """
+    awaiting = (
+        db.query(models.DriverPayout)
+        .options(
+            joinedload(models.DriverPayout.driver),
+            joinedload(models.DriverPayout.items),
+        )
+        .filter(
+            models.DriverPayout.status       == models.DriverPayoutStatus.sent,
+            models.DriverPayout.approval_url  != None,  # noqa: E711
+        )
+        .order_by(models.DriverPayout.sent_at.asc())
+        .all()
+    )
+    recent = (
+        db.query(models.DriverPayout)
+        .options(joinedload(models.DriverPayout.driver))
+        .filter(models.DriverPayout.status != models.DriverPayoutStatus.sent)
+        .order_by(models.DriverPayout.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    return templates.TemplateResponse("admin/payouts.html", {
+        **ctx,
+        "awaiting":       awaiting,
+        "awaiting_total": sum(b.amount for b in awaiting),
+        "recent":         recent,
+    })
+
+
 @router.get("/admin/city-suggestions", response_class=HTMLResponse)
 def admin_city_suggestions(
     request: Request,

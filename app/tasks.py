@@ -905,6 +905,45 @@ def _run_advance_payout_items() -> None:
         db.close()
 
 
+# Date (UTC) of the last daily payout send, so the once-a-day window fires only
+# once. Module-level: a process restart may re-enter the window, but the send is
+# idempotent (already-sent items aren't re-selected) so at worst a duplicate
+# digest SMS — never a duplicate transfer.
+_last_payout_send_date = None
+
+
+def _send_payout_approval_digest() -> None:
+    """
+    Send ONE SMS summarising all driver payouts currently awaiting the account
+    holder's SCA approval, with a link to the admin approvals page. Best-effort.
+    """
+    from app.config import get_settings
+    from app import sms
+
+    db = SessionLocal()
+    try:
+        awaiting = (
+            db.query(models.DriverPayout)
+            .filter(
+                models.DriverPayout.status       == models.DriverPayoutStatus.sent,
+                models.DriverPayout.approval_url  != None,  # noqa: E711
+            )
+            .all()
+        )
+        if not awaiting:
+            return
+        total = sum(b.amount for b in awaiting)
+        base  = get_settings().base_url.rstrip("/")
+        sms.admin_alert(
+            f"SameFare: {len(awaiting)} driver payout(s) awaiting your approval "
+            f"— {total:,} ISK total. Approve at {base}/admin/payouts"
+        )
+    except Exception as exc:
+        log.error("Failed to send payout approval digest: %s", exc)
+    finally:
+        db.close()
+
+
 def _run_send_driver_payouts() -> None:
     """
     Batch all `payout_ready` PayoutItems per driver and submit each batch
@@ -936,8 +975,18 @@ def _run_send_driver_payouts() -> None:
     from app.config import get_settings
     from app.payout import build_driver_payout_batch, send_driver_payout
 
-    if not get_settings().payout_enabled:
+    settings = get_settings()
+    if not settings.payout_enabled:
         return
+
+    # Daily batch window: submit payouts once a day (at/after PAYOUT_RUN_HOUR UTC)
+    # instead of every 10-min tick, so the approver clears them in one session and
+    # same-driver rides settled that day bundle into a single transfer/approval.
+    global _last_payout_send_date
+    now = datetime.utcnow()
+    if now.hour < settings.payout_run_hour or _last_payout_send_date == now.date():
+        return
+    _last_payout_send_date = now.date()
 
     db = SessionLocal()
     try:
@@ -1006,6 +1055,8 @@ def _run_send_driver_payouts() -> None:
 
         if sent:
             log.info("Submitted %d DriverPayout batch(es)", sent)
+            # One digest SMS for everything now awaiting the approver's SCA sign-off.
+            _send_payout_approval_digest()
 
     except Exception as exc:
         log.warning("Send driver payouts task failed: %s", exc)
