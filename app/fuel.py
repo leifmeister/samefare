@@ -1,10 +1,11 @@
 """
-Fuel price fetcher — apis.is /petrol endpoint.
+Fuel price fetcher — gasvaktin (primary) with apis.is as a backup.
 
-Three-tier fallback, in order:
-  1. Live fetch from apis.is  → p80 of all stations, validated, stored in cache
-  2. Stale DB cache           → most recent row within MAX_CACHE_AGE_DAYS
-  3. Policy table fallback    → hardcoded conservative estimate
+Live fetch order, then fallbacks:
+  1a. gasvaktin gas.min.json  → national station prices (primary live source)
+  1b. apis.is /petrol         → backup live source if gasvaktin yields too few
+  2.  Stale DB cache          → most recent row within MAX_CACHE_AGE_DAYS
+  3.  Policy table fallback   → hardcoded conservative estimate
 
 p80 means 80 % of Icelandic petrol stations currently charge at or below
 this price.  It is generous toward drivers without being skewed by outlier-
@@ -65,8 +66,15 @@ def _prices_from_gasvaktin() -> list[float] | None:
     except Exception as exc:
         log.warning("gasvaktin fetch failed: %s", exc)
         return None
-    # gasvaktin gas.min.json is a dict keyed by station ID; handle both dict and list.
-    stations = raw.values() if isinstance(raw, dict) else raw
+    # gasvaktin gas.min.json is now {"stations": [ {...}, ... ]}. Earlier shapes
+    # were a top-level list, or a dict keyed by station id — support all three so
+    # a future format tweak degrades gracefully rather than silently reading 0.
+    if isinstance(raw, dict) and isinstance(raw.get("stations"), list):
+        stations = raw["stations"]
+    elif isinstance(raw, dict):
+        stations = raw.values()
+    else:
+        stations = raw
     prices = [
         float(s["bensin95"])
         for s in stations
