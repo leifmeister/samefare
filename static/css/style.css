@@ -563,7 +563,10 @@ button, input, select, textarea { font: inherit; }
 
 .hero__inner {
   position: relative;
-  z-index: 1;
+  /* Above `.hero + .section` (z-1), which is pulled up under the wave with a
+     negative margin — otherwise the search-bar city dropdowns render behind the
+     "Offer your ride" card that overlaps the hero's lower edge. */
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
