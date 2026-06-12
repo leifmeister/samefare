@@ -31,13 +31,18 @@
           <strong>Now</strong> — your card is securely saved. Nothing is charged yet.
         </li>
         <li>
-          <strong>When the driver accepts</strong> — we'll pre-authorise
+          <strong>When the driver accepts</strong> — your booking is confirmed
+          automatically. No action needed from you.
+        </li>
+        <li>
+          <strong>24 hours before departure</strong> — we pre-authorise
           {% if booking.payment %}
             <strong>{{ "{:,}".format(booking.payment.passenger_total) }} ISK</strong>
           {% else %}
             your trip amount
           {% endif %}
-          on your card. Your booking becomes confirmed automatically — no action needed from you.
+          on your card (or right away if the ride is less than 24 hours away).
+          If it fails, you'll get an SMS with a 2-hour window to update your card.
         </li>
         <li>
           <strong>At departure</strong> — the authorised amount is captured and

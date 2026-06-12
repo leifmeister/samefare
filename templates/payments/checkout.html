@@ -95,9 +95,9 @@
             <p class="checkout-case-banner__title">{{ _t('checkout_card_not_charged') }}</p>
             {% if booking.status.value == 'pending' %}
             <p class="checkout-case-banner__sub">
-              Save your card now — nothing is charged yet.
-              Your card will be authorised for <strong>{{ "{:,}".format(total) }} ISK</strong>
-              automatically when the driver accepts your request.
+              Save your card now — nothing is charged yet. Once the driver accepts,
+              your booking is confirmed and we pre-authorise
+              <strong>{{ "{:,}".format(total) }} ISK</strong> 24 hours before departure.
             </p>
             {% else %}
             <p class="checkout-case-banner__sub">
