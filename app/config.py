@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     # trickling every 10 min) so the approver can clear them all in one session.
     # Hour of day (UTC, 0–23) at/after which the daily run fires. Default 18:00.
     payout_run_hour: int = Field(default=18, alias="PAYOUT_RUN_HOUR")
+    # A Blikk SCA approval link is only valid briefly. If a submitted payout sits
+    # awaiting approval longer than this (minutes), the link has expired and SCA
+    # was never completed — the reconcile task times it out (marks it failed and
+    # alerts) instead of polling forever. No money moved, so it is safe to fail.
+    payout_approval_timeout_min: int = Field(default=180, alias="PAYOUT_APPROVAL_TIMEOUT_MIN")
 
     # Blikk P2P bank transfers (https://blikk.tech)
     # blikk_api_key         — from Blikk partner dashboard (Api-Key header)

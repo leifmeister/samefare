@@ -40,7 +40,7 @@ The whole pipeline stays dry until PAYOUT_ENABLED=true in the environment.
 import hashlib
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -723,7 +723,27 @@ def reconcile_blikk_payout(db: Session, batch: DriverPayout) -> bool:
         return False
 
     if not blikk_client.channel_payment_is_terminal(payment):
-        return False  # still pending at the bank — check again next tick
+        # Stale-approval guard. A Blikk SCA approval link is valid only briefly.
+        # If the batch has sat awaiting approval past the timeout, the link has
+        # expired and SCA was never completed — so it will never settle and we
+        # must not poll forever. Time it out (fail + alert). No money moved (it
+        # never reached SUCCESS), so failing is safe. A human can verify in Blikk
+        # and re-issue. We deliberately do NOT auto-resubmit: if the transfer had
+        # in fact settled and Blikk were merely slow to report it, a resubmit
+        # would double-pay the driver.
+        from app.config import get_settings
+        timeout_min = get_settings().payout_approval_timeout_min
+        status      = payment.get("status")
+        if batch.sent_at and datetime.utcnow() - batch.sent_at > timedelta(minutes=timeout_min):
+            batch.approval_url = None   # link is dead — don't show it as approvable
+            _mark_payout_failed(
+                db, batch,
+                f"SCA approval not completed within {timeout_min} min "
+                f"(Blikk status {status!r}); the approval link expired. "
+                f"No money moved — verify in Blikk and re-issue if still owed."
+            )
+            return True
+        return False  # still within the approval window — check again next tick
 
     if blikk_client.channel_payment_succeeded(payment):
         confirm_driver_payout(db, batch)
