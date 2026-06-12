@@ -436,6 +436,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         # Flash messages (query param banners)
         "flash_payment_expired": "⏱ Payment window expired — booking cancelled. Seats released. Feel free to book again.",
         "flash_cancelled": "✓ Booking cancelled. Any refund due will appear within 5–10 business days.",
+        "flash_cancelled_nocharge": "✓ Booking cancelled — no charge was made.",
+        "flash_cancelled_charged": "✓ Booking cancelled. The fare was charged in full and is non-refundable under the cancellation policy.",
         "flash_driver_no_show": "✓ Driver no-show reported. The driver's account has been suspended. To recover your payment, contact your card issuer and dispute the charge — your booking confirmation and departure time serve as evidence. Questions? Email",
         "flash_requested": "✓ Request sent — you'll be emailed once the driver approves.",
         "flash_reviewed": "✓ Thanks for leaving a review!",
@@ -1075,6 +1077,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         # Flash messages
         "flash_payment_expired": "⏱ Greiðslutími rann út — hætt við bókun. Sæti losað. Þér er velkomið að bóka aftur.",
         "flash_cancelled": "✓ Hætt við bókun. Endurgreiðsla, ef einhver er, berst innan 5–10 virkra daga.",
+        "flash_cancelled_nocharge": "✓ Hætt við bókun — engin greiðsla var tekin.",
+        "flash_cancelled_charged": "✓ Hætt við bókun. Fargjaldið var dregið að fullu og er óendurkræft samkvæmt afbókunarskilmálum.",
         "flash_driver_no_show": "✓ Fjarvistarbrot bílstjóra tilkynnt. Reikningur bílstjórans hefur verið stöðvaður. Til að fá endurgreiðslu skaltu hafa samband við kortafyrirtækið þitt og mótmæla gjaldinu — bókunarstaðfesting og brottfarartími þjóna sem sönnunargögn. Spurningar? Sendu tölvupóst á",
         "flash_requested": "✓ Beiðni send — þú færð tölvupóst þegar bílstjórinn samþykkir.",
         "flash_reviewed": "✓ Takk fyrir umsögnina!",

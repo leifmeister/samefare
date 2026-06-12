@@ -388,7 +388,11 @@
     {% endif %}
     {% if request.query_params.get('cancelled') %}
     <div class="alert alert--success" style="margin-bottom:1.5rem;">
-      {{ _t('flash_cancelled') }}
+      {% if request.query_params.get('cancelled') == 'charged' %}
+        {{ _t('flash_cancelled_charged') }}
+      {% else %}
+        {{ _t('flash_cancelled_nocharge') }}
+      {% endif %}
     </div>
     {% endif %}
     {% if request.query_params.get('driver_no_show') %}

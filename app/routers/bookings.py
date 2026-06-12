@@ -469,7 +469,19 @@ def cancel_booking(
         else:
             mailer.booking_cancelled_to_driver(booking)
     mailer.booking_cancelled_to_passenger(booking)
-    return RedirectResponse("/bookings?cancelled=1", status_code=303)
+
+    # Tell the banner the truth: a passenger self-cancel either captures the full
+    # fare (pre-auth already placed → forfeit, no refund) or never charged the card
+    # (card_saved / pending → token voided). It never produces a refund.
+    charged = bool(
+        booking.payment
+        and pre_auth_placed
+        and original_status != models.BookingStatus.card_saved
+    )
+    return RedirectResponse(
+        f"/bookings?cancelled={'charged' if charged else 'nocharge'}",
+        status_code=303,
+    )
 
 
 @router.post("/{booking_id}/confirm")
