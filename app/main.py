@@ -254,6 +254,10 @@ _MIGRATIONS = [
     "CREATE INDEX IF NOT EXISTS ix_driver_payouts_status    ON driver_payouts(status)",
     "ALTER TABLE driver_payouts ADD COLUMN IF NOT EXISTS approval_url TEXT",
     "ALTER TABLE driver_payouts ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP",
+    # 'submitting' — durable intent-to-submit recorded BEFORE the (non-idempotent)
+    # Blikk call, so a crash/timeout can never silently revert to 'pending' and
+    # trigger a duplicate real transfer.
+    "ALTER TYPE driverpayoutstatus ADD VALUE IF NOT EXISTS 'submitting'",
     "ALTER TABLE payout_items   ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP",
     # Repair migration for deployments that ran the original CREATE TABLE before
     # the payout_method type was corrected (it was wrongly driverpayoutstatus).

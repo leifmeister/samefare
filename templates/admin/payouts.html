@@ -25,9 +25,46 @@
   </div>
 
   <!-- ── Needs attention (failed payouts + clawbacks) ─────────────────── -->
-  {% if failed or clawbacks %}
+  {% if uncertain or failed or clawbacks %}
   <div class="form-card" style="margin-top:1.5rem; border:1px solid #dc2626; background:#fef2f2; padding:1.25rem 1.5rem;">
     <h2 style="margin:0 0 .75rem; font-size:1.05rem; color:#991b1b;">⚠ Needs attention</h2>
+
+    {% if uncertain %}
+    <p style="margin:.5rem 0 .25rem; font-weight:700; color:#991b1b;">
+      ⏳ Submission outcome unknown — check Blikk before acting
+    </p>
+    <p style="margin:0 0 .5rem; font-size:.82rem; color:#7f1d1d;">
+      The transfer request timed out or dropped. It <em>may</em> have reached Blikk.
+      Open the Blikk dashboard, find this driver/amount, then choose:
+      <strong>Re-queue</strong> only if NO transfer exists, or <strong>Already paid</strong>
+      if it went through. Never blindly retry — Blikk has no duplicate protection.
+    </p>
+    <div style="display:flex; flex-direction:column; gap:.5rem;">
+      {% for b in uncertain %}
+      <div style="display:flex; align-items:center; gap:.75rem; font-size:.9rem; flex-wrap:wrap;">
+        <span style="font-weight:600;">{{ b.driver.full_name }}</span>
+        <span style="white-space:nowrap;">{{ "{:,}".format(b.amount) }} ISK</span>
+        <span style="color:var(--c-text-muted);">batch #{{ b.id }}{% if b.failure_reason %} · {{ b.failure_reason }}{% endif %}</span>
+        <div style="display:flex; gap:.5rem; margin:0 0 0 auto;">
+          <form method="post" action="/admin/payouts/{{ b.id }}/resolve-uncertain">
+            <input type="hidden" name="outcome" value="requeue">
+            <button type="submit" class="btn btn-outline btn-sm"
+                    onclick="return confirm('Confirm: Blikk shows NO transfer for this batch. Re-queue for sending?')">
+              No transfer — re-queue
+            </button>
+          </form>
+          <form method="post" action="/admin/payouts/{{ b.id }}/resolve-uncertain">
+            <input type="hidden" name="outcome" value="paid">
+            <button type="submit" class="btn btn-outline btn-sm"
+                    onclick="return confirm('Confirm: Blikk shows this transfer DID go through. Mark as paid (no resend)?')">
+              Already paid
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
 
     {% if failed %}
     <p style="margin:.5rem 0 .25rem; font-weight:700; color:#991b1b;">Failed payouts — driver not paid; investigate or re-issue</p>

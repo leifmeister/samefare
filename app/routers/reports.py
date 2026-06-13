@@ -257,6 +257,19 @@ def admin_payouts(
         .all()
     )
     # ── Needs attention (replaces the old admin SMS alerts) ───────────────────
+    # Uncertain submissions: the Blikk call timed out / dropped — we don't know if
+    # a transfer was created. Must be reconciled by hand in Blikk before anything
+    # else happens to them (never auto-resubmitted — Blikk has no idempotency key).
+    uncertain = (
+        db.query(models.DriverPayout)
+        .options(joinedload(models.DriverPayout.driver), joinedload(models.DriverPayout.items))
+        .filter(
+            models.DriverPayout.status      == models.DriverPayoutStatus.submitting,
+            models.DriverPayout.resolved_at == None,   # noqa: E711
+        )
+        .order_by(models.DriverPayout.sent_at.asc().nullsfirst())
+        .all()
+    )
     # Failed payouts: the driver wasn't paid — investigate / re-issue.
     failed = (
         db.query(models.DriverPayout)
@@ -286,6 +299,7 @@ def admin_payouts(
         "ready_total":    sum(b.amount for b in ready),
         "awaiting":       awaiting,
         "recent":         recent,
+        "uncertain":      uncertain,
         "failed":         failed,
         "clawbacks":      clawbacks,
         "clawback_total": sum(i.amount for i in clawbacks),
@@ -302,6 +316,48 @@ def resolve_failed_payout(
     batch = db.query(models.DriverPayout).filter(models.DriverPayout.id == batch_id).first()
     if batch and batch.status == models.DriverPayoutStatus.failed and batch.resolved_at is None:
         batch.resolved_at = datetime.utcnow()
+        db.commit()
+    return RedirectResponse("/admin/payouts", status_code=303)
+
+
+@router.post("/admin/payouts/{batch_id}/resolve-uncertain")
+def resolve_uncertain_payout(
+    batch_id: int,
+    outcome:  str          = Form(...),   # "requeue" | "paid"
+    admin:    models.User  = Depends(_require_admin),
+    db:       Session      = Depends(get_db),
+):
+    """
+    Resolve a payout left in `submitting` (Blikk call outcome unknown) AFTER the
+    operator has verified the real state in the Blikk dashboard:
+
+      outcome=requeue → Blikk shows NO transfer was created. Safe to send again:
+                        move back to `pending` so Approve re-submits it.
+      outcome=paid    → Blikk shows the transfer DID go through. Mark it confirmed
+                        so the driver is not paid a second time.
+
+    This is the ONLY path out of `submitting` — it is deliberately manual.
+    """
+    batch = (
+        db.query(models.DriverPayout)
+        .options(joinedload(models.DriverPayout.items))
+        .filter(models.DriverPayout.id == batch_id)
+        .first()
+    )
+    if not batch or batch.status != models.DriverPayoutStatus.submitting:
+        return RedirectResponse("/admin/payouts", status_code=303)
+
+    if outcome == "requeue":
+        batch.status         = models.DriverPayoutStatus.pending
+        batch.failure_reason = None
+        batch.sent_at        = None
+        db.commit()
+    elif outcome == "paid":
+        # confirm_driver_payout expects `sent`; flip then confirm so items and the
+        # ledger settle consistently.
+        from app.payout import confirm_driver_payout
+        batch.status = models.DriverPayoutStatus.sent
+        confirm_driver_payout(db, batch)
         db.commit()
     return RedirectResponse("/admin/payouts", status_code=303)
 

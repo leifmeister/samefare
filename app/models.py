@@ -127,11 +127,12 @@ class PayoutItemStatus(_StrEnum):
 
 
 class DriverPayoutStatus(_StrEnum):
-    pending   = "pending"    # batch created, not yet submitted
-    sent      = "sent"       # submitted to provider
-    confirmed = "confirmed"  # provider confirmed receipt
-    failed    = "failed"     # provider rejected
-    reversed  = "reversed"   # payout reversed by provider or manually
+    pending    = "pending"     # batch created, not yet submitted
+    submitting = "submitting"  # provider call in flight / outcome unknown — NEVER auto-resubmit
+    sent       = "sent"        # submitted to provider, accepted
+    confirmed  = "confirmed"   # provider confirmed receipt
+    failed     = "failed"      # provider rejected
+    reversed   = "reversed"    # payout reversed by provider or manually
 
 
 class FuelType(_StrEnum):

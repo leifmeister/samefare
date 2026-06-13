@@ -506,10 +506,12 @@ def build_driver_payout_batch(
     one driver.  All items must share the same payout_method.
 
     Does NOT submit the payout — the caller must db.commit() this record first,
-    then call send_driver_payout() in a separate step.  This two-phase approach
-    ensures the batch and its stable idempotency key are durable before any
-    provider API call, so a crash between submission and the status-update commit
-    can be recovered by re-submitting the same stored key (provider deduplicates).
+    then call send_driver_payout() in a separate step. The stored idempotency key
+    deduplicates BATCH CREATION (so a crash-after-build never builds a second
+    batch for the same items); it is NOT a provider idempotency token. Blikk has
+    no such field, so send_driver_payout() guarantees no double *transfer* by
+    committing a `submitting` state before the provider call and never
+    auto-resubmitting an uncertain one — see its docstring.
 
     Idempotent: if a DriverPayout with the deterministic key already exists
     (e.g. a previous run built the batch but crashed before sending), returns
@@ -576,53 +578,88 @@ def build_driver_payout_batch(
 
 def send_driver_payout(db: Session, batch: DriverPayout) -> bool:
     """
-    Submit a pending DriverPayout batch to the appropriate provider.
-    Updates batch.status and writes ledger entries.
-    Returns True on success, False on failure.
-    Caller must db.commit() afterwards.
+    Submit a pending DriverPayout batch to Blikk. Manages its own commits.
+    Returns True only when the provider accepted the submission.
 
-    On failure the batch stays in `failed` state and each constituent item
-    moves to `payout_failed`.  A human operator (or future retry task) can
-    create a new DriverPayout covering the same items after marking them
-    `retry_ready`.
+    Crash-safety / no double-pay
+    ----------------------------
+    Blikk's Payment Channel has NO idempotency key (see app/blikk.py — it cannot
+    even carry a reference), so a blind re-POST of the same batch creates a
+    SECOND real transfer. To make submission safe we durably flip the batch to
+    `submitting` and COMMIT *before* calling the provider. Three outcomes:
+
+      • Accepted            → `sent` (+ approval_url); reconcile confirms later.
+      • Clean rejection     → `failed`; no transfer was created, safe to re-issue.
+        (PayoutProviderError: preflight failure or an explicit Blikk error reply.)
+      • UNKNOWN outcome     → stays `submitting`; the request may have reached
+        Blikk after a timeout/dropped connection. NEVER auto-resubmitted — a human
+        must reconcile in the Blikk dashboard (see /admin/payouts) and either
+        re-queue it (verified nothing sent) or mark it paid (verified it went).
+
+    Because `submitting` is committed first, a crash anywhere after this point can
+    never silently leave the batch back in `pending` for the Approve button to
+    re-send.
     """
     driver = batch.driver
 
-    try:
-        approval_url = None
-        if batch.payout_method == PayoutMethod.blikk:
-            provider_id, approval_url = _send_blikk_payout(batch, driver)
-        elif batch.payout_method == PayoutMethod.stripe_connect:
-            provider_id = _send_stripe_connect_payout(batch, driver)
-        else:
-            raise PayoutProviderError(f"Unrecognised payout method: {batch.payout_method}")
-
-        batch.provider_payout_id = provider_id
-        batch.approval_url       = approval_url
-        batch.status             = DriverPayoutStatus.sent
-        batch.sent_at            = datetime.utcnow()
-
-        write_ledger_entry(
-            db, LedgerEntryType.driver_payout_sent,
-            amount           = batch.amount,
-            driver_payout_id = batch.id,
-            driver_id        = driver.id,
-            note             = f"Provider ref: {provider_id}",
-        )
-        log.info(
-            "DriverPayout %s sent via %s to driver %s (ref: %s)%s",
-            batch.id, batch.payout_method, driver.id, provider_id,
-            " — awaiting SCA approval" if approval_url else "",
-        )
-        # Blikk payouts need the account holder to approve at batch.approval_url
-        # before money moves. This runs on demand from the admin /admin/payouts
-        # Approve action, so the link is fresh; the approver is redirected
-        # straight to it and reconcile_blikk_payout confirms once they approve.
-        return True
-
-    except (NotImplementedError, PayoutProviderError) as exc:
-        _mark_payout_failed(db, batch, str(exc))
+    if batch.payout_method == PayoutMethod.stripe_connect:
+        _mark_payout_failed(db, batch, "Stripe Connect payouts are not offered.")
+        db.commit()
         return False
+    if batch.payout_method != PayoutMethod.blikk:
+        _mark_payout_failed(db, batch, f"Unrecognised payout method: {batch.payout_method}")
+        db.commit()
+        return False
+
+    # Durably record intent-to-submit BEFORE touching the (non-idempotent) provider.
+    batch.status  = DriverPayoutStatus.submitting
+    batch.sent_at = datetime.utcnow()
+    db.commit()
+
+    try:
+        provider_id, approval_url = _send_blikk_payout(batch, driver)
+    except PayoutProviderError as exc:
+        # Clean rejection — preflight validation failed, or Blikk returned an
+        # explicit error response. No transfer was created → safe to fail/retry.
+        _mark_payout_failed(db, batch, str(exc))
+        db.commit()
+        return False
+    except Exception as exc:  # noqa: BLE001 — timeouts/connection drops land here
+        # UNKNOWN outcome: the request may have reached Blikk. Do NOT mark failed
+        # (invites a double-pay resubmit) and do NOT mark sent (we have no ref).
+        # Leave it `submitting` for manual reconciliation.
+        batch.failure_reason = f"Submission outcome UNKNOWN — verify in Blikk before retrying: {exc}"
+        db.commit()
+        log.error(
+            "DriverPayout %s: Blikk submission outcome UNKNOWN for driver %s: %s — "
+            "left in `submitting`, requires manual Blikk reconciliation",
+            batch.id, driver.id, exc,
+        )
+        return False
+
+    batch.provider_payout_id = provider_id
+    batch.approval_url       = approval_url
+    batch.status             = DriverPayoutStatus.sent
+    # sent_at was set when we flipped to `submitting`.
+
+    write_ledger_entry(
+        db, LedgerEntryType.driver_payout_sent,
+        amount           = batch.amount,
+        driver_payout_id = batch.id,
+        driver_id        = driver.id,
+        note             = f"Provider ref: {provider_id}",
+    )
+    log.info(
+        "DriverPayout %s sent via %s to driver %s (ref: %s)%s",
+        batch.id, batch.payout_method, driver.id, provider_id,
+        " — awaiting SCA approval" if approval_url else "",
+    )
+    db.commit()
+    # Blikk payouts need the account holder to approve at batch.approval_url
+    # before money moves. This runs on demand from the admin /admin/payouts
+    # Approve action, so the link is fresh; the approver is redirected
+    # straight to it and reconcile_blikk_payout confirms once they approve.
+    return True
 
 
 def _mark_payout_failed(db: Session, batch: DriverPayout, reason: str) -> None:
