@@ -31,13 +31,12 @@
 
     {% if stuck %}
     <p style="margin:.5rem 0 .25rem; font-weight:700; color:#991b1b;">
-      Couldn't be prepared — payable, never batched
+      Owed to drivers but not queued for approval
     </p>
     <p style="margin:0 0 .5rem; font-size:.82rem; color:#7f1d1d;">
-      These payouts have been ready for over a day but the daily preparation
-      couldn't build a batch for them (it retries, then gives up to avoid
-      looping). Check the server logs for the cause, fix it, and they'll batch on
-      the next daily run.
+      These payouts are owed but the system couldn't get them ready for your
+      approval, even after retrying. They'll be tried again automatically on the
+      next daily run — if one keeps showing up here, it needs a closer look.
     </p>
     <div style="display:flex; flex-direction:column; gap:.5rem;">
       {% for i in stuck %}
