@@ -567,9 +567,10 @@ def confirm_booking(
                     trip.origin, trip.destination, seg_p, seg_d,
                 )
                 if avail < booking.seats_booked:
-                    # No room on this leg — leave pending, driver must handle manually
+                    # No room on this leg — leave pending and tell the driver why,
+                    # rather than silently no-op'ing the Accept button.
                     db.commit()
-                    return RedirectResponse("/my-trips?tab=rides", status_code=303)
+                    return RedirectResponse("/my-trips?tab=rides&accept_full=1", status_code=303)
                 # NB: seats are recomputed AFTER the booking moves to a
                 # seat-holding state (below), not here — a still-pending booking
                 # is excluded from _refresh_seats, so recomputing now wouldn't

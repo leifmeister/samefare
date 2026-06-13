@@ -409,6 +409,11 @@
       {{ _t('flash_requested') }}
     </div>
     {% endif %}
+    {% if request.query_params.get('accept_full') %}
+    <div class="alert alert--warning" style="margin-bottom:1.5rem;">
+      {{ _t('flash_accept_full') }}
+    </div>
+    {% endif %}
     {% if request.query_params.get('reviewed') %}
     <div class="alert alert--success" style="margin-bottom:1.5rem;">
       {{ _t('flash_reviewed') }}
