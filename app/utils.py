@@ -23,6 +23,25 @@ _CANONICAL_CITIES: tuple[str, ...] = (
 )
 
 
+def normalize_email(raw: Optional[str]) -> str:
+    """
+    Normalise an email for storage and lookup so the same address always maps to
+    the same string.
+
+    Plain ``.strip().lower()`` is NOT enough: it leaves invisible Unicode behind
+    (zero-width spaces U+200B/FEFF, soft hyphens, other format/control chars)
+    that password managers, mobile keyboards and rich-text copy-paste silently
+    inject. Because the DB compares emails exactly, one of those characters makes
+    a real account look like it doesn't exist ("No account found"). We NFKC-fold,
+    drop all format (Cf) and control (Cc) characters, then strip and lowercase.
+    """
+    if not raw:
+        return ""
+    s = unicodedata.normalize("NFKC", raw)
+    s = "".join(ch for ch in s if unicodedata.category(ch) not in ("Cf", "Cc"))
+    return s.strip().lower()
+
+
 def _strip_diacritics(s: str) -> str:
     """
     Return ASCII-folded lowercase string.

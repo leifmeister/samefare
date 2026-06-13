@@ -16,6 +16,7 @@ from app.database import get_db
 from app.dependencies import get_current_user_optional, get_template_context
 from app.i18n import get_translations, detect_lang
 from app.limiter import rate_limit
+from app.utils import normalize_email
 
 settings = get_settings()
 templates = Jinja2Templates(directory="templates")
@@ -71,7 +72,7 @@ def login(
     _rl=rate_limit(5, 60),
 ):
     ctx = {**_lc(request), "request": request, "current_user": None, "is_newsletter_subscriber": False}
-    user = db.query(models.User).filter(models.User.email == email.strip().lower()).first()
+    user = db.query(models.User).filter(models.User.email == normalize_email(email)).first()
     if not user:
         return templates.TemplateResponse(
             "auth/login.html",
@@ -131,7 +132,7 @@ def register(
         return RedirectResponse("/", status_code=303)
 
     ctx = {**_lc(request), "request": request, "current_user": None, "is_newsletter_subscriber": False}
-    email = email.strip().lower()
+    email = normalize_email(email)
     phone = sms.normalize_phone(phone or None) or ""
 
     current_year = date.today().year
@@ -280,7 +281,7 @@ def forgot_password(
     db:    Session = Depends(get_db),
     _rl=rate_limit(5, 3600),
 ):
-    addr = email.strip().lower()
+    addr = normalize_email(email)
     user = db.query(models.User).filter(models.User.email == addr).first()
 
     if user:
