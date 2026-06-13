@@ -398,22 +398,72 @@ def delete_account(
             status_code=400,
         )
 
-    # Cancel future active trips the user is driving
-    for trip in current_user.trips:
-        if (trip.status == models.TripStatus.active
-                and trip.departure_datetime > datetime.utcnow()):
-            trip.status = models.TripStatus.cancelled
+    now = datetime.utcnow()
 
-    # Cancel pending/confirmed bookings the user holds as a passenger
-    cancellable = {
+    # Deleting an account must NOT silently flip live trips/bookings to cancelled:
+    # that skips refunds, payout reversal, seat recomputation, and passenger
+    # notifications. Instead, block deletion while the user still has obligations
+    # that have to go through the real cancellation/refund flows, and tell them to
+    # cancel those first (driver: POST /trips/{id}/cancel; passenger: cancel from
+    # "My trips"). Past / in-flight bookings are left untouched so their existing
+    # state machines (capture → complete → payout) finish normally.
+    active_booking_states = {
         models.BookingStatus.pending,
         models.BookingStatus.awaiting_payment,
         models.BookingStatus.card_saved,
         models.BookingStatus.confirmed,
     }
-    for booking in current_user.bookings:
-        if booking.status in cancellable:
-            booking.status = models.BookingStatus.cancelled
+    driving_with_passengers = [
+        t for t in current_user.trips
+        if t.status == models.TripStatus.active
+        and t.departure_datetime > now
+        and any(b.status in active_booking_states for b in t.bookings)
+    ]
+    # Only count bookings the passenger can actually self-cancel. A money-locked
+    # booking (captured / refund-in-flight) can't be cancelled from the UI and its
+    # money flow is already committed — leave it to capture → complete → payout
+    # rather than deadlocking deletion on something the user can't resolve.
+    money_locked_states = {
+        models.PaymentStatus.captured,
+        models.PaymentStatus.capture_requested,
+        models.PaymentStatus.refund_requested,
+        models.PaymentStatus.refund_failed,
+        models.PaymentStatus.refunded,
+        models.PaymentStatus.partial_refund,
+    }
+    live_bookings = [
+        b for b in current_user.bookings
+        if b.status in active_booking_states
+        and b.trip.departure_datetime > now
+        and not (b.payment and b.payment.status in money_locked_states)
+    ]
+    if driving_with_passengers or live_bookings:
+        parts = []
+        if driving_with_passengers:
+            parts.append(
+                f"{len(driving_with_passengers)} upcoming ride(s) you're driving "
+                f"that have booked passengers"
+            )
+        if live_bookings:
+            parts.append(f"{len(live_bookings)} active booking(s) you hold")
+        msg = (
+            "Please cancel your live rides and bookings before deleting your account, "
+            "so passengers are refunded and notified correctly. You still have "
+            + " and ".join(parts)
+            + ". Cancel them from “My trips”, then delete your account."
+        )
+        return templates.TemplateResponse(
+            "profile.html",
+            {**ctx, "completion": profile_completion(current_user), "delete_error": msg},
+            status_code=400,
+        )
+
+    # No passenger-affecting obligations remain — any leftover upcoming active
+    # trips are empty (no live bookings), so cancelling them directly is safe:
+    # nothing to refund, no seats to recompute, no one to notify.
+    for trip in current_user.trips:
+        if trip.status == models.TripStatus.active and trip.departure_datetime > now:
+            trip.status = models.TripStatus.cancelled
 
     # Anonymise PII — trip/payment rows are retained for legal/tax compliance.
     # ⚠️  AML RETENTION: didit_identity_session_id, didit_licence_session_id,
@@ -421,7 +471,6 @@ def delete_account(
     # are required by Icelandic Act no. 140/2018 Art. 24 for 5 years from account
     # closure.  aml_retain_until records the expiry date of this obligation.
     uid = current_user.id
-    now = datetime.utcnow()
     current_user.full_name        = "Deleted User"
     current_user.email            = f"deleted_{uid}@deleted.invalid"
     current_user.phone            = None
