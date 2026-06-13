@@ -50,7 +50,7 @@ def profile_completion(user: models.User) -> dict:
         },
         {
             "key":   "identity",
-            "label": "Verify your identity",
+            "label": "Get a verified badge",
             "done":  user.id_verification == models.VerificationStatus.approved,
             "url":   "/verify",
         },
