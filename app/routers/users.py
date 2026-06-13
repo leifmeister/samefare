@@ -348,11 +348,12 @@ def save_payout_details(
     current_user.kennitala          = kt   or None
     current_user.blikk_account_iban = iban or None
 
-    # Auto-set payout method once both are present
-    if kt and iban:
-        current_user.payout_method = models.PayoutMethod.blikk
-    elif not iban:
-        current_user.payout_method = None
+    # Blikk needs BOTH kennitala and an Icelandic IBAN. Set the method only when
+    # both are present; clear it if either is missing (e.g. kennitala cleared),
+    # so a driver can't stay flagged payout-ready with incomplete details.
+    current_user.payout_method = (
+        models.PayoutMethod.blikk if (kt and iban) else None
+    )
 
     db.commit()
     return RedirectResponse("/profile?payout_saved=1", status_code=303)

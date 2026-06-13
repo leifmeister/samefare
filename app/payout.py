@@ -98,12 +98,16 @@ def resolve_payout_method(driver: models.User) -> PayoutMethod | None:
     """
     Determine the payout rail for a driver, or None if not yet configured.
 
-    SameFare is Iceland-only and the single rail is Blikk, which requires an
-    Icelandic IBAN. Stripe Connect is NOT offered — the enum value and stub
-    remain only for schema stability and are never routed to. Drivers without an
-    Icelandic IBAN stay `pending` until they add one.
+    SameFare is Iceland-only and the single rail is Blikk. A Blikk payout needs
+    BOTH the driver's kennitala AND an Icelandic IBAN (see _send_blikk_payout,
+    which raises without either) — so readiness must require both, otherwise a
+    driver looks payout-ready and the submission fails later. Stripe Connect is
+    NOT offered — the enum value and stub remain only for schema stability and
+    are never routed to. Drivers stay `pending` until both details are on file.
     """
-    if driver.blikk_account_iban and driver.blikk_account_iban.upper().startswith("IS"):
+    if (driver.kennitala
+            and driver.blikk_account_iban
+            and driver.blikk_account_iban.upper().startswith("IS")):
         return PayoutMethod.blikk
     return None
 
