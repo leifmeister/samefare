@@ -389,20 +389,10 @@ def handle_refund_payout_impact(
             "manual fund recovery required",
             item.id, booking_id, prior_status,
         )
-        # Fallback alert: real money was paid to the driver for a fare that is now
-        # refunded (e.g. a no-show reported after the daily payout settled). The
-        # operator must claw it back — there is no automated repayment yet. The
-        # ledger entry above is the durable record of what the driver owes.
-        try:
-            from app import sms
-            sms.admin_alert(
-                f"SameFare ALERT: payout clawback needed. Driver {item.driver_id} was "
-                f"already paid {item.amount} ISK for booking {booking_id}, now refunded "
-                f"to the passenger (e.g. a no-show reported after payout). Payout reversed "
-                f"in the ledger — recover the funds manually and review the driver."
-            )
-        except Exception as exc:  # never let alerting break refund handling
-            log.error("admin_alert raised on payout reversal: %s", exc)
+        # No SMS — this clawback case is surfaced in the "Needs attention" section
+        # of the /admin/payouts board (reversed PayoutItems). The ledger entry
+        # above is the durable record of what the driver owes back. There is no
+        # automated repayment yet; an operator recovers the funds manually.
     else:
         # Pre-send state — cancel cleanly so the driver is never paid.
         cancel_payout_item(
@@ -660,17 +650,9 @@ def _mark_payout_failed(db: Session, batch: DriverPayout, reason: str) -> None:
         "DriverPayout %s FAILED for driver %s via %s: %s",
         batch.id, batch.driver_id, batch.payout_method, reason,
     )
-
-    # Critical: a driver wasn't paid. Alert the operator by SMS (best-effort).
-    try:
-        from app import sms
-        sms.admin_alert(
-            f"SameFare ALERT: driver payout FAILED. Batch {batch.id}, "
-            f"driver {batch.driver_id}, {batch.amount} ISK via {batch.payout_method}. "
-            f"Reason: {reason}. Check the payout ledger."
-        )
-    except Exception as exc:  # never let alerting break failure handling
-        log.error("admin_alert raised while reporting payout failure: %s", exc)
+    # No SMS — failed payouts surface in the "Needs attention" section of the
+    # /admin/payouts board (status=failed, with the failure reason), which the
+    # operator reviews daily.
 
 
 def confirm_driver_payout(db: Session, batch: DriverPayout) -> None:

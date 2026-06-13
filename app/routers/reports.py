@@ -251,13 +251,27 @@ def admin_payouts(
     recent = (
         db.query(models.DriverPayout)
         .options(joinedload(models.DriverPayout.driver))
-        .filter(models.DriverPayout.status.in_([
-            models.DriverPayoutStatus.confirmed,
-            models.DriverPayoutStatus.failed,
-            models.DriverPayoutStatus.reversed,
-        ]))
+        .filter(models.DriverPayout.status == models.DriverPayoutStatus.confirmed)
         .order_by(models.DriverPayout.created_at.desc())
         .limit(20)
+        .all()
+    )
+    # ── Needs attention (replaces the old admin SMS alerts) ───────────────────
+    # Failed payouts: the driver wasn't paid — investigate / re-issue.
+    failed = (
+        db.query(models.DriverPayout)
+        .options(joinedload(models.DriverPayout.driver), joinedload(models.DriverPayout.items))
+        .filter(models.DriverPayout.status == models.DriverPayoutStatus.failed)
+        .order_by(models.DriverPayout.failed_at.desc().nullslast())
+        .all()
+    )
+    # Clawbacks: a driver was paid for a fare later refunded (e.g. a no-show
+    # reported after payout) — recover the funds manually.
+    clawbacks = (
+        db.query(models.PayoutItem)
+        .options(joinedload(models.PayoutItem.driver))
+        .filter(models.PayoutItem.status == models.PayoutItemStatus.reversed)
+        .order_by(models.PayoutItem.id.desc())
         .all()
     )
     return templates.TemplateResponse("admin/payouts.html", {
@@ -266,6 +280,9 @@ def admin_payouts(
         "ready_total":    sum(b.amount for b in ready),
         "awaiting":       awaiting,
         "recent":         recent,
+        "failed":         failed,
+        "clawbacks":      clawbacks,
+        "clawback_total": sum(i.amount for i in clawbacks),
     })
 
 

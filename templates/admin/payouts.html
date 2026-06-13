@@ -24,6 +24,42 @@
     </div>
   </div>
 
+  <!-- ── Needs attention (failed payouts + clawbacks) ─────────────────── -->
+  {% if failed or clawbacks %}
+  <div class="form-card" style="margin-top:1.5rem; border:1px solid #dc2626; background:#fef2f2; padding:1.25rem 1.5rem;">
+    <h2 style="margin:0 0 .75rem; font-size:1.05rem; color:#991b1b;">⚠ Needs attention</h2>
+
+    {% if failed %}
+    <p style="margin:.5rem 0 .25rem; font-weight:700; color:#991b1b;">Failed payouts — driver not paid; investigate or re-issue</p>
+    <div style="display:flex; flex-direction:column; gap:.5rem;">
+      {% for b in failed %}
+      <div style="display:flex; align-items:baseline; gap:.75rem; font-size:.9rem;">
+        <span style="font-weight:600;">{{ b.driver.full_name }}</span>
+        <span style="white-space:nowrap;">{{ "{:,}".format(b.amount) }} ISK</span>
+        <span style="color:var(--c-text-muted);">batch #{{ b.id }}{% if b.failure_reason %} · {{ b.failure_reason }}{% endif %}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if clawbacks %}
+    <p style="margin:1rem 0 .25rem; font-weight:700; color:#991b1b;">
+      Clawbacks — driver paid for a refunded fare; recover manually
+      · {{ "{:,}".format(clawback_total) }} ISK total
+    </p>
+    <div style="display:flex; flex-direction:column; gap:.5rem;">
+      {% for i in clawbacks %}
+      <div style="display:flex; align-items:baseline; gap:.75rem; font-size:.9rem;">
+        <span style="font-weight:600;">{{ i.driver.full_name }}</span>
+        <span style="white-space:nowrap;">{{ "{:,}".format(i.amount) }} ISK</span>
+        <span style="color:var(--c-text-muted);">booking #{{ i.booking_id }} — owed back to SameFare</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <!-- ── Ready to approve ────────────────────────────────────────────── -->
   {% if not ready and not awaiting %}
   <div class="empty-state" style="margin-top:2rem;">

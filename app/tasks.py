@@ -913,37 +913,6 @@ def _run_advance_payout_items() -> None:
 _last_payout_send_date = None
 
 
-def _send_payout_approval_digest() -> None:
-    """
-    Send ONE SMS summarising the driver payouts ready for the account holder to
-    approve (pending Blikk batches), linking to the admin approvals page where
-    each is submitted + approved on demand. Best-effort.
-    """
-    from app.config import get_settings
-    from app import sms
-
-    db = SessionLocal()
-    try:
-        ready = (
-            db.query(models.DriverPayout)
-            .filter(
-                models.DriverPayout.status        == models.DriverPayoutStatus.pending,
-                models.DriverPayout.payout_method == models.PayoutMethod.blikk,
-            )
-            .all()
-        )
-        if not ready:
-            return
-        total = sum(b.amount for b in ready)
-        base  = get_settings().base_url.rstrip("/")
-        sms.admin_alert(
-            f"SameFare: {len(ready)} driver payout(s) ready for your approval "
-            f"— {total:,} ISK total. Approve at {base}/admin/payouts"
-        )
-    except Exception as exc:
-        log.error("Failed to send payout approval digest: %s", exc)
-    finally:
-        db.close()
 
 
 def _run_prepare_driver_payouts() -> None:
@@ -1008,9 +977,8 @@ def _run_prepare_driver_payouts() -> None:
 
         if built:
             log.info("Prepared %d driver payout batch(es) for approval", built)
-        # One digest covering everything currently awaiting approval (includes any
-        # batches left unapproved from a previous day).
-        _send_payout_approval_digest()
+        # No SMS digest — the operator reviews and approves on the /admin/payouts
+        # board, which they check daily.
 
     except Exception as exc:
         log.warning("Prepare driver payouts task failed: %s", exc)
