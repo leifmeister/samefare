@@ -18,7 +18,7 @@
     {% endif %}
     <span class="suggest-city__wrap"
           hx-post="/trips/suggest-city"
-          hx-vals='{"city_name": "{{ city }}", "origin": "{{ ctx_origin }}", "destination": "{{ ctx_destination }}"}'
+          hx-vals='{{ {"city_name": city, "origin": ctx_origin, "destination": ctx_destination} | tojson }}'
           hx-trigger="click"
           hx-swap="outerHTML"
           hx-target="closest .suggest-city__wrap">
