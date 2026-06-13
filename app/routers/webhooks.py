@@ -328,13 +328,33 @@ def _handle_checkout_completed(
             confirmed = _apply_booking_confirmation(db, booking, payment)
 
             if not confirmed and booking.status != models.BookingStatus.confirmed:
-                # Booking is in a terminal or unexpected state (cancelled, expired,
-                # completed, …).  Mark the payment as failed, persist the seen-ID
-                # so we don't retry.  Only void the hold for ACT (CLO has no hold).
-                payment.status = models.PaymentStatus.failed
+                # Booking is in a terminal/unexpected state (cancelled, expired,
+                # completed, …) so it can't be honoured. The two cases diverge on
+                # whether money actually moved:
+                #   ACT — only a pre-auth hold exists; nothing was captured. Mark
+                #         the payment failed and void the hold to release the card.
+                #   CLO — Rapyd ALREADY captured the funds; there is no hold to
+                #         void. Marking it failed would silently keep the charge,
+                #         so keep it captured and queue a full refund instead.
                 _mark_seen(payment, webhook_id)
-                db.commit()
-                if rapyd_status == "ACT":
+                if rapyd_status == "CLO":
+                    # payment.status is already `captured`; _issue_rapyd_refund
+                    # moves it to refund_requested and _run_retry_refunds submits
+                    # the refund to Rapyd (idempotent) and reconciles payout impact.
+                    from app.routers.payments import _issue_rapyd_refund
+                    _issue_rapyd_refund(
+                        db, booking, payment.passenger_total or 0,
+                        reason="requested_by_customer",
+                    )
+                    db.commit()
+                    log.warning(
+                        "CHECKOUT_COMPLETED CLO for non-confirmable booking %s "
+                        "(state %r): funds were captured — full refund queued.",
+                        booking.id, str(booking.status),
+                    )
+                else:
+                    payment.status = models.PaymentStatus.failed
+                    db.commit()
                     _void_stale_authorization(payment)
                 return
 
