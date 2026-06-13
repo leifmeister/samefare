@@ -477,20 +477,6 @@ def cancel_booking(
     original_status = booking.status
 
     seats_were_held = booking.status != models.BookingStatus.pending
-    if seats_were_held:
-        # Lock the trip row before releasing seats so that concurrent
-        # cancellations serialise here rather than racing on seats_available.
-        trip = (
-            db.query(models.Trip)
-            .filter(models.Trip.id == booking.trip_id)
-            .with_for_update()
-            .first()
-        )
-        if trip:
-            booking.status = models.BookingStatus.cancelled  # mark first so refresh excludes it
-            db.flush()
-            _refresh_seats(trip, db)
-    booking.status = models.BookingStatus.cancelled
 
     pre_auth_placed = (
         booking.payment
@@ -500,6 +486,12 @@ def cancel_booking(
         )
     )
 
+    # Decide the payment outcome — including whether this is a seat-holding late
+    # forfeit — BEFORE recomputing seats. occupies_seat keys off
+    # cancellation_reason, so the forfeit flag must be set first; otherwise
+    # _refresh_seats frees a seat the forfeit rule still holds, leaving
+    # seats_available too high and a full trip wrongly showing as bookable.
+    booking.status = models.BookingStatus.cancelled
     if booking.payment:
         if original_status == models.BookingStatus.card_saved or not pre_auth_placed:
             # Card tokenised but pre-auth not yet fired — no charge, mark failed.
@@ -507,11 +499,26 @@ def cancel_booking(
         else:
             # Pre-auth is in place: trigger immediate capture.
             # _run_capture_payments (every 10 min) picks this up.
-            # No refund — full amount forfeited per cancellation policy.
+            # No refund — full amount forfeited per cancellation policy. The
+            # forfeit keeps the seat (occupies_seat) so the driver isn't
+            # double-paid by a resale.
             booking.payment.capture_at = datetime.utcnow()
             # Mark this as a passenger forfeit so the payout sweep pays the driver
             # their contribution (create_payout_item_for_payment keys off this).
             booking.cancellation_reason = "late_forfeit"
+
+    if seats_were_held:
+        # Lock the trip row before recomputing seats so that concurrent
+        # cancellations serialise rather than racing on seats_available.
+        trip = (
+            db.query(models.Trip)
+            .filter(models.Trip.id == booking.trip_id)
+            .with_for_update()
+            .first()
+        )
+        if trip:
+            db.flush()
+            _refresh_seats(trip, db)
 
     db.commit()
     db.refresh(booking)
