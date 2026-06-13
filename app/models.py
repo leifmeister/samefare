@@ -118,7 +118,8 @@ class PayoutMethod(_StrEnum):
 class PayoutItemStatus(_StrEnum):
     pending          = "pending"           # captured, waiting for terminal booking state or bank details
     payout_ready     = "payout_ready"      # eligible to batch into a DriverPayout
-    payout_sent      = "payout_sent"       # included in a DriverPayout that was submitted
+    batched          = "batched"           # assigned to a prepared (pending) batch, NOT yet submitted
+    payout_sent      = "payout_sent"       # the batch was accepted by the provider (money in flight)
     payout_confirmed = "payout_confirmed"  # provider confirmed receipt
     payout_failed    = "payout_failed"     # provider rejected — see DriverPayout.failure_reason
     retry_ready      = "retry_ready"       # re-queued after a failed send
@@ -133,6 +134,7 @@ class DriverPayoutStatus(_StrEnum):
     confirmed  = "confirmed"   # provider confirmed receipt
     failed     = "failed"      # provider rejected
     reversed   = "reversed"    # payout reversed by provider or manually
+    cancelled  = "cancelled"   # voided before submission (e.g. all items refunded) — never sent
 
 
 class FuelType(_StrEnum):

@@ -341,8 +341,11 @@ def handle_refund_payout_impact(
            hasn't run yet.  The ledger entry above is the only record needed.
 
        • PayoutItem in a pre-send state
-         (pending / payout_ready / payout_failed / retry_ready / cancelled):
+         (pending / payout_ready / batched / payout_failed / retry_ready /
+         cancelled):
            Cancel the item via cancel_payout_item() so the driver is not paid.
+           `batched` means it's sitting in a prepared but unsubmitted batch — no
+           money has moved, so cancelling (not reversing) is correct.
 
        • PayoutItem in payout_sent or payout_confirmed:
            The driver has already been paid or the transfer is in-flight.
@@ -565,7 +568,10 @@ def build_driver_payout_batch(
 
     for item in items:
         item.driver_payout_id = batch.id
-        item.status           = PayoutItemStatus.payout_sent
+        # `batched`, NOT `payout_sent`: the batch is only `pending` here and no
+        # money has been sent to Blikk yet. A refund before approval must cancel
+        # the item cleanly, not be treated as an already-paid/in-flight payout.
+        item.status           = PayoutItemStatus.batched
         write_ledger_entry(
             db, LedgerEntryType.driver_payout_batched,
             amount           = item.amount,
@@ -619,6 +625,25 @@ def send_driver_payout(db: Session, batch: DriverPayout) -> bool:
         db.commit()
         return False
 
+    # Pay only items still `batched`. Any item refunded since the batch was
+    # prepared has been cancelled and must be excluded — otherwise Blikk would be
+    # sent a stale total covering a booking the passenger already got back.
+    payable_items = [i for i in batch.items if i.status == PayoutItemStatus.batched]
+    if not payable_items:
+        batch.status         = DriverPayoutStatus.cancelled
+        batch.failure_reason = "All items were refunded before submission — nothing to pay."
+        batch.resolved_at    = datetime.utcnow()
+        db.commit()
+        log.info("DriverPayout %s cancelled — all items refunded before submission", batch.id)
+        return False
+    recomputed = sum(i.amount for i in payable_items)
+    if recomputed != batch.amount:
+        log.info(
+            "DriverPayout %s amount adjusted %s → %s ISK (item(s) refunded before submission)",
+            batch.id, batch.amount, recomputed,
+        )
+        batch.amount = recomputed
+
     # Durably record intent-to-submit BEFORE touching the (non-idempotent) provider.
     batch.status  = DriverPayoutStatus.submitting
     batch.sent_at = datetime.utcnow()
@@ -649,6 +674,9 @@ def send_driver_payout(db: Session, batch: DriverPayout) -> bool:
     batch.approval_url       = approval_url
     batch.status             = DriverPayoutStatus.sent
     # sent_at was set when we flipped to `submitting`.
+    # Now — and only now — the money is in flight: advance the paid items.
+    for item in payable_items:
+        item.status = PayoutItemStatus.payout_sent
 
     write_ledger_entry(
         db, LedgerEntryType.driver_payout_sent,
@@ -682,7 +710,10 @@ def _mark_payout_failed(db: Session, batch: DriverPayout, reason: str) -> None:
     batch.failure_reason = reason
 
     for item in batch.items:
-        item.status = PayoutItemStatus.payout_failed
+        # Only items that were actually part of this attempt fail; items refunded
+        # before submission are already `cancelled` and must stay that way.
+        if item.status in (PayoutItemStatus.batched, PayoutItemStatus.payout_sent):
+            item.status = PayoutItemStatus.payout_failed
 
     write_ledger_entry(
         db, LedgerEntryType.driver_payout_failed,
@@ -718,7 +749,11 @@ def confirm_driver_payout(db: Session, batch: DriverPayout) -> None:
     batch.approval_url = None   # approved & settled — link no longer actionable
 
     for item in batch.items:
-        if item.status == PayoutItemStatus.payout_sent:
+        # Normally items are `payout_sent` by now; `batched` is included for the
+        # manual "already paid" reconciliation of an UNKNOWN-outcome batch, where
+        # the provider call threw before items advanced. Refund-cancelled items
+        # stay `cancelled`.
+        if item.status in (PayoutItemStatus.batched, PayoutItemStatus.payout_sent):
             item.status = PayoutItemStatus.payout_confirmed
 
     write_ledger_entry(

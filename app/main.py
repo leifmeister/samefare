@@ -258,6 +258,13 @@ _MIGRATIONS = [
     # Blikk call, so a crash/timeout can never silently revert to 'pending' and
     # trigger a duplicate real transfer.
     "ALTER TYPE driverpayoutstatus ADD VALUE IF NOT EXISTS 'submitting'",
+    # 'cancelled' — a prepared batch voided before submission (e.g. every item was
+    # refunded between preparation and approval); never sent to the provider.
+    "ALTER TYPE driverpayoutstatus ADD VALUE IF NOT EXISTS 'cancelled'",
+    # 'batched' — a PayoutItem assigned to a prepared (pending) batch but not yet
+    # submitted, so a pre-submission refund cancels it cleanly instead of being
+    # mistaken for an already-paid/in-flight payout.
+    "ALTER TYPE payoutitemstatus ADD VALUE IF NOT EXISTS 'batched'",
     "ALTER TABLE payout_items   ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP",
     # Repair migration for deployments that ran the original CREATE TABLE before
     # the payout_method type was corrected (it was wrongly driverpayoutstatus).
