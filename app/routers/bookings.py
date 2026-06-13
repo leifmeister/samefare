@@ -605,10 +605,21 @@ def mark_passenger_no_show(
         .filter(models.Booking.id == booking_id)
         .first()
     )
+    now = datetime.utcnow()
     if (not booking
             or booking.trip.driver_id != current_user.id
-            or booking.status != models.BookingStatus.confirmed
-            or datetime.utcnow() < booking.trip.departure_datetime + timedelta(minutes=15)):
+            or booking.status != models.BookingStatus.confirmed):
+        return RedirectResponse("/my-trips?tab=rides", status_code=303)
+
+    # A no-show is determined at the pickup, so the action is only open for a
+    # grace window after departure — from +15 min (allow for a late passenger) up
+    # to +4 h. The +4 h upper bound mirrors the driver-no-show report window and
+    # is when the trip auto-completes; beyond it the booking has effectively
+    # settled and the driver could otherwise mark a no-show midway through (or
+    # even after) a long ride.
+    no_show_open_from  = booking.trip.departure_datetime + timedelta(minutes=15)
+    no_show_open_until = booking.trip.departure_datetime + timedelta(hours=4)
+    if now < no_show_open_from or now > no_show_open_until:
         return RedirectResponse("/my-trips?tab=rides", status_code=303)
 
     booking.status = models.BookingStatus.no_show
