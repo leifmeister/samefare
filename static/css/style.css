@@ -1284,6 +1284,37 @@ button, input, select, textarea { font: inherit; }
   display: block; margin-top: .5rem; color: #94A3B8; font-style: italic;
 }
 
+/* Verification page — "what each goal needs" overview */
+.verify-overview {
+  background: var(--c-surface); border: 1px solid var(--c-border);
+  border-radius: var(--r-lg); padding: 1.1rem 1.4rem; margin-bottom: 1.5rem;
+}
+.verify-overview__title {
+  font-weight: 700; font-size: .72rem; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--c-text-muted); margin: 0 0 .4rem;
+}
+.verify-goal {
+  display: flex; align-items: center; gap: .85rem;
+  padding: .7rem 0; border-top: 1px solid var(--c-border);
+}
+.verify-goal:first-of-type { border-top: none; }
+.verify-goal__icon { font-size: 1.35rem; flex-shrink: 0; width: 1.8rem; text-align: center; }
+.verify-goal__body { flex: 1; min-width: 0; }
+.verify-goal__name { font-weight: 600; font-size: .95rem; margin: 0; }
+.verify-goal__req { font-size: .8rem; color: var(--c-text-muted); margin: .1rem 0 0; }
+.verify-goal__optional {
+  font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+  color: #64748b; background: #f1f5f9; padding: .1rem .45rem; border-radius: 999px;
+  margin-left: .4rem; vertical-align: middle;
+}
+.verify-goal__status {
+  font-size: .8rem; font-weight: 700; white-space: nowrap;
+  padding: .25rem .65rem; border-radius: 999px; flex-shrink: 0;
+}
+.verify-goal__status--ok      { color: #166534; background: #dcfce7; }
+.verify-goal__status--pending { color: #92400e; background: #fef3c7; }
+.verify-goal__status--todo    { color: #475569; background: #f1f5f9; }
+
 .trip-hero {
   background: var(--c-surface);
   border-radius: var(--r-lg);
