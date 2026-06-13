@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     # was never completed — the reconcile task times it out (marks it failed and
     # alerts) instead of polling forever. No money moved, so it is safe to fail.
     payout_approval_timeout_min: int = Field(default=180, alias="PAYOUT_APPROVAL_TIMEOUT_MIN")
+    # Day-before trip reminders are only sent during this local-time evening window
+    # (Iceland = UTC), so a reminder never wakes anyone in the middle of the night.
+    # The job reminds every trip departing the next calendar day; start/end are the
+    # hours of day (0–23, end exclusive) during which it is allowed to send.
+    reminder_hour_start: int = Field(default=18, alias="REMINDER_HOUR_START")
+    reminder_hour_end:   int = Field(default=22, alias="REMINDER_HOUR_END")
 
     # Blikk P2P bank transfers (https://blikk.tech)
     # blikk_api_key         — from Blikk partner dashboard (Api-Key header)

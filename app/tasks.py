@@ -313,17 +313,26 @@ def _run_auto_ratings() -> None:
 def _run_trip_reminders() -> None:
     """
     Send SMS reminders to drivers and confirmed passengers for trips departing
-    tomorrow.  Runs once per hour; uses a flag on the Trip row to ensure each
-    trip only gets one reminder regardless of how many times the job fires.
+    the next calendar day. A flag on the Trip row ensures each trip is reminded
+    only once, no matter how often the job fires.
 
-    Timing: fires between 19:00–21:00 local time (we store UTC; Iceland is UTC/UTC+0,
-    so the window is the same).  Reminds for any trip departing between
-    20 and 28 hours from now — catching the "this time tomorrow" window
-    no matter when in the hour the job runs.
+    Quiet hours: the job only sends during the configured evening window
+    (REMINDER_HOUR_START–REMINDER_HOUR_END, local == UTC for Iceland; default
+    18:00–22:00) so a reminder never lands in the middle of the night. Because it
+    targets trips departing *tomorrow* rather than a rolling "N hours from now"
+    window, the send time is decoupled from the departure time — a 09:00 ride is
+    reminded the evening before, not at 05:00.
     """
-    now    = datetime.utcnow()
-    lo     = now + timedelta(hours=20)
-    hi     = now + timedelta(hours=28)
+    from app.config import get_settings
+
+    now      = datetime.utcnow()   # Iceland has no DST/offset, so UTC == local.
+    settings = get_settings()
+
+    # Outside the evening send window → do nothing this tick.
+    if not (settings.reminder_hour_start <= now.hour < settings.reminder_hour_end):
+        return
+
+    tomorrow = (now + timedelta(days=1)).date()
 
     db = SessionLocal()
     try:
@@ -331,8 +340,7 @@ def _run_trip_reminders() -> None:
             db.query(models.Trip)
             .filter(
                 models.Trip.status             == models.TripStatus.active,
-                models.Trip.departure_datetime >= lo,
-                models.Trip.departure_datetime <  hi,
+                func.date(models.Trip.departure_datetime) == tomorrow,
                 models.Trip.reminder_sent      == False,  # noqa: E712
             )
             .all()
