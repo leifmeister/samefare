@@ -692,6 +692,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "checkout_driver_boards": "Driver boards at",
         "checkout_driver_continues": "Driver continues to",
         "checkout_payment_error": "Payment system could not be initialised. Please refresh the page to try again.",
+        "checkout_unavailable": "Payment system temporarily unavailable. Please try again.",
+        "checkout_error_reassure": "Your card has not been charged. No booking is confirmed yet.",
+        "checkout_error_retry": "Try again",
     },
 
     "is": {
@@ -1380,6 +1383,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "checkout_driver_boards": "Ferð bílstjóra hefst í",
         "checkout_driver_continues": "Bílstjóri heldur áfram til",
         "checkout_payment_error": "Villa kom upp við að hlaða greiðsluformi — endurhladdu síðuna og reyndu aftur.",
+        "checkout_unavailable": "Greiðslukerfið er tímabundið óaðgengilegt. Reyndu aftur.",
+        "checkout_error_reassure": "Kortið þitt hefur ekki verið rukkað. Engin bókun hefur verið staðfest.",
+        "checkout_error_retry": "Reyna aftur",
     },
 }
 

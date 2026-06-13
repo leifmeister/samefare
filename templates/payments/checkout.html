@@ -28,7 +28,11 @@
     </div>
 
     {% if rapyd_error is defined and rapyd_error %}
-      <div class="alert alert--error" role="alert">{{ rapyd_error }}</div>
+      <div class="alert alert--error" role="alert">
+        <strong>{{ rapyd_error }}</strong>
+        <span style="display:block; margin-top:.25rem; font-weight:400;">{{ _t('checkout_error_reassure') }}</span>
+        <a href="/payments/checkout/{{ booking.id }}" class="btn btn-outline btn-sm" style="margin-top:.7rem;">{{ _t('checkout_error_retry') }}</a>
+      </div>
     {% endif %}
 
     <div class="booking-layout">
@@ -128,7 +132,9 @@
         <div style="padding:1rem 1.5rem 1.5rem;">
           {% if checkout_id %}
           <div id="rapyd-checkout-container" style="min-height:280px;"></div>
-          {% else %}
+          {% elif not (rapyd_error is defined and rapyd_error) %}
+          {# Only show the in-widget error when the top banner isn't already
+             reporting the failure — otherwise the page shows two red errors. #}
           <div class="alert alert--error">
             {{ _t('checkout_payment_error') }}
           </div>

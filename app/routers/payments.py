@@ -383,7 +383,11 @@ def checkout_page(
     complete_url = f"{s.base_url}/payments/complete/{booking_id}"
     cancel_url   = f"{s.base_url}/payments/checkout/{booking_id}"
 
-    def _checkout_error_response(rapyd_error: str = "Payment system temporarily unavailable. Please try again."):
+    def _checkout_error_response(rapyd_error: str = None):
+        # Localised so the banner matches the page language (the reassurance and
+        # retry strings below are translated too — avoid a mixed-language error).
+        if rapyd_error is None:
+            rapyd_error = ctx["_t"]("checkout_unavailable")
         return templates.TemplateResponse("payments/checkout.html", {
             **ctx,
             "booking":       booking,
