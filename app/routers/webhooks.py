@@ -487,8 +487,13 @@ def _handle_payment_captured(
     1. Payload guard — the webhook's payment object must signal capture:
           data["status"] == "CLO"   (Rapyd closed/captured)
        OR data["captured"] == True  (explicit captured flag some flows set)
-       A mis-routed, malformed, or prematurely-fired event is rejected here
-       with a warning so Rapyd retries delivery on a 5xx response.
+       A mis-routed, non-capture, or prematurely-fired event is acknowledged
+       (HTTP 200) and ignored, with its seen-ID persisted so Rapyd stops
+       redelivering. A webhook payload is immutable, so redelivering the same
+       event would never confirm capture — there is nothing to retry. The
+       genuine PAYMENT_CAPTURED (status=CLO) arrives as a separate event and is
+       processed independently. (Transient *processing* errors still surface as
+       a 5xx from the outer handler, which Rapyd does retry.)
 
     2. Local state guard — the payment must be in a pre-capture state:
           authorised       — capture_at not yet reached; Rapyd sent the event
@@ -513,25 +518,7 @@ def _handle_payment_captured(
         log.warning("PAYMENT_CAPTURED: missing id in webhook data")
         return
 
-    # ── 2. Payload guard — verify provider confirms capture ───────────────────
-    # Rapyd sets status="CLO" when funds are captured.  Some flows also set a
-    # top-level "captured": true boolean.  Accept either signal; reject both
-    # absent so a non-capture event routed here doesn't advance the state.
-    rapyd_status   = data.get("status", "")
-    rapyd_captured = data.get("captured", False)
-    if rapyd_status != "CLO" and not rapyd_captured:
-        log.warning(
-            "PAYMENT_CAPTURED: payload for %s does not confirm capture "
-            "(status=%r, captured=%r) — ignoring, Rapyd will retry",
-            rapyd_pmt_id, rapyd_status, rapyd_captured,
-        )
-        # Do NOT mark as seen — return without writing anything so that Rapyd
-        # retries delivery (we return 200 from the outer handler, but the
-        # seen-ID will not be in the DB, so a genuine PAYMENT_CAPTURED that
-        # arrives later will be processed normally).
-        return
-
-    # ── 3. Locate local payment record ────────────────────────────────────────
+    # ── 2. Locate local payment record ────────────────────────────────────────
     payment = (
         db.query(models.Payment)
         .filter(models.Payment.rapyd_payment_id == rapyd_pmt_id)
@@ -545,6 +532,25 @@ def _handle_payment_captured(
         log.debug("PAYMENT_CAPTURED duplicate id=%s — skipped", webhook_id)
         return
     _mark_seen(payment, webhook_id)
+
+    # ── 3. Payload guard — verify provider confirms capture ───────────────────
+    # Rapyd sets status="CLO" when funds are captured.  Some flows also set a
+    # top-level "captured": true boolean.  Accept either signal.
+    rapyd_status   = data.get("status", "")
+    rapyd_captured = data.get("captured", False)
+    if rapyd_status != "CLO" and not rapyd_captured:
+        # Not a capture-confirming event (e.g. a PAYMENT_COMPLETED fired at a
+        # different lifecycle point). The payload is immutable, so redelivering
+        # it would never confirm capture — acknowledge it (200) and persist the
+        # seen-ID so Rapyd stops redelivering. The genuine PAYMENT_CAPTURED
+        # (status=CLO) arrives as a separate event and is processed on its own.
+        log.warning(
+            "PAYMENT_CAPTURED: payload for %s does not confirm capture "
+            "(status=%r, captured=%r) — acknowledged and ignored (webhook_id=%s)",
+            rapyd_pmt_id, rapyd_status, rapyd_captured, webhook_id,
+        )
+        db.commit()   # persist seen_webhook_ids
+        return
 
     # ── 4. Local state guard — no terminal-state regression ───────────────────
     if payment.status not in _CONFIRMABLE:
