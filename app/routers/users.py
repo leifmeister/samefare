@@ -235,6 +235,17 @@ def my_trips_page(
     lifetime_passengers = sum(m["passengers"] for m in earnings_months)
     lifetime_rides      = sum(m["rides"]      for m in earnings_months)
 
+    # Acknowledge any "your ride was accepted" notifications now that the
+    # passenger is looking at their bookings — clears the nav badge and the
+    # home-page banner on the next request.
+    _seen_any = False
+    for b in all_bookings:
+        if b.acceptance_unseen:
+            b.acceptance_seen_at = now
+            _seen_any = True
+    if _seen_any:
+        db.commit()
+
     # Which tab to open: default to bookings if passenger has any, else rides
     tab = request.query_params.get("tab", "bookings" if all_bookings else "rides")
 

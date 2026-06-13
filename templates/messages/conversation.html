@@ -3,6 +3,10 @@
 {% from "partials/verified.html" import verified_badge %}
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
 {% block title %}{{ partner.full_name.split()[0] }} — SameFare{% endblock %}
+{# Drives the full-height chat layout via a body class — must not rely on the
+   CSS :has() selector, which older browsers (e.g. Firefox ESR < 121) lack and
+   which would otherwise collapse the message thread. #}
+{% block body_class %} chat-mode{% endblock %}
 
 {% set _status      = booking.status %}
 {% set _is_passenger = current_user.id == booking.passenger_id %}

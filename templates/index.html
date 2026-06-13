@@ -12,13 +12,14 @@
 <!-- ═══════════════════════════════════════
      HERO
 ═══════════════════════════════════════ -->
-<section class="hero{% if current_user and pending_request_count %} hero--has-notice{% endif %}">
+<section class="hero{% if current_user and (pending_request_count or accepted_booking_count) %} hero--has-notice{% endif %}">
   <div class="hero__aurora"></div>
 
-  {% if current_user and pending_request_count %}
+  {% if current_user and (pending_request_count or accepted_booking_count) %}
   {# Floats over the top of the hero (over the sky) rather than pushing it down. #}
   <div class="hero__notice">
     <div class="container">
+      {% if pending_request_count %}
       <a href="/my-trips?tab=rides" class="hero-notice">
         <span class="hero-notice__icon" aria-hidden="true">🚗</span>
         <span class="hero-notice__body">
@@ -30,6 +31,23 @@
         </span>
         <span class="btn btn-primary btn-sm hero-notice__cta">{{ _t('home_requests_cta') }}</span>
       </a>
+      {% endif %}
+      {% if accepted_booking_count %}
+      {% set _ab = accepted_bookings[0] %}
+      <a href="/my-trips?tab=bookings" class="hero-notice hero-notice--accepted">
+        <span class="hero-notice__icon" aria-hidden="true">✅</span>
+        <span class="hero-notice__body">
+          <strong class="hero-notice__title">
+            {{ _t('home_accepted_title') if accepted_booking_count == 1 else accepted_booking_count ~ ' ' ~ _t('home_accepted_title_pl') }}
+          </strong>
+          <span class="hero-notice__sub">
+            {{ _ab.pickup_city or _ab.trip.origin }} → {{ _ab.dropoff_city or _ab.trip.destination }}
+            · {{ _ab.trip.departure_datetime.strftime('%-d %b · %H:%M') }}
+          </span>
+        </span>
+        <span class="btn btn-primary btn-sm hero-notice__cta">{{ _t('home_accepted_cta') }}</span>
+      </a>
+      {% endif %}
     </div>
   </div>
   {% endif %}
@@ -514,10 +532,17 @@
   var el = document.getElementById('iceland-map');
   if (!window.L || !el || !CITIES) return;
 
+  // Hard-lock the viewport to Iceland so the user can't pan off to the rest
+  // of the world or zoom out to a globe. SW / NE corners with a little margin.
+  var ICELAND_BOUNDS = L.latLngBounds([62.9, -25.5], [67.2, -12.5]);
+
   var map = L.map(el, {
     zoomControl: true,
     scrollWheelZoom: true,    // trackpad / mouse-wheel zoom
     attributionControl: true,
+    minZoom: 5,
+    maxBounds: ICELAND_BOUNDS,
+    maxBoundsViscosity: 1.0,  // solid wall — drag can't leave the bounds
   }).setView([64.96, -18.7], 6);  // all-Iceland base view
 
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {

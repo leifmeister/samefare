@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import Depends, HTTPException, Request, status
 from jose import JWTError, jwt
 from sqlalchemy import func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app import models
 from app.config import get_settings
@@ -136,6 +136,37 @@ def get_template_context(request: Request, db: Session = Depends(get_db)):
             )
         except Exception:
             pending_request_count = 0
+    # Request-to-book bookings the driver has just accepted that the passenger
+    # hasn't acknowledged yet. Drives the passenger's "your ride was accepted"
+    # nav badge (My trips) and the home-page banner. Only upcoming, still-active
+    # bookings count, so the badge can't get stuck on a departed trip.
+    accepted_bookings: list = []
+    if user:
+        try:
+            active_states = (
+                models.BookingStatus.awaiting_payment,
+                models.BookingStatus.card_saved,
+                models.BookingStatus.confirmed,
+            )
+            candidates = (
+                db.query(models.Booking)
+                .join(models.Trip, models.Booking.trip_id == models.Trip.id)
+                # Eager-load trip: the home route closes its DB session before the
+                # template renders, so a lazy load of _ab.trip would detach-error.
+                .options(joinedload(models.Booking.trip))
+                .filter(
+                    models.Booking.passenger_id   == user.id,
+                    models.Booking.accepted_at    != None,  # noqa: E711
+                    models.Booking.status.in_(active_states),
+                    models.Trip.departure_datetime > datetime.utcnow(),
+                )
+                .order_by(models.Trip.departure_datetime.asc())
+                .all()
+            )
+            accepted_bookings = [b for b in candidates if b.acceptance_unseen]
+        except Exception:
+            accepted_bookings = []
+    accepted_booking_count = len(accepted_bookings)
     email_unverified = user and not user.email_verified
     is_newsletter_subscriber = False
     if user:
@@ -152,6 +183,8 @@ def get_template_context(request: Request, db: Session = Depends(get_db)):
         "current_user":             user,
         "unread_message_count":     unread_count,
         "pending_request_count":    pending_request_count,
+        "accepted_booking_count":   accepted_booking_count,
+        "accepted_bookings":        accepted_bookings,
         "pending_reviews":          pending_reviews,
         "now":                      datetime.utcnow(),
         "beta_mode":                settings.beta_mode,

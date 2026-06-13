@@ -592,6 +592,10 @@ button, input, select, textarea { font: inherit; }
 .hero-notice__title { display: block; color: #065f46; }
 .hero-notice__sub   { font-size: .9rem; color: #475569; }
 .hero-notice__cta   { flex-shrink: 0; }
+/* Stack a second notice (e.g. driver requests + an accepted booking) cleanly. */
+.hero-notice + .hero-notice { margin-top: .6rem; }
+/* Accepted-booking variant — same card, a touch more celebratory accent. */
+.hero-notice--accepted { border-color: #6EE7B7; }
 @media (min-width: 641px) {
   .hero__notice { position: absolute; top: 1.1rem; left: 0; right: 0; margin: 0; }
   .hero--has-notice .hero__inner { padding-top: 2rem; }
@@ -2978,16 +2982,28 @@ button, input, select, textarea { font: inherit; }
    so the compose bar is always in-frame regardless of which banners
    are showing. The header + any banners take their natural height;
    page-main fills the remainder; chat-page fills page-main. */
-.page-wrapper:has(.chat-page) {
+/* Full-height chat layout. Keyed off a body class (.chat-mode), NOT :has() —
+   :has() is unsupported on older browsers (Firefox ESR < 121) and would leave
+   the page-wrapper at auto height, collapsing the message thread. 100vh is the
+   fallback; 100dvh refines it where dynamic viewport units are supported. */
+.page-wrapper.chat-mode {
+  height: 100vh;
   height: 100dvh;
   overflow: hidden;
 }
-.page-wrapper:has(.chat-page) .page-main {
+.page-wrapper.chat-mode .page-main {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+/* The newsletter strip and footer are flex siblings of page-main; on a
+   full-height chat they'd either steal vertical space or sit awkwardly below
+   the composer. Drop them so the thread owns the whole viewport. */
+.page-wrapper.chat-mode .newsletter-strip,
+.page-wrapper.chat-mode .footer {
+  display: none;
 }
 .chat-page {
   display: flex;

@@ -573,7 +573,8 @@ def confirm_booking(
                         and booking.payment.rapyd_customer_id
                         and booking.payment.rapyd_payment_method_id):
 
-                    booking.status = models.BookingStatus.confirmed
+                    booking.status      = models.BookingStatus.confirmed
+                    booking.accepted_at = datetime.utcnow()
 
                     # In beta mode: no Rapyd, mark authorised directly.
                     if settings.beta_mode:
@@ -600,6 +601,7 @@ def confirm_booking(
                 else:
                     # No card saved yet — passenger still needs to pay
                     booking.status           = models.BookingStatus.awaiting_payment
+                    booking.accepted_at      = datetime.utcnow()
                     booking.payment_deadline = min(
                         datetime.utcnow() + timedelta(hours=24),
                         trip.departure_datetime,

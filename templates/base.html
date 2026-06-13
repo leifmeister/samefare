@@ -31,7 +31,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/css/style.css?v=35" />
+  <link rel="stylesheet" href="/static/css/style.css?v=36" />
   <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml" />
 
   <!-- HTMX -->
@@ -44,7 +44,7 @@
   {% block head %}{% endblock %}
 </head>
 
-<body class="page-wrapper">
+<body class="page-wrapper{% block body_class %}{% endblock %}">
 
   <a href="#main-content" class="skip-link">Skip to main content</a>
 
@@ -65,10 +65,10 @@
             <a href="/trips">{{ _t('nav_find_ride') }}</a>
             <a href="{% if current_user %}/trips/new{% else %}/offer-ride{% endif %}" class="nav-highlight">{{ _t('nav_offer_ride') }}</a>
             {% if current_user %}
-              <a href="/my-trips{% if pending_request_count %}?tab=rides{% endif %}" class="nav-messages-link">
+              <a href="/my-trips{% if pending_request_count %}?tab=rides{% elif accepted_booking_count %}?tab=bookings{% endif %}" class="nav-messages-link">
                 {{ _t('nav_my_trips') }}
-                {% if pending_request_count %}
-                  <span class="nav-badge" title="{{ _t('nav_requests_badge_title') }}">{{ pending_request_count }}</span>
+                {% if pending_request_count or accepted_booking_count %}
+                  <span class="nav-badge" title="{% if pending_request_count %}{{ _t('nav_requests_badge_title') }}{% else %}{{ _t('nav_accepted_badge_title') }}{% endif %}">{{ pending_request_count + accepted_booking_count }}</span>
                 {% endif %}
               </a>
               <a href="/my-alerts">{{ _t('nav_alerts') }}</a>
@@ -146,10 +146,10 @@
       <a href="/trips">{{ _t('nav_find_ride') }}</a>
       {% if current_user %}
         <a href="/trips/new">{{ _t('nav_offer_ride') }}</a>
-        <a href="/my-trips{% if pending_request_count %}?tab=rides{% endif %}">
+        <a href="/my-trips{% if pending_request_count %}?tab=rides{% elif accepted_booking_count %}?tab=bookings{% endif %}">
           {{ _t('nav_my_trips') }}
-          {% if pending_request_count %}
-            <span class="nav-badge" title="{{ _t('nav_requests_badge_title') }}">{{ pending_request_count }}</span>
+          {% if pending_request_count or accepted_booking_count %}
+            <span class="nav-badge" title="{% if pending_request_count %}{{ _t('nav_requests_badge_title') }}{% else %}{{ _t('nav_accepted_badge_title') }}{% endif %}">{{ pending_request_count + accepted_booking_count }}</span>
           {% endif %}
         </a>
         <a href="/my-alerts">{{ _t('nav_alerts') }}</a>

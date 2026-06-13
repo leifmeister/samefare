@@ -442,6 +442,13 @@ class Booking(Base):
     # 'request_expired' when an unanswered request-to-book is auto-cancelled
     # because the trip departed.
     cancellation_reason = Column(String(40), nullable=True)
+    # Set when a driver MANUALLY accepts a request-to-book (pending → confirmed /
+    # awaiting_payment). Drives the passenger's "your ride was accepted" nav badge
+    # and home-page banner. NULL for instant-book bookings (no manual acceptance).
+    accepted_at         = Column(DateTime, nullable=True)
+    # When the passenger last saw the acceptance (set on opening My trips). The
+    # acceptance is "unseen" while accepted_at is newer than this.
+    acceptance_seen_at  = Column(DateTime, nullable=True)
     created_at       = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at       = Column(DateTime, nullable=False, default=datetime.utcnow,
                               onupdate=datetime.utcnow)
@@ -468,6 +475,16 @@ class Booking(Base):
     @property
     def subtotal(self) -> int:
         return self.total_price - self.service_fee
+
+    @property
+    def acceptance_unseen(self) -> bool:
+        """True when the driver has accepted this booking but the passenger
+        hasn't acknowledged it yet (drives the home banner + nav badge)."""
+        return bool(
+            self.accepted_at
+            and (self.acceptance_seen_at is None
+                 or self.acceptance_seen_at < self.accepted_at)
+        )
 
     @property
     def occupies_seat(self) -> bool:

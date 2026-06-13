@@ -133,6 +133,8 @@ _MIGRATIONS = [
     "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS updated_at       TIMESTAMP NOT NULL DEFAULT now()",
     "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_deadline TIMESTAMP",
     "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancellation_reason VARCHAR(40)",
+    "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS accepted_at         TIMESTAMP",
+    "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS acceptance_seen_at  TIMESTAMP",
     # Segment booking — passenger boards/exits at a stop that differs from the trip endpoints
     "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS pickup_city  VARCHAR(150)",
     "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS dropoff_city VARCHAR(150)",
