@@ -97,26 +97,13 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden="true"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/></svg>
           <div>
             {% if payment_case == 'A' %}
-            {# ≤24h to departure: the card is charged at confirmation (mirrors the
-               booking page) — there is no later T-24h hold step, so the Case B
-               "reserved 24h before departure" copy would contradict it. #}
+            {# ≤24h: charged at confirmation. Plain "when + refund rule" — no
+               reserve/capture/T-24h mechanics. #}
             <p class="checkout-case-banner__title">{{ _t('checkout_charge_now_title') }}</p>
-            <p class="checkout-case-banner__sub">
-              <strong>{{ "{:,}".format(total) }} ISK</strong> {{ _t('checkout_charge_now_sub') }}
-            </p>
-            {% elif booking.status.value == 'pending' %}
-            <p class="checkout-case-banner__title">{{ _t('checkout_card_not_charged') }}</p>
-            <p class="checkout-case-banner__sub">
-              Save your card now — nothing is charged yet. Once the driver accepts,
-              your booking is confirmed and we pre-authorise
-              <strong>{{ "{:,}".format(total) }} ISK</strong> 24 hours before departure.
-            </p>
+            <p class="checkout-case-banner__sub"><strong>{{ "{:,}".format(total) }} ISK</strong>{{ _t('checkout_charge_now_sub') }}</p>
             {% else %}
             <p class="checkout-case-banner__title">{{ _t('checkout_card_not_charged') }}</p>
-            <p class="checkout-case-banner__sub">
-              {{ _t('checkout_card_sub_pre') }} <strong>{{ "{:,}".format(total) }} ISK</strong> {{ _t('checkout_card_sub_reserved') }}
-              <strong>{{ _t('checkout_card_sub_24h') }}</strong> {{ _t('checkout_card_sub_end') }}
-            </p>
+            <p class="checkout-case-banner__sub">{{ _t('checkout_charge_before_pre') }} <strong>{{ "{:,}".format(total) }} ISK</strong> {{ _t('checkout_charge_before_end') }}</p>
             {% endif %}
           </div>
         </div>
@@ -154,22 +141,8 @@
         <div style="padding:0 1.5rem 1.5rem;">
           <div class="policy-box">
             <p class="policy-box__title">{{ _t('checkout_policy_title') }}</p>
-            <ul class="policy-box__list">
-              {% if payment_case == 'A' %}
-              {# ≤24h: charged now, no T-24h hold step. #}
-              <li><strong>{{ _t('checkout_policy_now') }}</strong> — <strong>{{ "{:,}".format(total) }} ISK</strong> {{ _t('checkout_policy_a_charged') }}</li>
-              <li><strong>{{ _t('checkout_policy_no_refund') }}</strong>{{ _t('checkout_policy_no_refund_end') }}</li>
-              <li><strong>{{ _t('checkout_policy_driver_cancel') }}</strong> {{ _t('checkout_policy_driver_cancel_text') }}</li>
-              {% else %}
-              <li><strong>{{ _t('checkout_policy_now') }}</strong> {{ _t('checkout_policy_now_text') }}</li>
-              <li><strong>{{ _t('checkout_policy_24h') }}</strong> — <strong>{{ "{:,}".format(total) }} ISK</strong> {{ _t('checkout_policy_24h_text') }}</li>
-              <li><strong>{{ _t('checkout_policy_depart') }}</strong> {{ _t('checkout_policy_depart_text') }} <strong>{{ _t('checkout_policy_no_refund') }}</strong>{{ _t('checkout_policy_no_refund_end') }}</li>
-              <li><strong>{{ _t('checkout_policy_cancel') }}</strong> {{ _t('checkout_policy_cancel_text') }}</li>
-              <li><strong>{{ _t('checkout_policy_driver_cancel') }}</strong> {{ _t('checkout_policy_driver_cancel_text') }}</li>
-              {% endif %}
-            </ul>
             <p class="policy-box__note">
-              {% if payment_case == 'A' %}{{ _t('checkout_policy_a_note_pre') }}{% else %}{{ _t('checkout_policy_note_pre') }}{% endif %} <strong>{{ _t('checkout_policy_note_bold') }}</strong>.
+              {% if payment_case == 'A' %}{{ _t('checkout_policy_a_simple') }}{% else %}{{ _t('checkout_policy_b_simple') }}{% endif %}
               <a href="/terms#s8" target="_blank">{{ _t('checkout_policy_terms') }}</a>
             </p>
           </div>
