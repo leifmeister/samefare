@@ -352,6 +352,17 @@ def create_booking(
     db.commit()
     db.refresh(booking)
 
+    # Surface the passenger's note to the driver as a real chat message, so it
+    # shows in the conversation thread (and counts as unread for the driver),
+    # not only on the pending-request card.
+    if message:
+        db.add(models.Message(
+            booking_id=booking.id,
+            sender_id=current_user.id,
+            body=message,
+        ))
+        db.commit()
+
     if trip.instant_book:
         return RedirectResponse(f"/payments/checkout/{booking.id}", status_code=303)
     else:
