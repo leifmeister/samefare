@@ -170,15 +170,24 @@
 
     <!-- Top drivers -->
     <div class="dash-table-card">
-      <h2 class="dash-table-card__title">Top drivers</h2>
+      <div style="display:flex; align-items:baseline; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+        <h2 class="dash-table-card__title" style="margin:0;">Top drivers</h2>
+        <div style="display:flex; gap:.5rem; font-size:.8rem;">
+          {% set ds = driver_sort or 'recouped' %}
+          <span style="color:var(--c-text-muted);">Sort:</span>
+          <a href="/admin?driver_sort=recouped"   class="link" {% if ds == 'recouped' %}style="font-weight:700;"{% endif %}>Recouped</a>
+          <a href="/admin?driver_sort=rides"       class="link" {% if ds == 'rides' %}style="font-weight:700;"{% endif %}>Rides</a>
+          <a href="/admin?driver_sort=passengers"  class="link" {% if ds == 'passengers' %}style="font-weight:700;"{% endif %}>Passengers</a>
+        </div>
+      </div>
       {% if top_drivers %}
-      <table class="admin-table">
+      <table class="admin-table" style="margin-top:.75rem;">
         <thead>
           <tr>
             <th>Driver</th>
             <th class="text-right">Rides</th>
             <th class="text-right">Pax</th>
-            <th class="text-right">Earned</th>
+            <th class="text-right">Recouped</th>
             <th class="text-right">Fees</th>
           </tr>
         </thead>
@@ -188,13 +197,15 @@
             <td><a href="/users/{{ d.id }}" class="link">{{ d.name }}</a></td>
             <td class="text-right">{{ d.trips }}</td>
             <td class="text-right">{{ d.passengers }}</td>
-            <td class="text-right">{{ "{:,}".format(d.earned) }} ISK</td>
+            <td class="text-right">{{ "{:,}".format(d.recouped) }} ISK</td>
             <td class="text-right" style="color:var(--c-text-muted);">{{ "{:,}".format(d.fees) }} ISK</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
-      <p class="dash-empty" style="margin-top:.5rem; font-size:.78rem;">Ranked by driver earnings (cost contribution) from completed rides. "Fees" = platform service fee they generated.</p>
+      <p class="dash-empty" style="margin-top:.5rem; font-size:.78rem;">
+        "Recouped" = the cost contribution passengers paid toward the driver's costs on completed rides — cost recovery, not income (drivers always cover part of their own trip). "Fees" = platform service fee generated.
+      </p>
       {% else %}
         <p class="dash-empty">No completed rides yet.</p>
       {% endif %}

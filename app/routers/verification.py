@@ -487,15 +487,30 @@ def admin_dashboard(
         .all()
     )
 
-    # ── Top drivers (ranked by earnings from completed rides) ─────────────────
+    # ── Top drivers ───────────────────────────────────────────────────────────
+    # "Recouped" = cost contribution collected from passengers over completed
+    # rides. This is cost recovery, NOT income/profit — drivers always cover at
+    # least 1/(seats+1) of their own trip, so the wording avoids implying earnings.
+    # Sortable via ?driver_sort=recouped|rides|passengers.
+    rides_expr      = func.count(func.distinct(models.Trip.id))
+    passengers_expr = func.count(models.Booking.id)
+    recouped_expr   = func.coalesce(func.sum(models.Booking.total_price - models.Booking.service_fee), 0)
+    fees_expr       = func.coalesce(func.sum(models.Booking.service_fee), 0)
+
+    driver_sort = request.query_params.get("driver_sort", "recouped")
+    _driver_order = {
+        "rides":      rides_expr.desc(),
+        "passengers": passengers_expr.desc(),
+    }.get(driver_sort, recouped_expr.desc())
+
     top_drivers = (
         db.query(
             models.User.id.label("id"),
             models.User.full_name.label("name"),
-            func.count(func.distinct(models.Trip.id)).label("trips"),
-            func.count(models.Booking.id).label("passengers"),
-            func.coalesce(func.sum(models.Booking.total_price - models.Booking.service_fee), 0).label("earned"),
-            func.coalesce(func.sum(models.Booking.service_fee), 0).label("fees"),
+            rides_expr.label("trips"),
+            passengers_expr.label("passengers"),
+            recouped_expr.label("recouped"),
+            fees_expr.label("fees"),
         )
         .join(models.Trip, models.Trip.driver_id == models.User.id)
         .join(
@@ -504,7 +519,7 @@ def admin_dashboard(
             & (models.Booking.status == models.BookingStatus.completed),
         )
         .group_by(models.User.id, models.User.full_name)
-        .order_by(func.sum(models.Booking.total_price - models.Booking.service_fee).desc())
+        .order_by(_driver_order)
         .limit(10)
         .all()
     )
@@ -548,6 +563,7 @@ def admin_dashboard(
         "popular_routes":   popular_routes,
         "recent_bookings":  recent_bookings,
         "top_drivers":      top_drivers,
+        "driver_sort":      driver_sort,
         # annual pricing reminder
         "pricing_reminder": pricing_reminder,
         "next_year":        next_year,
