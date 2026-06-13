@@ -152,9 +152,13 @@ def _get_or_create_payment(
         idempotency_key = generate_idempotency_key(),
         payment_case    = case,
         capture_at      = booking.trip.departure_datetime,
-        auth_scheduled_for = (
-            booking.trip.departure_datetime - timedelta(hours=24)
-            if case == "B" else None
+        # MIT authorisation time: T-24h for far-future bookings, or right now when
+        # the trip is already inside 24h (there is no separate "authorise now"
+        # path — everything goes card→MIT). A ≤24h booking is then authorised
+        # immediately when the passenger returns from the Hosted Card page.
+        auth_scheduled_for = max(
+            booking.trip.departure_datetime - timedelta(hours=24),
+            datetime.utcnow(),
         ),
     )
     db.add(payment)
@@ -402,96 +406,59 @@ def checkout_page(
             "rapyd_error":   rapyd_error,
         })
 
-    # ── Case B: tokenise the card via Rapyd's Hosted Card page ────────────────
-    # Saving a card for a later merchant-initiated charge uses
-    # /v1/hosted/collect/card — NOT the checkout page. (Checkout is for
-    # collecting a payment now; using it with amount=0 to save a card returns
-    # UNAUTHORIZED_API_CALL on accounts that only have the card-token page
-    # enabled.) The passenger is redirected to Rapyd's hosted card form; on
-    # return, card_saved_page() reads the tokenised card off the customer.
-    if case == "B":
-        # Phase 1: ensure a durable Rapyd customer exists (separate commit so a
-        # later failure does not orphan it; stable idempotency key dedupes).
-        if not payment.rapyd_customer_id:
-            try:
-                customer_id = rapyd_client.create_customer(
-                    email             = current_user.email,
-                    name              = current_user.full_name,
-                    idempotency_key   = f"customer-{payment.idempotency_key}",
-                )
-            except RapydError as exc:
-                log.error("Rapyd customer create failed for booking %s: %s", booking_id, exc)
-                return _checkout_error_response()
-            payment.rapyd_customer_id = customer_id
-            try:
-                db.commit()
-            except Exception as exc:
-                log.error("DB commit for rapyd_customer_id failed (booking %s): %s", booking_id, exc)
-                db.rollback()
-                return _checkout_error_response()
-        else:
-            customer_id = payment.rapyd_customer_id
-
-        # Phase 2: create the hosted card-token page and redirect to it. We
-        # re-create on each visit (the idempotency key returns the same page
-        # within Rapyd's window) so a refresh/back always has a live redirect_url.
+    # ── Tokenise the card via Rapyd's Hosted Card page (every booking) ────────
+    # We ALWAYS save the card via /v1/hosted/collect/card and charge later via a
+    # merchant-initiated payment (MIT) — never the Hosted Checkout page, which
+    # this Rapyd account rejects with UNAUTHORIZED_API_CALL. The charge timing
+    # is driven by payment.auth_scheduled_for: a >24h ("Case B") booking is
+    # authorised at T-24h by the background loop; a ≤24h ("Case A") booking is
+    # authorised immediately when the passenger returns (see card_saved_page).
+    # Phase 1: ensure a durable Rapyd customer exists (separate commit so a later
+    # failure does not orphan it; stable idempotency key dedupes).
+    if not payment.rapyd_customer_id:
         try:
-            card_page = rapyd_client.create_card_token_page(
-                customer_id          = customer_id,
-                complete_url         = f"{s.base_url}/payments/card-saved/{booking_id}",
-                cancel_url           = cancel_url,
-                complete_payment_url = f"{s.base_url}/payments/card-saved/{booking_id}",
-                error_payment_url    = f"{s.base_url}/payments/checkout/{booking_id}?card_error=1",
-                idempotency_key      = payment.idempotency_key,
+            customer_id = rapyd_client.create_customer(
+                email             = current_user.email,
+                name              = current_user.full_name,
+                idempotency_key   = f"customer-{payment.idempotency_key}",
             )
         except RapydError as exc:
-            log.error("Rapyd card-token page create failed for booking %s: %s", booking_id, exc)
-            db.rollback()
+            log.error("Rapyd customer create failed for booking %s: %s", booking_id, exc)
             return _checkout_error_response()
-
-        payment.rapyd_checkout_id = card_page.get("id")
-        db.commit()
-        redirect_url = card_page.get("redirect_url")
-        if not redirect_url:
-            log.error("Rapyd card-token page for booking %s returned no redirect_url", booking_id)
-            return _checkout_error_response()
-        return RedirectResponse(redirect_url, status_code=303)
-
-    # ── Case A: authorise the full amount now (capture=False), embedded form ──
-    if not payment.rapyd_checkout_id:
+        payment.rapyd_customer_id = customer_id
         try:
-            checkout_data = rapyd_client.create_checkout_page(
-                amount          = booking.total_price,
-                capture         = False,
-                complete_url    = complete_url,
-                cancel_url      = cancel_url,
-                idempotency_key = payment.idempotency_key,
-                metadata        = {"booking_id": booking_id, "case": "A"},
-            )
-            payment.rapyd_checkout_id = checkout_data["id"]
             db.commit()
-        except RapydError as exc:
-            log.error("Rapyd checkout create failed for booking %s (Case A): %s", booking_id, exc)
+        except Exception as exc:
+            log.error("DB commit for rapyd_customer_id failed (booking %s): %s", booking_id, exc)
             db.rollback()
             return _checkout_error_response()
+    else:
+        customer_id = payment.rapyd_customer_id
 
-    contribution = booking.subtotal
-    fee          = booking.service_fee
-    total        = booking.total_price
-    fee_pct      = round(fee / contribution * 100) if contribution and fee else 0
+    # Phase 2: create the hosted card-token page and redirect to it. We re-create
+    # on each visit (the idempotency key returns the same page within Rapyd's
+    # window) so a refresh/back always has a live redirect_url.
+    try:
+        card_page = rapyd_client.create_card_token_page(
+            customer_id          = customer_id,
+            complete_url         = f"{s.base_url}/payments/card-saved/{booking_id}",
+            cancel_url           = cancel_url,
+            complete_payment_url = f"{s.base_url}/payments/card-saved/{booking_id}",
+            error_payment_url    = f"{s.base_url}/payments/checkout/{booking_id}?card_error=1",
+            idempotency_key      = payment.idempotency_key,
+        )
+    except RapydError as exc:
+        log.error("Rapyd card-token page create failed for booking %s: %s", booking_id, exc)
+        db.rollback()
+        return _checkout_error_response()
 
-    return templates.TemplateResponse("payments/checkout.html", {
-        **ctx,
-        "booking":       booking,
-        "contribution":  contribution,
-        "service_fee":   fee,
-        "fee_pct":       fee_pct,
-        "total":         total,
-        "driver_payout": contribution,
-        "payment_case":  "A",
-        "checkout_id":   payment.rapyd_checkout_id,
-        "rapyd_js_url":  rapyd_client.js_url(),
-    })
+    payment.rapyd_checkout_id = card_page.get("id")
+    db.commit()
+    redirect_url = card_page.get("redirect_url")
+    if not redirect_url:
+        log.error("Rapyd card-token page for booking %s returned no redirect_url", booking_id)
+        return _checkout_error_response()
+    return RedirectResponse(redirect_url, status_code=303)
 
 
 # ── Beta bypass ───────────────────────────────────────────────────────────────
@@ -652,6 +619,30 @@ def card_saved_page(
     # with the CUSTOMER_PAYMENT_METHOD_CREATED webhook — whichever lands first.
     if not settings.beta_mode:
         _finalize_card_saved(db, booking)
+        db.refresh(booking)
+
+        # ≤24h bookings: authorise immediately instead of waiting for the T-24h
+        # loop, so the passenger is confirmed before they leave the page. Pending
+        # (request-to-book) bookings are skipped — they authorise when the driver
+        # accepts. The card_saved guard + mit-{id} idempotency key in the helper
+        # prevent any double charge if the loop or a webhook also runs.
+        payment = booking.payment
+        if (booking.status == models.BookingStatus.card_saved
+                and payment and payment.status == models.PaymentStatus.card_saved
+                and payment.auth_scheduled_for
+                and payment.auth_scheduled_for <= datetime.utcnow()):
+            from app.tasks import authorise_booking_mit
+            try:
+                authorise_booking_mit(db, booking)
+                db.refresh(booking)
+            except Exception as exc:
+                log.warning("Immediate MIT after card-save failed for booking %s: %s", booking_id, exc)
+
+        # Route on the immediate-authorisation outcome.
+        if booking.status == models.BookingStatus.confirmed:
+            return RedirectResponse(f"/payments/success/{booking_id}", status_code=303)
+        if booking.payment and booking.payment.status == models.PaymentStatus.retry_pending:
+            return RedirectResponse(f"/payments/auth-failed/{booking_id}", status_code=303)
 
     # card_saved or still pending/awaiting_payment (finalisation in-flight)
     return templates.TemplateResponse("payments/card_saved.html", {

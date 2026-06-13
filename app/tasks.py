@@ -435,6 +435,93 @@ def _apply_mit_failure(
     sms.mit_auth_failed_to_driver(booking)
 
 
+def authorise_booking_mit(db, booking: "models.Booking", now: "datetime" = None) -> bool:
+    """
+    Fire the merchant-initiated authorisation (capture=False) for one booking
+    whose card is saved. Single source of truth shared by the T-24h background
+    loop and the immediate authorisation that runs when a ≤24h booking returns
+    from the Hosted Card page (there is no separate "authorise now" endpoint —
+    Rapyd's Hosted Checkout page is not enabled, so everything goes card→MIT).
+
+    Returns True only on a genuine ACT authorisation. Every other outcome
+    (declined / pending / API error / already-departed / not in card_saved
+    state) is handled here — retry window or cancel — and returns False.
+    Never raises. The card_saved guard + the stable mit-{id} idempotency key make
+    it safe to call from the loop, the redirect, and a webhook without double
+    charging.
+    """
+    now = now or datetime.utcnow()
+    payment = booking.payment
+    if not payment or payment.status != models.PaymentStatus.card_saved:
+        return False
+
+    # Never authorise a card for a ride that has already departed. If the app was
+    # down across the T-24h window and only caught up after departure, charging
+    # now would bill for a service window that has passed. Cancel instead (card
+    # was only tokenised — no charge ever placed; not a payout).
+    if booking.trip.departure_datetime <= now:
+        payment.status = models.PaymentStatus.failed
+        booking.status = models.BookingStatus.cancelled
+        booking.cancellation_reason = "mit_window_missed"
+        db.commit()
+        log.error(
+            "MIT window missed for booking %s — trip departed %s; card NOT "
+            "authorised, booking cancelled (no charge).",
+            booking.id, booking.trip.departure_datetime,
+        )
+        return False
+
+    if not payment.rapyd_customer_id or not payment.rapyd_payment_method_id:
+        log.warning("MIT skipped for booking %s — missing Rapyd customer/PM", booking.id)
+        return False
+
+    try:
+        mit_data = rapyd_client.create_mit_payment(
+            amount            = booking.total_price,
+            customer_id       = payment.rapyd_customer_id,
+            payment_method_id = payment.rapyd_payment_method_id,
+            capture           = False,
+            idempotency_key   = f"mit-{payment.id}",
+            metadata          = {"booking_id": booking.id, "case": "B"},
+        )
+
+        rapyd_status = mit_data.get("status", "")
+        # Persist the Rapyd payment ID regardless of status — needed for any
+        # subsequent capture attempt and for investigation.
+        if mit_data.get("id"):
+            payment.rapyd_payment_id = mit_data["id"]
+
+        if rapyd_status == _RAPYD_MIT_ACT:
+            # Accepted pending bookings are already confirmed; only email the
+            # ones that weren't confirmed yet (standard card_saved → confirmed).
+            was_already_confirmed = booking.status == models.BookingStatus.confirmed
+            payment.status          = models.PaymentStatus.authorised
+            payment.auth_expires_at = now + timedelta(days=7)
+            booking.status          = models.BookingStatus.confirmed
+            db.commit()
+            db.refresh(booking)
+            if not was_already_confirmed:
+                mailer.booking_confirmed_to_passenger(booking)
+                mailer.booking_confirmed_to_driver(booking)
+            log.info(
+                "MIT authorised (ACT) for booking %s — Rapyd payment %s "
+                "(was_already_confirmed=%s)",
+                booking.id, payment.rapyd_payment_id, was_already_confirmed,
+            )
+            return True
+
+        # Rapyd responded without error but the payment is not ACT (PEN = bank
+        # still deciding; ERR/CAN = failure). Cannot confirm — open retry window.
+        _apply_mit_failure(
+            db, booking, payment, now,
+            reason=f"Rapyd returned status {rapyd_status!r} (expected ACT)",
+        )
+        return False
+    except RapydError as exc:
+        _apply_mit_failure(db, booking, payment, now, reason=f"RapydError: {exc}")
+        return False
+
+
 def _run_mit_authorizations() -> None:
     """
     For every booking in `card_saved` state whose `auth_scheduled_for` has
@@ -472,84 +559,7 @@ def _run_mit_authorizations() -> None:
         )
 
         for payment in due_payments:
-            booking = payment.booking
-
-            # Never authorise a card for a ride that has already departed. If the
-            # app was down across the T-24h window and only caught up after
-            # departure, charging now would bill the passenger for a service
-            # window that has already passed. Cancel the unpaid booking instead
-            # (card was only tokenised — no charge ever placed; not a payout).
-            if booking.trip.departure_datetime <= now:
-                payment.status = models.PaymentStatus.failed
-                booking.status = models.BookingStatus.cancelled
-                booking.cancellation_reason = "mit_window_missed"
-                db.commit()
-                log.error(
-                    "MIT window missed for booking %s — trip departed %s; card NOT "
-                    "authorised, booking cancelled (no charge).",
-                    booking.id, booking.trip.departure_datetime,
-                )
-                continue
-
-            if not payment.rapyd_customer_id or not payment.rapyd_payment_method_id:
-                log.warning(
-                    "MIT skipped for booking %s — missing Rapyd customer/PM", booking.id
-                )
-                continue
-
-            try:
-                mit_data = rapyd_client.create_mit_payment(
-                    amount            = booking.total_price,
-                    customer_id       = payment.rapyd_customer_id,
-                    payment_method_id = payment.rapyd_payment_method_id,
-                    capture           = False,
-                    idempotency_key   = f"mit-{payment.id}",
-                    metadata          = {"booking_id": booking.id, "case": "B"},
-                )
-
-                rapyd_status = mit_data.get("status", "")
-
-                # Always persist the Rapyd payment ID regardless of status — it is
-                # needed for investigation and for any subsequent capture attempt.
-                if mit_data.get("id"):
-                    payment.rapyd_payment_id = mit_data["id"]
-
-                if rapyd_status == _RAPYD_MIT_ACT:
-                    # Card is genuinely authorised.
-                    # Accepted pending bookings are already confirmed (booking.status
-                    # was set to confirmed when the driver accepted); only send
-                    # confirmation emails for bookings that weren't confirmed yet
-                    # (standard Case B: card_saved → confirmed here).
-                    was_already_confirmed = booking.status == models.BookingStatus.confirmed
-
-                    payment.status          = models.PaymentStatus.authorised
-                    payment.auth_expires_at = now + timedelta(days=7)
-                    booking.status          = models.BookingStatus.confirmed
-
-                    db.commit()
-                    db.refresh(booking)
-                    if not was_already_confirmed:
-                        mailer.booking_confirmed_to_passenger(booking)
-                        mailer.booking_confirmed_to_driver(booking)
-                    log.info(
-                        "MIT authorised (ACT) for booking %s — Rapyd payment %s "
-                        "(was_already_confirmed=%s)",
-                        booking.id, payment.rapyd_payment_id, was_already_confirmed,
-                    )
-                else:
-                    # Rapyd responded without error but the payment is not ACT.
-                    # PEN means the bank is still deciding; ERR/CAN mean failure.
-                    # In all cases we cannot confirm the booking — open retry window.
-                    _apply_mit_failure(
-                        db, booking, payment, now,
-                        reason=f"Rapyd returned status {rapyd_status!r} (expected ACT)",
-                    )
-
-            except RapydError as exc:
-                _apply_mit_failure(
-                    db, booking, payment, now,
-                    reason=f"RapydError: {exc}",
-                )
+            authorise_booking_mit(db, payment.booking, now)
 
     except Exception as exc:
         log.warning("MIT authorisation task failed: %s", exc)
