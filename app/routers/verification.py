@@ -817,7 +817,7 @@ def admin_dispute_pack(
     """
     Chargeback evidence package for a single booking.
     Renders all fields relevant to a dispute in a clean, printable layout.
-    Cmd+P / Ctrl+P → Save as PDF to send to Slize or the acquirer.
+    Cmd+P / Ctrl+P → Save as PDF to send to the card processor or acquirer.
     """
     booking = (
         db.query(models.Booking)

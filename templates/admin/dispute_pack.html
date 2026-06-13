@@ -135,7 +135,7 @@
   <div class="dispute-noprint" style="margin-bottom:1.5rem;display:flex;gap:.75rem;align-items:center;">
     <a href="/admin/dashboard" style="font-size:.875rem;color:#006C5B;">← Admin dashboard</a>
     <button class="dispute-noprint-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
-    <span style="font-size:.8125rem;color:#64748B;">Use browser print → Save as PDF to share with Slize or acquirer.</span>
+    <span style="font-size:.8125rem;color:#64748B;">Use browser print → Save as PDF to share with the card processor or acquirer.</span>
   </div>
 
   {# ── Document header ────────────────────────────────────────────────────── #}
@@ -454,10 +454,10 @@
       <span class="value">Wellfare ehf., Reykjavík, Iceland — samefare@samefare.com</span>
       <span class="label">Document generated (UTC)</span>
       <span class="value">{{ generated_at.strftime("%-d %B %Y %H:%M:%S") }}</span>
-      <span class="label">For disputes against</span>
-      <span class="value">Driver sub-merchant account (Slize marketplace model) — contact Slize for sub-merchant account details</span>
-      <span class="label">For disputes against SameFare fee</span>
-      <span class="value">SameFare acquirer account via Slize — service fee portion only ({{ "{:,}".format(booking.service_fee) }} ISK)</span>
+      <span class="label">Merchant of record</span>
+      <span class="value">SameFare (Wellfare ehf.) via its licensed card processor — full transaction amount ({{ "{:,}".format(booking.total_price) }} ISK)</span>
+      <span class="label">Driver-side failure recovery</span>
+      <span class="value">Driver cost contribution ({{ "{:,}".format(booking.subtotal) }} ISK) recovered by cancelling/reversing the driver's payout; confirmed no-shows refunded to the passenger directly (not via chargeback)</span>
     </div>
   </div>
 

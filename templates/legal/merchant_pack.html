@@ -51,7 +51,7 @@
 
       <h3>2.1 What SameFare is</h3>
       <p>SameFare is an online rideshare cost-sharing marketplace serving Iceland. Drivers who are making a journey and have empty seats post available rides. Passengers search for and book a seat on a matching route. The driver is reimbursed for a proportional share of their trip costs (fuel, tolls); no profit motive is involved for the driver.</p>
-      <p>SameFare operates as a <strong>marketplace platform</strong>. Each driver is registered as a <strong>sub-merchant</strong> with our licensed payment service provider (the licensed PSP). At capture, the PSP routes the cost contribution (82%) directly to the driver's sub-merchant account and the service fee (18%) to SameFare. The driver is the merchant of record for their own trips; SameFare is the platform intermediary. Revenue is generated exclusively through the per-booking service fee.</p>
+      <p>SameFare operates as a <strong>marketplace platform</strong> and is the <strong>merchant of record</strong> for bookings. Payments are collected by SameFare through our licensed payment service provider (the PSP); SameFare retains the service fee (18%) and pays each driver their cost contribution (82%) as a <strong>separate payout</strong> to the driver's Icelandic bank account after the trip. SameFare holds the driver's share only transiently, between capture and payout, and tracks entitlements in an internal payout ledger. Revenue is generated exclusively through the per-booking service fee.</p>
 
       <h3>2.2 Revenue model</h3>
       <table class="legal-table">
@@ -60,7 +60,7 @@
           <tr>
             <td>Driver cost contribution</td>
             <td>Set by driver per seat (ISK)</td>
-            <td>Routed directly to driver sub-merchant account by our licensed PSP at capture</td>
+            <td>Captured to SameFare, then paid to the driver's Icelandic bank account as a separate payout after the trip</td>
           </tr>
           <tr>
             <td>Platform service fee</td>
@@ -103,8 +103,8 @@
             <td>Automatically 24 hours before departure. If the booking is made within 24 hours of departure, pre-authorisation fires immediately at checkout as part of the same CIT.</td>
           </tr>
           <tr>
-            <td><strong>3 — Capture &amp; split</strong></td>
-            <td>Pre-authorisation captured in full automatically at scheduled departure time. Driver receives the cost contribution; SameFare retains the service fee. No refunds are issued. If the driver cancels, the pre-auth is voided — no capture is made.</td>
+            <td><strong>3 — Capture &amp; payout</strong></td>
+            <td>Pre-authorisation captured in full <strong>to SameFare</strong> automatically at scheduled departure time. SameFare retains the service fee and pays the driver the cost contribution as a separate payout after the trip. No refund on passenger-fault outcomes. If the driver cancels, the pre-auth is voided — no capture is made.</td>
             <td>Automatically at scheduled departure time</td>
           </tr>
         </tbody>
@@ -114,7 +114,7 @@
       <p>Pre-authorisation is deliberately deferred to 24 hours before departure to ensure the authorisation remains valid through to capture. Standard card network authorisation validity is 7 days; a 24-hour window eliminates any risk of expiry regardless of how far in advance the booking was made.</p>
 
       <h3>3.3 Driver disbursement</h3>
-      <p>At scheduled departure time, capture fires automatically. The PSP splits the captured amount at source: the cost contribution (82%) is routed directly to the driver's registered sub-merchant account; the service fee (18%) is routed to SameFare. SameFare does not hold or intermediate driver funds — the split happens within the PSP at the moment of capture.</p>
+      <p>At scheduled departure time, capture fires automatically and the full amount is collected by SameFare as merchant of record. SameFare retains the service fee (18%) and pays the driver their cost contribution (82%) as a <strong>separate payout</strong> to their Icelandic bank account (via Blikk), normally shortly after the trip completes. SameFare holds the driver's share only transiently, between capture and payout; entitlements and payouts are tracked in an internal payout ledger.</p>
 
       <h3>3.4 Pre-authorisation failure &amp; retry</h3>
       <p>If the T−24h MIT pre-authorisation fails (e.g. insufficient funds, expired card):</p>
@@ -134,7 +134,7 @@
         <li>T−24h: MIT pre-authorisation for full booking amount placed automatically. (Exception: if departure is ≤24h from booking time, pre-authorisation is folded into the CIT at step 1 — no separate MIT is issued.)</li>
         <li>If pre-auth fails: passenger notified; 2-hour window for <strong>one CIT retry attempt</strong> (same amount, 18% fee — no surcharge). If retry is also declined, or window expires unused: booking cancelled, no charge.</li>
         <li>Scheduled departure time reached → capture instruction sent automatically to PSP (no driver action required).</li>
-        <li>PSP confirms capture → the PSP routes 82% to driver sub-merchant account and 18% to SameFare in a single split transaction.</li>
+        <li>PSP confirms capture → the full amount settles to SameFare; SameFare retains 18% and pays the driver 82% as a separate payout to their Icelandic bank account after the trip.</li>
       </ol>
     </section>
 
@@ -199,16 +199,16 @@
           </tr>
           <tr>
             <td><strong>Driver no-show</strong> (passenger reports within T+4h)</td>
-            <td>Full capture fires at departure as scheduled — PSP sees a clean full capture routed to driver sub-merchant account.</td>
-            <td>Passenger's remedy is a <strong>chargeback</strong> against the driver sub-merchant account. SameFare provides booking records and departure timestamp as evidence. SameFare does not fund a platform-level refund.</td>
-            <td>Account suspended immediately. Chargeback reversal processed by our licensed PSP against driver sub-merchant.</td>
+            <td>Fare was captured to SameFare at departure. On a confirmed report, SameFare refunds the passenger and cancels the driver's payout for that booking.</td>
+            <td><strong>Full platform refund</strong> — cost contribution + service fee — to the passenger's card. No chargeback required.</td>
+            <td>Account suspended immediately; the driver's payout for the booking is cancelled/reversed.</td>
           </tr>
         </tbody>
       </table>
 
       <h3>5.2 PSP capture mechanics</h3>
       <p>No partial captures are required. Every PSP action is either a <strong>full capture</strong> or a <strong>void</strong> of the pre-authorisation. This eliminates split-capture complexity entirely.</p>
-      <p><strong>Driver no-show.</strong> Capture fires at departure as scheduled — the PSP sees a standard full capture and routes funds to the driver's sub-merchant account as normal. The passenger's remedy is a chargeback filed with their card issuer against the driver's sub-merchant account. SameFare's platform records (booking confirmation, scheduled departure timestamp, no-show report) are available to the issuer or acquirer on request. SameFare does not process a platform-level refund for driver no-shows; the card scheme chargeback mechanism is the designated resolution path.</p>
+      <p><strong>Driver no-show.</strong> The fare is captured to SameFare at departure as normal. If a confirmed passenger reports the driver as a no-show within 4 hours of departure, SameFare issues a <strong>full platform refund</strong> (cost contribution + service fee) to the passenger's card through the PSP and cancels the driver's payout for that booking. Resolution is a platform-level refund, not a card-scheme chargeback. SameFare's platform records (booking confirmation, scheduled departure timestamp, no-show report) are retained as evidence.</p>
       <p><strong>Retry transaction amounts.</strong> In the pre-auth failure retry scenario, the passenger saves a new card and the authorisation re-fires for the <strong>same amount</strong> as the original booking (contribution + 18% service fee — no surcharge). The PSP will see two distinct authorisation attempts on the same card: the failed MIT and the subsequent successful authorisation at the same amount. Both are tied to the same booking reference in SameFare's records.</p>
     </section>
 
@@ -217,8 +217,8 @@
       <h2>6. Chargeback &amp; Dispute Management</h2>
 
       <h3>6.1 Chargeback liability model</h3>
-      <p>Because each driver is a registered sub-merchant with the PSP, chargebacks for driver-side failures (non-appearance, service not rendered) are filed by the passenger's issuer against the <strong>driver's sub-merchant account</strong>, not against SameFare. SameFare's chargeback exposure is limited to disputes on the <strong>service fee portion (18%)</strong> only — for example, where a passenger claims the booking platform itself failed to perform.</p>
-      <p>This structure significantly reduces SameFare's chargeback liability compared to a single-merchant aggregator model and aligns liability with the party responsible for service delivery.</p>
+      <p>SameFare is the <strong>merchant of record</strong>, so any card chargeback is filed against SameFare for the <strong>full transaction amount</strong> (cost contribution + service fee). SameFare manages this exposure operationally rather than by pushing liability to a sub-merchant: every transaction is SCA-authenticated, the cancellation/no-show policy is explicitly acknowledged at checkout, and driver-side failures are resolved by a <strong>direct platform refund</strong> — which removes the main reason a passenger would otherwise raise a chargeback. Where the driver is at fault (e.g. a confirmed no-show), SameFare recovers its outlay by cancelling or reversing that driver's payout.</p>
+      <p>This model concentrates card liability on SameFare but pairs it with strong authentication, clear consent, and a fast in-platform refund path, keeping realised chargeback rates low while aligning the financial consequence of a failure with the party responsible (via payout reversal).</p>
 
       <h3>6.2 Risk mitigants</h3>
       <ul>
@@ -232,11 +232,11 @@
       </ul>
 
       <h3>6.3 Dispute response process</h3>
-      <p>For any chargeback filed against the SameFare service fee, SameFare can supply to the acquirer or issuer: booking confirmation records, scheduled departure timestamp, cancellation policy acknowledgement, checkout checkbox confirmation, communication logs, and KYC verification status for both parties. SameFare targets a response time of 3 business days for chargeback representment requests.</p>
-      <p>For chargebacks filed against a driver sub-merchant account, SameFare will provide the same evidentiary package to the PSP upon request to support the driver's representment — or, in confirmed no-show cases, to support the passenger's dispute.</p>
+      <p>For any chargeback (SameFare is the merchant of record), SameFare can supply to the acquirer or issuer: booking confirmation records, scheduled departure timestamp, cancellation policy acknowledgement, checkout checkbox confirmation, communication logs, SCA/3-D Secure authentication results, and KYC verification status for both parties. SameFare targets a response time of 3 business days for chargeback representment requests.</p>
+      <p>Where a chargeback reflects a driver-side failure, SameFare additionally recovers its outlay by cancelling or reversing the driver's payout for the affected booking.</p>
 
       <h3>6.4 Expected chargeback rate</h3>
-      <p>SameFare is a launch-stage platform. Chargeback exposure on SameFare's own accounts (service fee) is structurally low given SCA authentication and the explicit policy acknowledgement at checkout. Driver sub-merchant chargeback rates are managed by our licensed PSP at the sub-merchant level. Transaction and dispute records can be provided to the PSP upon request.</p>
+      <p>SameFare is a launch-stage platform. As merchant of record, SameFare bears card chargeback exposure on the full transaction, but this is mitigated by SCA authentication on every transaction, the explicit policy acknowledgement at checkout, and a direct in-platform refund path for driver-side failures (which removes the main reason a passenger would otherwise chargeback). Transaction and dispute records can be provided to the PSP upon request.</p>
     </section>
 
     <!-- ── 7. User Verification & KYC ─────────────────────────────────────────── -->
