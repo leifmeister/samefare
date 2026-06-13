@@ -138,8 +138,37 @@
           </div>
         </div>
 
-        <!-- Meta chips: seats + booking type -->
+        <!-- Meta chips: seats + booking type.
+             Once the viewer already holds an active booking on this trip, the
+             generic seats / "Approval required" chips are misleading (they read
+             as "you still need approval / the trip is full"). Show their own
+             booking status instead. -->
+        {% set _mb = current_user_booking %}
+        {% set _mb_status = _mb.status | string if _mb else '' %}
         <div class="trip-hero__chips">
+          {% if _mb_status in ('pending', 'awaiting_payment', 'card_saved', 'confirmed') %}
+            {% if _mb_status == 'confirmed' %}
+            <div class="chip chip--instant">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+              {{ _t('status_confirmed') }}
+            </div>
+            {% elif _mb_status == 'card_saved' %}
+            <div class="chip chip--instant">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+              {{ _t('status_card_saved') }}
+            </div>
+            {% elif _mb_status == 'awaiting_payment' %}
+            <div class="chip chip--urgent">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+              {{ _t('status_awaiting_payment') }}
+            </div>
+            {% else %}
+            <div class="chip chip--approval">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd"/></svg>
+              {{ _t('status_pending') }}
+            </div>
+            {% endif %}
+          {% else %}
           <div class="chip{% if trip.seats_available == 1 %} chip--urgent{% endif %}">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
             {% if trip.seats_available == 1 %}{{ _t('detail_1_seat_left') }}{% else %}{{ trip.seats_available }} {{ _t('detail_seats_available') }}{% endif %}
@@ -154,6 +183,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
             {{ _t('detail_approval_required') }}
           </div>
+          {% endif %}
           {% endif %}
         </div>
       </div>
@@ -369,9 +399,13 @@
       <!-- Booking widget -->
       <div class="booking-widget">
 
-        {% if trip.status == 'active' and ((segment_available_seats is not none and segment_available_seats > 0) or (segment_available_seats is none and trip.seats_available > 0)) %}
-
-          {% if _is_driver %}
+        {# An existing booking / driver view must NOT depend on remaining seats:
+           when a passenger takes the last seat (seats_available == 0) their own
+           booking previously fell through to the "Fully booked" state, which
+           reads as "you're not on this trip". Check driver + own-booking first,
+           independent of seat count. #}
+        {% set _cub_active = current_user_booking and (current_user_booking.status | string in ('pending', 'awaiting_payment', 'card_saved', 'confirmed')) %}
+        {% if _is_driver and trip.status == 'active' %}
           <!-- Driver: trip management -->
           <div class="booking-widget__your-trip">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M3 10a1 1 0 100 2 1 1 0 000-2zm10 0a1 1 0 100 2 1 1 0 000-2zM1.5 7l1.5-3h9l1.5 3H1.5z"/></svg>
@@ -395,8 +429,8 @@
             <button type="submit" class="btn btn-danger btn-block btn-sm">{{ _t('detail_cancel_trip') }}</button>
           </form>
 
-          {% elif current_user and current_user_booking %}
-          <!-- Existing booking: status display -->
+          {% elif current_user and _cub_active %}
+          <!-- Existing booking: status display (seat-count independent) -->
           {% if current_user_booking.status == 'pending' %}
           {% if booking_needs_card_setup %}
           <div class="booking-state booking-state--pending">
@@ -447,7 +481,9 @@
           <a href="/messages/{{ current_user_booking.id }}" class="btn btn-outline btn-block btn-sm">{{ _t('detail_message_driver_link') }}</a>
           {% endif %}
 
-          {% elif driver_unavailable %}
+          {% elif trip.status == 'active' and ((segment_available_seats is not none and segment_available_seats > 0) or (segment_available_seats is none and trip.seats_available > 0)) %}
+
+          {% if driver_unavailable %}
           <!-- Driver suspended/deactivated — not bookable -->
           <div class="booking-state booking-state--full">
             <p class="booking-state__label">{{ _t('detail_unavailable_title') }}</p>
