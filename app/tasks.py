@@ -963,7 +963,10 @@ def _run_prepare_driver_payouts() -> None:
     now = datetime.utcnow()
     if now.hour < settings.payout_run_hour or _last_payout_send_date == now.date():
         return
-    _last_payout_send_date = now.date()
+    # NB: don't mark today as done until the work actually succeeds — otherwise a
+    # failed query or batch build would be skipped until tomorrow with no retry.
+    # Building each batch is idempotent (deterministic idempotency key), so a
+    # retry on the next tick is safe and re-batches nothing already done.
 
     from app.payout import build_driver_payout_batch
 
@@ -984,6 +987,7 @@ def _run_prepare_driver_payouts() -> None:
             return (item.driver_id, str(item.payout_method))
 
         built = 0
+        failures = 0
         for (driver_id, _method), group in groupby(ready_items, key=_batch_key):
             items = list(group)
             driver = items[0].driver
@@ -993,15 +997,24 @@ def _run_prepare_driver_payouts() -> None:
                     db.commit()
                     built += 1
             except Exception as exc:
+                failures += 1
                 log.error("Failed to build DriverPayout for driver %s: %s", driver_id, exc)
                 db.rollback()
 
         if built:
             log.info("Prepared %d driver payout batch(es) for approval", built)
+        # Only mark today as done when every batch prepared cleanly. If any driver
+        # failed, leave the date unset so the next tick retries (the already-built
+        # batches are now `batched`/`pending` and won't be re-selected).
+        if failures == 0:
+            _last_payout_send_date = now.date()
+        else:
+            log.warning("Prepare driver payouts: %d driver(s) failed — will retry next tick", failures)
         # No SMS digest — the operator reviews and approves on the /admin/payouts
         # board, which they check daily.
 
     except Exception as exc:
+        # Whole-task failure (e.g. the query) — date stays unset so we retry.
         log.warning("Prepare driver payouts task failed: %s", exc)
         db.rollback()
     finally:
