@@ -291,22 +291,30 @@ def create_mit_payment(
     """
     Create a merchant-initiated card payment using a previously saved payment method.
 
-    Called by the 24-hour-before-departure scheduler for Case B bookings.
-    The cardholder is not present, so we set merchant_initiated=True and skip
-    3DS (the initial SCA-authenticated CIT already obtained the cardholder's
-    consent per PSD2 MIT rules).
+    Called when the cardholder is not present (T-24h scheduler, or the immediate
+    charge after a ≤24h card-save). Merchant-initiated transactions are OUT OF
+    SCOPE for SCA, so no fresh 3DS is required — but Rapyd only treats the charge
+    as an MIT when we tag it with `initiation_type`. It must match the
+    `recurrence_type` the card was saved with on the Hosted Card page
+    ("unscheduled"); otherwise Rapyd handles it as a normal customer-initiated
+    payment that needs 3DS, the authorisation lands 3DS-pending, and the later
+    capture fails with ERROR_CAPTURE_PAYMENT_3DS_INCOMPLETE.
+
+    There is no `merchant_initiated` field in the Rapyd API — `initiation_type`
+    is the mechanism. `3d_required: false` requests no 3DS challenge.
     """
     return _request("post", "/v1/payments", {
-        "amount":          amount,
-        "currency":        currency,
-        "customer":        customer_id,
-        "payment_method":  payment_method_id,
-        "capture":         capture,
-        "merchant_initiated": True,
+        "amount":           amount,
+        "currency":         currency,
+        "customer":         customer_id,
+        "payment_method":   payment_method_id,
+        "capture":          capture,
+        # MIT tag — matches card_fields.recurrence_type="unscheduled" set at save.
+        "initiation_type":  "unscheduled",
         "payment_method_options": {
             "3d_required": False,
         },
-        "metadata":        metadata,
+        "metadata":         metadata,
     }, idempotency_key=idempotency_key)
 
 
