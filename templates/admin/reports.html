@@ -97,7 +97,27 @@
             <button class="btn btn-ghost btn-xs">Dismiss</button>
           </form>
           <div>
-            <button class="btn btn-danger btn-xs" @click="suspendOpen = !suspendOpen">Suspend user</button>
+            <div style="display:flex; gap:.35rem; align-items:center;">
+              <button class="btn btn-danger btn-xs" @click="suspendOpen = !suspendOpen">Suspend user</button>
+              <span class="info-tip" tabindex="0" role="button" aria-label="What does suspending do?">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M18 10A8 8 0 11 2 10a8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                <span class="info-tip__bubble" role="tooltip">
+                  <strong>Suspending {{ r.reported.full_name.split()[0] }} immediately:</strong>
+                  <ul>
+                    <li>Locks the account — they're treated as logged-out and can't log in, book, post, or message.</li>
+                    <li>Hides all their trips from search and blocks new bookings on them.</li>
+                    <li>Makes their public profile return “not found”.</li>
+                    <li>Marks this report as reviewed.</li>
+                  </ul>
+                  <strong>It does <em>not</em>:</strong>
+                  <ul>
+                    <li class="info-tip__warn">Cancel or refund their existing confirmed bookings/rides — handle those separately.</li>
+                    <li>Delete their data (ID/AML records are retained as required by law).</li>
+                  </ul>
+                  <span class="info-tip__foot">Reversible — clearing the suspension restores full access.</span>
+                </span>
+              </span>
+            </div>
             <form x-show="suspendOpen" method="post" action="/admin/reports/{{ r.id }}/suspend"
                   style="margin-top:.5rem; min-width:220px;"
                   onsubmit="return confirm('Suspend {{ r.reported.full_name }}?')">
