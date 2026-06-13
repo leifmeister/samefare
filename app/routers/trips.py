@@ -1402,6 +1402,10 @@ def trip_detail(
     return templates.TemplateResponse("trips/detail.html", {
         **ctx,
         "trip": trip,
+        # A suspended/deactivated driver's trip must not look bookable, even via a
+        # direct link. The template shows an "unavailable" state instead of the
+        # Book CTA (driver-management and existing-booking views are unaffected).
+        "driver_unavailable": (not trip.driver.is_active or trip.driver.posting_suspended),
         "confirmed_bookings": confirmed_bookings,
         "pending_bookings": pending_bookings,
         "has_return_trip": has_return_trip,

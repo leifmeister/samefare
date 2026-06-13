@@ -97,6 +97,11 @@ def book_trip_page(
         return RedirectResponse(f"/trips/{trip_id}", status_code=303)
     if trip.status != models.TripStatus.active:
         return RedirectResponse(f"/trips/{trip_id}", status_code=303)
+    # Don't render the booking form for a suspended/deactivated driver's trip
+    # (the POST is already guarded; this stops the form showing from a stale link).
+    # The detail page shows the "unavailable" state.
+    if not trip.driver.is_active or trip.driver.posting_suspended:
+        return RedirectResponse(f"/trips/{trip_id}", status_code=303)
 
     # Block bookings within 1 hour of departure.
     if trip.departure_datetime <= datetime.utcnow() + timedelta(hours=1):

@@ -447,6 +447,13 @@
           <a href="/messages/{{ current_user_booking.id }}" class="btn btn-outline btn-block btn-sm">{{ _t('detail_message_driver_link') }}</a>
           {% endif %}
 
+          {% elif driver_unavailable %}
+          <!-- Driver suspended/deactivated — not bookable -->
+          <div class="booking-state booking-state--full">
+            <p class="booking-state__label">{{ _t('detail_unavailable_title') }}</p>
+            <p class="booking-state__sub">{{ _t('detail_unavailable_sub') }}</p>
+          </div>
+
           {% elif current_user %}
           <!-- Logged in, new booking -->
           <div class="booking-widget__price">
