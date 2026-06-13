@@ -27,27 +27,9 @@
     <div class="policy-box" style="margin-top:2rem;">
       <p class="policy-box__title">What happens next</p>
       <ul class="policy-box__list">
-        <li>
-          <strong>Now</strong> — your card is securely saved. Nothing is charged yet.
-        </li>
-        <li>
-          <strong>When the driver accepts</strong> — your booking is confirmed
-          automatically. No action needed from you.
-        </li>
-        <li>
-          <strong>24 hours before departure</strong> — we pre-authorise
-          {% if booking.payment %}
-            <strong>{{ "{:,}".format(booking.payment.passenger_total) }} ISK</strong>
-          {% else %}
-            your trip amount
-          {% endif %}
-          on your card (or right away if the ride is less than 24 hours away).
-          If it fails, you'll get an SMS with a 2-hour window to update your card.
-        </li>
-        <li>
-          <strong>At departure</strong> — the authorised amount is captured and
-          the driver receives their payout.
-        </li>
+        <li><strong>Now</strong> — nothing is charged. Your card is just saved.</li>
+        <li><strong>When the driver accepts</strong> — your booking is confirmed automatically.</li>
+        <li><strong>Around your trip</strong> — your card is charged the fare when you set off (we reserve it about 24 hours before).</li>
       </ul>
     </div>
 
@@ -64,8 +46,8 @@
       </div>
       <h1 class="success-hero__title">Card saved — you're all set</h1>
       <p class="success-hero__sub">
-        Your seat is reserved. We'll charge your card automatically
-        24 hours before departure — no further action needed.
+        Your seat is reserved. Your card is charged automatically when the trip
+        departs — no further action needed.
       </p>
     </div>
 
@@ -73,24 +55,8 @@
     <div class="policy-box" style="margin-top:2rem;">
       <p class="policy-box__title">What happens next</p>
       <ul class="policy-box__list">
-        <li>
-          <strong>Now</strong> — your seat is reserved and your card is securely saved.
-          Nothing is charged today.
-        </li>
-        <li>
-          <strong>24 hours before departure</strong> — we'll authorise
-          {% if booking.payment %}
-            <strong>{{ "{:,}".format(booking.payment.passenger_total) }} ISK</strong>
-          {% else %}
-            your trip amount
-          {% endif %}
-          on your card. If the authorisation fails, you'll receive an SMS with a
-          2-hour window to update your card.
-        </li>
-        <li>
-          <strong>At departure</strong> — the authorised amount is captured and
-          the driver receives their payout.
-        </li>
+        <li><strong>Now</strong> — your seat is reserved and your card is saved. Nothing is charged today.</li>
+        <li><strong>Around your trip</strong> — your card is charged the fare when you set off (we reserve it about 24 hours before).</li>
       </ul>
     </div>
     {% endif %}
@@ -123,7 +89,7 @@
 
       {% if booking.payment %}
       <div class="price-row" style="margin-top:.75rem; padding-top:.75rem; border-top:1px solid var(--color-border);">
-        <span>Amount to be authorised</span>
+        <span>Fare</span>
         <span>{{ "{:,}".format(booking.payment.passenger_total) }} ISK</span>
       </div>
       {% if booking.payment.card_last4 %}
@@ -139,7 +105,7 @@
       <p class="policy-box__title">Cancellation policy</p>
       <ul class="policy-box__list">
         <li><strong>More than 24 h before departure</strong> — cancel for free. Your card hasn't been charged, so nothing is taken.</li>
-        <li><strong>Within 24 h of departure</strong> — your card is authorised for the full fare; cancelling after this is non-refundable, including no-shows.</li>
+        <li><strong>Within 24 h of departure</strong> — the full fare is due; cancelling after this is non-refundable, including no-shows.</li>
         <li><strong>If the driver cancels</strong> — you're never charged (or fully refunded if a charge was already placed).</li>
       </ul>
     </div>
