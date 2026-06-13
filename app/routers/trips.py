@@ -1511,7 +1511,9 @@ def cancel_trip(
     #   ≥ 2 late cancellations              → immediate suspend (passengers were pre-authed)
     # Note: these counters are reset manually by admin when reinstating a driver.
     # A future cron job should reset them every 90 days automatically.
-    if not driver.posting_suspended:
+    # Admins/staff are exempt from the behavioural auto-suspension (they use the
+    # account for testing); the counters still increment for visibility.
+    if not driver.posting_suspended and not driver.is_admin:
         if driver.late_cancellations_90d >= 2 or driver.cancellations_90d >= 3:
             driver.posting_suspended  = True
             driver.suspension_reason  = (

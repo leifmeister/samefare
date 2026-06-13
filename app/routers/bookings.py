@@ -755,9 +755,10 @@ def report_driver_no_show(
         ))
 
     # ── Driver accountability: zero-tolerance for confirmed no-shows ───────────
+    # Admins/staff are exempt from behavioural auto-suspension (test accounts).
     driver = booking.trip.driver
     driver.no_shows_confirmed += 1
-    if not driver.posting_suspended:
+    if not driver.posting_suspended and not driver.is_admin:
         driver.posting_suspended = True
         driver.suspension_reason = (
             f"Driver no-show confirmed (booking #{booking.id}). "
