@@ -83,8 +83,12 @@ def book_trip_page(
     # card at checkout. Full ID is optional (earns an "ID verified" badge), not a
     # gate — matching BlaBlaCar, and removing the heavy friction for one-off /
     # tourist riders. Drivers still need licence verification to post.
-    if not current_user.phone_verified and not get_settings().beta_mode:
-        return RedirectResponse("/profile?msg=phone_required#phone", status_code=303)
+    #
+    # We collect the phone INLINE on this page (no bounce to /profile, so the
+    # passenger never loses the trip they were booking). `needs_phone` swaps the
+    # booking form for a verify step; on success the page reloads and the form
+    # appears. The POST handler keeps the same gate as a server-side backstop.
+    needs_phone = not current_user.phone_verified and not get_settings().beta_mode
 
     trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
     if not trip:
@@ -136,6 +140,7 @@ def book_trip_page(
         "instant_book": trip.instant_book,
         "booking_available_seats": booking_available_seats,
         "blikk_payments": settings.blikk_payments,
+        "needs_phone": needs_phone,
     })
 
 

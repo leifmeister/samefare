@@ -295,6 +295,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         # ── Booking create ──────────────────────────────────────────────────
         "booking_back": "Back to trip",
         "booking_title": "Book your seat",
+        "booking_verify_phone_title": "Verify your phone to book",
+        "booking_verify_phone_sub": "We'll text you a 6-digit code. A verified phone is all you need to ride — it takes a moment and you won't have to do it again.",
         "booking_seats_label": "Number of seats",
         "booking_message_label": "Message to driver",
         "booking_message_optional": "(optional)",
@@ -946,6 +948,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         # ── Booking create ──────────────────────────────────────────────────
         "booking_back": "Til baka að ferð",
         "booking_title": "Bóka sæti",
+        "booking_verify_phone_title": "Staðfestu símann þinn til að bóka",
+        "booking_verify_phone_sub": "Við sendum þér 6 stafa kóða í SMS. Staðfest símanúmer er allt sem þú þarft til að ferðast — það tekur augnablik og þú þarft ekki að gera það aftur.",
         "booking_seats_label": "Fjöldi sæta",
         "booking_message_label": "Skilaboð til bílstjóra",
         "booking_message_optional": "(valkvætt)",

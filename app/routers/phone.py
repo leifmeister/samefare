@@ -34,18 +34,37 @@ def send_otp(
     request: Request,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    phone: str = Form(None),
     _rl=rate_limit(5, 600),   # 5 attempts per 10 minutes per IP
 ):
     """
     Generate a 6-digit OTP, store it on the user row, and send it via SMS.
-    Returns JSON so the profile page can update inline without a full reload.
+    Returns JSON so the caller can update inline without a full reload.
+
+    An optional `phone` param lets an unverified user set/update their number in
+    the same step (used by the inline verify step on the booking page, so a
+    passenger with no saved number can verify without a separate profile save).
+    The profile page sends no `phone` and uses the already-saved number.
     """
+    if current_user.phone_verified:
+        return JSONResponse({"ok": False, "error": "Phone already verified."}, status_code=400)
+
+    if phone:
+        normalized = sms.normalize_phone(phone)
+        if not normalized:
+            return JSONResponse(
+                {"ok": False, "error": "That doesn't look like a valid phone number."},
+                status_code=400,
+            )
+        if normalized != current_user.phone:
+            current_user.phone          = normalized
+            current_user.phone_otp      = None
+            current_user.phone_otp_expires = None
+            db.commit()
+
     phone = current_user.phone
     if not phone:
         return JSONResponse({"ok": False, "error": "No phone number saved."}, status_code=400)
-
-    if current_user.phone_verified:
-        return JSONResponse({"ok": False, "error": "Phone already verified."}, status_code=400)
 
     code    = _generate_otp()
     expires = datetime.utcnow() + timedelta(minutes=OTP_TTL_MINUTES)

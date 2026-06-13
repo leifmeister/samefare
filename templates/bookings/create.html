@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "partials/avatar.html" import avatar %}
+{% from "partials/phone_select.html" import phone_select %}
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
 {% block title %}{{ _t('booking_title') }} — {{ trip.origin }} → {{ trip.destination }}{% endblock %}
 
@@ -36,6 +37,58 @@
 
     {# Determine the effective price-per-seat for this booking (prorated if segment) #}
     {% set effective_pps = segment_price if segment_price else trip.price_per_seat %}
+
+    {% if needs_phone %}
+    {# ── Inline phone verification — shown in place of the booking form so the
+       passenger never leaves the trip. On success the page reloads and the
+       form below renders. ───────────────────────────────────────────────── #}
+    <div class="form-card" x-data="bookingPhoneVerify({{ (current_user.phone or '')|tojson }})">
+      <h2 class="payment-step__title">{{ _t('booking_verify_phone_title') }}</h2>
+      <p class="payment-step__sub" style="margin-bottom:1.25rem;">{{ _t('booking_verify_phone_sub') }}</p>
+
+      <div x-show="!codeSent">
+        <label class="label">{{ _t('profile_phone_label') }}</label>
+        <div class="phone-input">
+          {{ phone_select(x_model="code") }}
+          <input type="tel" class="phone-input__number input"
+                 x-model="local" autocomplete="tel-national"
+                 placeholder="xxx xxxx" @keyup.enter="sendCode()" />
+        </div>
+        <p x-show="error" x-text="error" class="form-hint form-hint--error" style="margin-top:.4rem;"></p>
+        <div class="form-actions" style="margin-top:1.25rem;">
+          <a href="/trips/{{ trip.id }}" class="btn btn-ghost">{{ _t('booking_cancel_btn') }}</a>
+          <button type="button" class="btn btn-primary btn-lg" :disabled="sending || !full" @click="sendCode()">
+            <span x-show="!sending">{{ _t('profile_send_code_btn') }}</span>
+            <span x-show="sending">{{ _t('profile_sending') }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div x-show="codeSent" x-cloak>
+        <p class="form-hint" style="margin-bottom:.5rem;">
+          {{ _t('profile_code_sent_pre') }} <strong x-text="full"></strong>. {{ _t('profile_code_sent_post') }}
+        </p>
+        <div style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
+          <input type="text" inputmode="numeric" maxlength="6" class="input"
+                 style="width:7rem; letter-spacing:.15em; font-size:1.1rem;"
+                 x-model="otp" placeholder="------" @keyup.enter="confirmCode()" />
+          <button type="button" class="btn btn-primary"
+                  :disabled="confirming || otp.length < 6" @click="confirmCode()">
+            <span x-show="!confirming">{{ _t('profile_verify_btn') }}</span>
+            <span x-show="confirming">{{ _t('profile_checking') }}</span>
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm" :disabled="sending"
+                  @click="codeSent = false; otp = ''; error = ''">
+            {{ _t('profile_phone_change_btn') }}
+          </button>
+        </div>
+        <p x-show="error" x-text="error" class="form-hint form-hint--error" style="margin-top:.4rem;"></p>
+        <p x-show="success" class="form-hint form-hint--success" style="margin-top:.4rem;">
+          {{ _t('profile_phone_verified_msg') }}
+        </p>
+      </div>
+    </div>
+    {% else %}
 
     <div class="booking-layout"
          x-data="bookingFlow({{ effective_pps }}, {{ 'true' if has_discount else 'false' }})">
@@ -258,11 +311,51 @@
         {% endif %}
       </div>
     </div>
+    {% endif %}
   </div>
 </div>
 
 {% block scripts %}
 <script>
+// Inline phone verification for the booking page. Reuses the global phoneField()
+// (from base.html) for country-code parsing, then sends/confirms the OTP against
+// /verify-phone. On success it reloads so the server re-renders the booking form.
+function bookingPhoneVerify(existing) {
+  const f = phoneField(existing);
+  return {
+    code: f.code,
+    local: f.local,
+    get full() { return this.local.trim() ? this.code + this.local.replace(/[\s-]/g, '') : ''; },
+    sending: false, codeSent: false, confirming: false, otp: '', error: '', success: false,
+
+    async sendCode() {
+      if (!this.full) { this.error = 'Enter your phone number.'; return; }
+      this.sending = true; this.error = '';
+      try {
+        const fd = new FormData(); fd.append('phone', this.full);
+        const r = await fetch('/verify-phone/send', { method: 'POST', body: fd });
+        const j = await r.json();
+        if (j.ok) { this.codeSent = true; }
+        else      { this.error = j.error || 'Could not send code.'; }
+      } catch (e) { this.error = 'Network error. Please try again.'; }
+      finally    { this.sending = false; }
+    },
+
+    async confirmCode() {
+      if (this.otp.length < 6) return;
+      this.confirming = true; this.error = '';
+      try {
+        const fd = new FormData(); fd.append('code', this.otp);
+        const r = await fetch('/verify-phone/confirm', { method: 'POST', body: fd });
+        const j = await r.json();
+        if (j.ok) { this.success = true; setTimeout(() => location.reload(), 900); }
+        else      { this.error = j.error || 'Verification failed.'; }
+      } catch (e) { this.error = 'Network error. Please try again.'; }
+      finally    { this.confirming = false; }
+    },
+  };
+}
+
 function bookingFlow(pricePerSeat, hasDiscount) {
   const FEE_RATE   = 0.18;
   const FEE_FLOOR  = 200;
