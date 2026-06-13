@@ -13,6 +13,16 @@
       <div class="alert alert--error" role="alert">{{ error }}</div>
     {% endif %}
 
+    {% if material_locked %}
+      <div class="alert alert--warning" role="alert">
+        🔒 This trip already has passengers, so the <strong>route, departure time,
+        price, and segment settings are locked</strong> — they're part of what
+        passengers booked and paid for. You can still update the car, comfort tags,
+        pickup notes, description, and seat count. To change a locked detail, cancel
+        the trip (passengers are refunded) and post a new one.
+      </div>
+    {% endif %}
+
     <script>
       var _routes    = {{ routes_js | safe }};
       var _policy    = {{ policy_js | safe }};

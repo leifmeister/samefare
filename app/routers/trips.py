@@ -892,12 +892,17 @@ def edit_trip_page(
         car_type    = str(trip.car_type) if trip.car_type else "sedan",
         fuel_type   = str(trip.fuel_type) if trip.fuel_type else None,
     )
+    material_locked = any(
+        b.status in (_SEAT_HOLDING_STATUSES | {models.BookingStatus.pending})
+        for b in trip.bookings
+    )
     return templates.TemplateResponse("trips/edit.html", {
         **ctx,
         "trip":      trip,
         "car_types": ALL_CAR_TYPES,
         "cities":    ICELANDIC_CITIES,
         "error":     None,
+        "material_locked": material_locked,
         "vals": {
             "origin":         trip.origin,
             "destination":    trip.destination,
@@ -969,6 +974,12 @@ def update_trip(
     if trip.status != models.TripStatus.active:
         return RedirectResponse(f"/trips/{trip_id}", status_code=303)
 
+    # Live bookings lock the material terms (route/departure/price/segments) — see
+    # the material-terms guard below. Computed up front so the re-rendered form
+    # can reflect the lock too.
+    material_lock_states = _SEAT_HOLDING_STATUSES | {models.BookingStatus.pending}
+    has_live_bookings = any(b.status in material_lock_states for b in trip.bookings)
+
     allows_luggage  = allows_luggage_raw  is not None
     large_luggage   = large_luggage_raw   is not None
     allows_pets     = allows_pets_raw     is not None
@@ -992,6 +1003,7 @@ def update_trip(
         "trip":      trip,
         "car_types": ALL_CAR_TYPES,
         "cities":    ICELANDIC_CITIES,
+        "material_locked": has_live_bookings,
         "defaults": {
             "car_make": car_make, "car_model": car_model,
             "car_year": car_year, "car_type":  car_type,
@@ -1038,26 +1050,59 @@ def update_trip(
         return templates.TemplateResponse("trips/edit.html",
             {**err_ctx, "error": "Price per seat must be at least 1 ISK."}, status_code=400)
 
-    # Enforce the cost-sharing cap — required for ALL routes.
-    # Same rule as create: if no route row exists, block rather than allow
-    # uncapped pricing.
-    estimate = pricing.get("estimate")
-    if estimate is None:
+    # ── Material-terms lock ──────────────────────────────────────────────────
+    # Once a passenger holds a live booking, they consented to specific terms and
+    # their payment schedule (capture_at / auth_scheduled_for) is pinned to the
+    # current departure time. Silently changing the route, departure, price, or
+    # segment availability would alter what they agreed to and desync their
+    # payment timing. So once any live booking exists, lock those material fields
+    # — non-material details (car, comfort tags, pickup notes, description, seat
+    # count) can still change. To change a locked term the driver must cancel the
+    # trip (passengers are refunded) and post a new one.
+    material_changed = (
+        origin.strip()        != trip.origin
+        or destination.strip() != trip.destination
+        or departure_dt        != trip.departure_datetime
+        or price_per_seat      != trip.price_per_seat
+        or allow_segments      != trip.allow_segments
+    )
+    if has_live_bookings and material_changed:
         return templates.TemplateResponse("trips/edit.html",
             {**err_ctx, "error": (
-                f"We don't have distance data for {origin} → {destination}. "
-                "Please choose both cities from the suggested list. "
-                "If you think this route should be supported, let us know."
+                "This trip already has passengers, so the route, departure time, "
+                "price, and segment settings are locked — they're part of what "
+                "passengers booked and paid for. You can still update the car, "
+                "comfort tags, pickup notes, description, and seat count. To change "
+                "a locked detail, cancel the trip (passengers are refunded) and "
+                "post a new one."
             )}, status_code=400)
 
-    price_snapshot_json = estimate.to_json()
-    if price_per_seat > estimate.price_per_seat_cap:
-        return templates.TemplateResponse("trips/edit.html",
-            {**err_ctx, "error": (
-                f"Price per seat cannot exceed {estimate.price_per_seat_cap:,} ISK "
-                f"for this route ({estimate.distance_km:.0f} km). "
-                "This cap ensures passengers only cover their share of trip costs."
-            )}, status_code=400)
+    # Enforce the cost-sharing cap — required for ALL routes. Only re-validated
+    # when route/price can actually change (no live bookings); with live bookings
+    # those terms are unchanged, so the existing snapshot still stands and a
+    # recomputed cap must not block a legitimate non-material edit.
+    estimate = pricing.get("estimate")
+    if not has_live_bookings:
+        # Same rule as create: if no route row exists, block rather than allow
+        # uncapped pricing.
+        if estimate is None:
+            return templates.TemplateResponse("trips/edit.html",
+                {**err_ctx, "error": (
+                    f"We don't have distance data for {origin} → {destination}. "
+                    "Please choose both cities from the suggested list. "
+                    "If you think this route should be supported, let us know."
+                )}, status_code=400)
+        if price_per_seat > estimate.price_per_seat_cap:
+            return templates.TemplateResponse("trips/edit.html",
+                {**err_ctx, "error": (
+                    f"Price per seat cannot exceed {estimate.price_per_seat_cap:,} ISK "
+                    f"for this route ({estimate.distance_km:.0f} km). "
+                    "This cap ensures passengers only cover their share of trip costs."
+                )}, status_code=400)
+        price_snapshot_json = estimate.to_json()
+    else:
+        # Material terms locked & unchanged — keep the snapshot taken at creation.
+        price_snapshot_json = trip.price_snapshot
 
     # seats_total can't drop below peak concurrent occupancy.
     # awaiting_payment, confirmed, and card_saved all hold seats; pending does
@@ -1082,9 +1127,11 @@ def update_trip(
     trip.origin             = origin.strip()
     trip.destination        = destination.strip()
     trip.departure_datetime = departure_dt
-    # Recompute estimated_arrival whenever departure or route changes.
-    _edit_drive_min = (estimate.distance_km / 80 * 60) if estimate.distance_km else 240
-    trip.estimated_arrival  = departure_dt + timedelta(minutes=_edit_drive_min + 60)
+    # Recompute estimated_arrival whenever departure or route changes. With live
+    # bookings these are locked (estimate may be None here), so leave it as-is.
+    if not has_live_bookings:
+        _edit_drive_min = (estimate.distance_km / 80 * 60) if estimate.distance_km else 240
+        trip.estimated_arrival = departure_dt + timedelta(minutes=_edit_drive_min + 60)
     trip.seats_available    = recompute_seats_available(
         _graph_edit, seats_total, _active_edit, trip.origin, trip.destination
     )
