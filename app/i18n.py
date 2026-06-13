@@ -1137,7 +1137,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
 
         # Actions
         "action_pay_now": "Greiða núna →",
-        "action_cancel_reservation": "Hætta við frátekningu",
+        "action_cancel_reservation": "Hætta við",
         "action_message_driver": "Skilaboð til bílstjóra",
         "action_withdraw_request": "Draga beiðni til baka",
         "action_view_ride": "Skoða ferð",
