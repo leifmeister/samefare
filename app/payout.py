@@ -154,6 +154,14 @@ def create_payout_item_for_payment(
     trip    = booking.trip
     driver  = trip.driver
 
+    # A confirmed driver no-show voids the driver's entitlement for the WHOLE
+    # trip — every passenger is refunded and the driver is paid nothing, even for
+    # bookings that happened to capture before the no-show was reported. This is
+    # the single chokepoint for payout creation, so guarding here blocks payout
+    # regardless of how any individual booking row ended up.
+    if trip.driver_no_show:
+        return None
+
     # Eligibility: payment must be captured
     if payment.status != models.PaymentStatus.captured:
         return None

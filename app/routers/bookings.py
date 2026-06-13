@@ -638,19 +638,41 @@ def report_driver_no_show(
     if now < report_open_from or now > report_open_until:
         return RedirectResponse("/my-trips?tab=bookings", status_code=303)
 
-    # Flag the trip for accountability tracking and auto-rating
-    booking.trip.driver_no_show = True
-    booking.status = models.BookingStatus.cancelled
+    # ── Driver no-show voids the ENTIRE trip ─────────────────────────────────
+    # A confirmed no-show means nobody got their ride. Refund every confirmed
+    # passenger — not just the reporter — and freeze the trip so auto-complete
+    # can never turn the remaining bookings into driver payables. The
+    # create_payout_item chokepoint also refuses any payout on a no-show trip.
+    trip = booking.trip
+    trip.driver_no_show = True
+    trip.status         = models.TripStatus.cancelled
 
-    # Queue a full refund for the passenger.
     # _issue_rapyd_refund records a durable refund_requested intent in the same
-    # db.commit() as the cancellation.  _run_retry_refunds (background task)
-    # submits it to Rapyd and calls handle_refund_payout_impact only after
-    # Rapyd confirms — which also cancels/reverses the driver's PayoutItem.
+    # db.commit() as the cancellation. _run_retry_refunds (background task)
+    # submits it to Rapyd and calls handle_refund_payout_impact only after Rapyd
+    # confirms — which also cancels/reverses the driver's PayoutItem if one slipped
+    # through. cancellation_reason is "driver_no_show" (deliberately NOT
+    # "late_forfeit") so the captured fare is never treated as owed to the driver.
     from app.routers.payments import _issue_rapyd_refund
-    if booking.payment:
-        _issue_rapyd_refund(db, booking, booking.payment.passenger_total or 0,
-                            reason="requested_by_customer")
+
+    affected = [b for b in trip.bookings
+                if b.status == models.BookingStatus.confirmed]
+    if booking not in affected and booking.status == models.BookingStatus.confirmed:
+        affected.append(booking)
+
+    for b in affected:
+        b.status              = models.BookingStatus.cancelled
+        b.cancellation_reason = "driver_no_show"
+        if b.payment:
+            _issue_rapyd_refund(db, b, (b.payment.passenger_total or 0),
+                                reason="requested_by_customer")
+        # Notify the other passengers their ride is off and they're refunded
+        # (the reporter gets the on-screen flash instead).
+        if b.id != booking.id:
+            try:
+                mailer.trip_cancelled_to_passenger(b)
+            except Exception:
+                pass  # never block on a notification failure
 
     # Issue an immediate 1-star auto-review for the driver (no grace period for no-shows)
     existing_review = (

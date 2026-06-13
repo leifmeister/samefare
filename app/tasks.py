@@ -59,6 +59,9 @@ def _run_auto_complete() -> None:
             db.query(models.Trip)
             .filter(
                 models.Trip.status == models.TripStatus.active,
+                # Never auto-complete a trip flagged as a driver no-show — its
+                # bookings are cancelled+refunded and the driver gets no payout.
+                models.Trip.driver_no_show == False,  # noqa: E712
                 or_(
                     # New trips: estimated arrival passed AND the 4 h driver-no-show
                     # reporting window has closed.
