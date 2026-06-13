@@ -188,11 +188,13 @@ class SegmentedTrip:
         pickup_city: str,
         dropoff_city: str,
         segment_price: int,
+        segment_seats: int,
     ) -> None:
         object.__setattr__(self, "_trip",          trip)
         object.__setattr__(self, "pickup_city",    pickup_city)
         object.__setattr__(self, "dropoff_city",   dropoff_city)
         object.__setattr__(self, "_segment_price", segment_price)
+        object.__setattr__(self, "_segment_seats", segment_seats)
         object.__setattr__(self, "is_partial",
             pickup_city != trip.origin or dropoff_city != trip.destination)
 
@@ -200,6 +202,13 @@ class SegmentedTrip:
     @property
     def price_per_seat(self) -> int:  # type: ignore[override]
         return object.__getattribute__(self, "_segment_price")
+
+    # Override seats with segment-specific availability — the whole-trip minimum
+    # (trip.seats_available) can understate (or zero out) seats actually free on
+    # the searched leg, making a bookable segment look full.
+    @property
+    def seats_available(self) -> int:  # type: ignore[override]
+        return object.__getattribute__(self, "_segment_seats")
 
     # Delegate everything else to the real Trip
     def __getattr__(self, name: str):
@@ -318,7 +327,7 @@ def _find_segment_trips(
         if not seats and avail < 1:
             continue
 
-        results.append(SegmentedTrip(trip, search_origin, search_dest, segment_price))
+        results.append(SegmentedTrip(trip, search_origin, search_dest, segment_price, avail))
 
     return results
 
