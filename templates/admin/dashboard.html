@@ -168,6 +168,38 @@
       {% endif %}
     </div>
 
+    <!-- Top drivers -->
+    <div class="dash-table-card">
+      <h2 class="dash-table-card__title">Top drivers</h2>
+      {% if top_drivers %}
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Driver</th>
+            <th class="text-right">Rides</th>
+            <th class="text-right">Pax</th>
+            <th class="text-right">Earned</th>
+            <th class="text-right">Fees</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in top_drivers %}
+          <tr>
+            <td><a href="/users/{{ d.id }}" class="link">{{ d.name }}</a></td>
+            <td class="text-right">{{ d.trips }}</td>
+            <td class="text-right">{{ d.passengers }}</td>
+            <td class="text-right">{{ "{:,}".format(d.earned) }} ISK</td>
+            <td class="text-right" style="color:var(--c-text-muted);">{{ "{:,}".format(d.fees) }} ISK</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="dash-empty" style="margin-top:.5rem; font-size:.78rem;">Ranked by driver earnings (cost contribution) from completed rides. "Fees" = platform service fee they generated.</p>
+      {% else %}
+        <p class="dash-empty">No completed rides yet.</p>
+      {% endif %}
+    </div>
+
   </div>
 
   <!-- ── Compliance documents ─────────────────────────────────────────────── -->

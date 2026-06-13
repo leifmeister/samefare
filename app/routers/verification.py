@@ -487,6 +487,28 @@ def admin_dashboard(
         .all()
     )
 
+    # ── Top drivers (ranked by earnings from completed rides) ─────────────────
+    top_drivers = (
+        db.query(
+            models.User.id.label("id"),
+            models.User.full_name.label("name"),
+            func.count(func.distinct(models.Trip.id)).label("trips"),
+            func.count(models.Booking.id).label("passengers"),
+            func.coalesce(func.sum(models.Booking.total_price - models.Booking.service_fee), 0).label("earned"),
+            func.coalesce(func.sum(models.Booking.service_fee), 0).label("fees"),
+        )
+        .join(models.Trip, models.Trip.driver_id == models.User.id)
+        .join(
+            models.Booking,
+            (models.Booking.trip_id == models.Trip.id)
+            & (models.Booking.status == models.BookingStatus.completed),
+        )
+        .group_by(models.User.id, models.User.full_name)
+        .order_by(func.sum(models.Booking.total_price - models.Booking.service_fee).desc())
+        .limit(10)
+        .all()
+    )
+
     # ── Annual pricing policy reminder (December only) ────────────────────────
     # Show a banner in December when no PricingPolicy row has been entered for
     # the coming year yet.  The banner disappears automatically once a row with
@@ -525,6 +547,7 @@ def admin_dashboard(
         # tables
         "popular_routes":   popular_routes,
         "recent_bookings":  recent_bookings,
+        "top_drivers":      top_drivers,
         # annual pricing reminder
         "pricing_reminder": pricing_reminder,
         "next_year":        next_year,
