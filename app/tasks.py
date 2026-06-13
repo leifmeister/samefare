@@ -933,6 +933,15 @@ def _run_advance_payout_items() -> None:
 # digest SMS — never a duplicate transfer.
 _last_payout_send_date = None
 
+# Bounded retry for the daily prep: if some driver's batch keeps failing to
+# build, retry on the next tick a few times (covers transient DB hiccups) then
+# give up for the day so we don't loop/log every 10 min. Systemic failures (the
+# whole query) are NOT bounded here — those should keep retrying until the DB
+# recovers (see the outer except in _run_prepare_driver_payouts).
+PAYOUT_PREP_MAX_ATTEMPTS   = 3
+_payout_prep_attempts      = 0
+_payout_prep_attempts_date = None
+
 
 
 
@@ -959,7 +968,7 @@ def _run_prepare_driver_payouts() -> None:
     if not settings.payout_enabled:
         return
 
-    global _last_payout_send_date
+    global _last_payout_send_date, _payout_prep_attempts, _payout_prep_attempts_date
     now = datetime.utcnow()
     if now.hour < settings.payout_run_hour or _last_payout_send_date == now.date():
         return
@@ -967,6 +976,10 @@ def _run_prepare_driver_payouts() -> None:
     # failed query or batch build would be skipped until tomorrow with no retry.
     # Building each batch is idempotent (deterministic idempotency key), so a
     # retry on the next tick is safe and re-batches nothing already done.
+    # Reset the per-day attempt counter when a new day's run begins.
+    if _payout_prep_attempts_date != now.date():
+        _payout_prep_attempts      = 0
+        _payout_prep_attempts_date = now.date()
 
     from app.payout import build_driver_payout_batch
 
@@ -1003,13 +1016,27 @@ def _run_prepare_driver_payouts() -> None:
 
         if built:
             log.info("Prepared %d driver payout batch(es) for approval", built)
-        # Only mark today as done when every batch prepared cleanly. If any driver
-        # failed, leave the date unset so the next tick retries (the already-built
-        # batches are now `batched`/`pending` and won't be re-selected).
+        # Mark today as done when every batch prepared cleanly. If any driver
+        # failed, retry on the next tick (already-built batches are now
+        # `batched`/`pending` and won't be re-selected) — but only up to
+        # PAYOUT_PREP_MAX_ATTEMPTS, then give up for the day so we don't loop and
+        # log every 10 min on a persistently-failing record.
         if failures == 0:
             _last_payout_send_date = now.date()
         else:
-            log.warning("Prepare driver payouts: %d driver(s) failed — will retry next tick", failures)
+            _payout_prep_attempts += 1
+            if _payout_prep_attempts >= PAYOUT_PREP_MAX_ATTEMPTS:
+                _last_payout_send_date = now.date()   # give up for today
+                log.error(
+                    "Prepare driver payouts: %d driver(s) still failing after %d attempts — "
+                    "giving up for today; their payout items remain `payout_ready` and need "
+                    "manual attention", failures, _payout_prep_attempts,
+                )
+            else:
+                log.warning(
+                    "Prepare driver payouts: %d driver(s) failed (attempt %d/%d) — will retry next tick",
+                    failures, _payout_prep_attempts, PAYOUT_PREP_MAX_ATTEMPTS,
+                )
         # No SMS digest — the operator reviews and approves on the /admin/payouts
         # board, which they check daily.
 
