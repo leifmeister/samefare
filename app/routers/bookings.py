@@ -559,7 +559,10 @@ def confirm_booking(
                     # No room on this leg — leave pending, driver must handle manually
                     db.commit()
                     return RedirectResponse("/my-trips?tab=rides", status_code=303)
-                _refresh_seats(trip, db)
+                # NB: seats are recomputed AFTER the booking moves to a
+                # seat-holding state (below), not here — a still-pending booking
+                # is excluded from _refresh_seats, so recomputing now wouldn't
+                # count the seats we're approving.
 
                 # Card already saved upfront — confirm the booking now.
                 # MIT always fires at T-24h via the background task, never
@@ -587,6 +590,9 @@ def confirm_booking(
                                 scheduled, datetime.utcnow()
                             )
 
+                    # Now that the booking holds a seat, recompute availability so
+                    # the approved seats are subtracted from the trip inventory.
+                    _refresh_seats(trip, db)
                     db.commit()
                     db.refresh(booking)
                     mailer.booking_confirmed_to_passenger(booking)
@@ -598,6 +604,9 @@ def confirm_booking(
                         datetime.utcnow() + timedelta(hours=24),
                         trip.departure_datetime,
                     )
+                    # awaiting_payment holds a seat — recompute so the approved
+                    # seats are subtracted from the trip inventory.
+                    _refresh_seats(trip, db)
                     db.commit()
                     db.refresh(booking)
                     mailer.booking_approved_to_passenger(booking)
