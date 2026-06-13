@@ -124,7 +124,7 @@
                 </form>
                 {% if u.posting_suspended %}
                 <form method="post" action="/admin/users/{{ u.id }}/reinstate-posting"
-                      onsubmit="return confirm('Reinstate posting for {{ u.full_name }}? This clears the 90-day cancellation counters.')">
+                      data-confirm="Reinstate posting for {{ u.full_name }}? This clears the 90-day cancellation counters.">
                   <button class="btn btn-ghost btn-xs">↩ Reinstate posting</button>
                 </form>
                 {% endif %}
@@ -132,7 +132,7 @@
                 <div x-data="{ open: false }">
                   <button class="btn btn-ghost btn-xs btn-danger-text" @click="open = !open">Suspend</button>
                   <form x-show="open" method="post" action="/admin/users/{{ u.id }}/suspend"
-                        style="margin-top:.5rem;" @submit="return confirm('Suspend {{ u.full_name }}?')">
+                        style="margin-top:.5rem;" data-confirm="Suspend {{ u.full_name }}?">
                     <input name="reason" type="text" class="input input--xs"
                            placeholder="Reason (shown internally)" style="margin-bottom:.35rem;" />
                     <button type="submit" class="btn btn-danger btn-xs">Confirm suspend</button>
@@ -140,12 +140,12 @@
                 </div>
                 {% else %}
                 <form method="post" action="/admin/users/{{ u.id }}/reactivate"
-                      onsubmit="return confirm('Reactivate {{ u.full_name }}?')">
+                      data-confirm="Reactivate {{ u.full_name }}?">
                   <button class="btn btn-ghost btn-xs">Reactivate</button>
                 </form>
                 {% endif %}
                 <form method="post" action="/admin/users/{{ u.id }}/reset-for-testing"
-                      onsubmit="return confirm('Reset {{ u.full_name }} for testing?\n\nThis clears email verification, ID and licence status so they can walk through the full flow again. Bookings and payments are untouched.')">
+                      data-confirm="Reset {{ u.full_name }} for testing? This clears email verification, ID and licence status so they can walk through the full flow again. Bookings and payments are untouched.">
                   <button class="btn btn-ghost btn-xs" title="Clear email_verified + all verification status for re-testing">🔄 Reset for testing</button>
                 </form>
               {% elif u.deleted_at %}

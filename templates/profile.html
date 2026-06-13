@@ -327,7 +327,7 @@
               <strong>{{ _t('profile_delete_cannot_undo') }}</strong>
             </p>
             <form method="post" action="/profile/delete"
-                  onsubmit="return confirm('{{ _t('profile_delete_cannot_undo') }}')">
+                  data-confirm="{{ _t('profile_delete_cannot_undo') }}">
               <div class="form-group" style="max-width:320px;">
                 <label for="delete_password" class="label">{{ _t('profile_delete_confirm_label') }}</label>
                 <input id="delete_password" name="password" type="password" class="input"

@@ -207,7 +207,7 @@
         <a href="/bookings/{{ booking.id }}/cancel" class="btn btn-ghost btn-sm btn-danger-outline">{{ _t('action_cancel') }}</a>
       {% elif now <= _report_until %}
         <form method="post" action="/bookings/{{ booking.id }}/driver-no-show" style="display:inline"
-              onsubmit="return confirm('Report driver as no-show? We\'ll investigate and process a refund if confirmed.')">
+              data-confirm="Report driver as no-show? We'll investigate and process a refund if confirmed.">
           <button type="submit" class="btn btn-ghost btn-sm btn-danger-outline">{{ _t('action_driver_no_show') }}</button>
         </form>
       {% endif %}
@@ -524,7 +524,7 @@
             <button type="submit" class="btn btn-primary btn-sm">{{ _t('inbox_approve') }}</button>
           </form>
           <form method="post" action="/bookings/{{ booking.id }}/reject" style="display:inline"
-                onsubmit="return confirm('Decline this request?')">
+                data-confirm="Decline this request?">
             <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">{{ _t('inbox_decline') }}</button>
           </form>
           <a href="/messages/{{ booking.id }}" class="btn btn-ghost btn-sm">{{ _t('inbox_message') }}</a>

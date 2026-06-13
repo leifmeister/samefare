@@ -47,6 +47,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "contact_copied": "Copied!",
         "contact_response_time": "We usually reply within a couple of business days.",
         "footer_copyright": "© 2026 Wellfare ehf. — Iceland",
+        "confirm_cancel": "Cancel",
+        "confirm_ok": "Confirm",
 
         # ── Banners ─────────────────────────────────────────────────────────
         "banner_verify_email": "Please verify your email address to unlock booking.",
@@ -729,6 +731,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "contact_copied": "Afritað!",
         "contact_response_time": "Við svörum yfirleitt innan fárra virkra daga.",
         "footer_copyright": "© 2026 Wellfare ehf. — Ísland",
+        "confirm_cancel": "Hætta við",
+        "confirm_ok": "Staðfesta",
 
         # ── Banners ─────────────────────────────────────────────────────────
         "banner_verify_email": "Staðfestu netfangið þitt til að geta bókað ferðir.",

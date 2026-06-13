@@ -31,7 +31,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/css/style.css?v=34" />
+  <link rel="stylesheet" href="/static/css/style.css?v=35" />
   <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml" />
 
   <!-- HTMX -->
@@ -517,6 +517,53 @@
       },
     };
   }
+  </script>
+
+  <!-- Branded confirmation dialog — replaces the native confirm() box for any
+       form (or link) carrying a data-confirm message. -->
+  <div id="app-confirm" class="app-confirm" hidden>
+    <div class="app-confirm__backdrop" data-confirm-cancel></div>
+    <div class="app-confirm__card" role="dialog" aria-modal="true" aria-labelledby="app-confirm-msg">
+      <p class="app-confirm__msg" id="app-confirm-msg"></p>
+      <div class="app-confirm__actions">
+        <button type="button" class="btn btn-ghost" data-confirm-cancel>{{ _t('confirm_cancel') }}</button>
+        <button type="button" class="btn btn-primary" id="app-confirm-ok">{{ _t('confirm_ok') }}</button>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function () {
+    var modal = document.getElementById('app-confirm');
+    var msgEl = document.getElementById('app-confirm-msg');
+    var okBtn = document.getElementById('app-confirm-ok');
+    var pending = null;
+    function open(msg, onYes) { msgEl.textContent = msg; pending = onYes; modal.hidden = false; okBtn.focus(); }
+    function close() { modal.hidden = true; pending = null; }
+    okBtn.addEventListener('click', function () { var fn = pending; close(); if (fn) fn(); });
+    modal.querySelectorAll('[data-confirm-cancel]').forEach(function (el) { el.addEventListener('click', close); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !modal.hidden) close(); });
+
+    // Forms: intercept submit when the form carries a data-confirm message.
+    // form.submit() (called on OK) is programmatic and does NOT re-fire this
+    // listener, so there's no loop and no need for a flag.
+    document.addEventListener('submit', function (e) {
+      var form = e.target;
+      if (!(form instanceof HTMLFormElement)) return;
+      var msg = form.getAttribute('data-confirm');
+      if (!msg) return;
+      e.preventDefault();
+      open(msg, function () { form.submit(); });
+    }, true);
+
+    // Links: intercept navigation for <a data-confirm>.
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a[data-confirm]');
+      if (!a) return;
+      e.preventDefault();
+      var href = a.href;
+      open(a.getAttribute('data-confirm'), function () { window.location.href = href; });
+    }, true);
+  })();
   </script>
 
   <style>

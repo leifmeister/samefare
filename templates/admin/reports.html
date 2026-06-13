@@ -120,7 +120,7 @@
             </div>
             <form x-show="suspendOpen" method="post" action="/admin/reports/{{ r.id }}/suspend"
                   style="margin-top:.5rem; min-width:220px;"
-                  onsubmit="return confirm('Suspend {{ r.reported.full_name }}?')">
+                  data-confirm="Suspend {{ r.reported.full_name }}?">
               <input name="reason" type="text" class="input input--xs"
                      value="{{ reason_labels.get(r.reason | string, '') }}"
                      placeholder="Suspension reason" style="margin-bottom:.35rem;" />

@@ -52,9 +52,9 @@
         <div class="alert-row__actions">
           <a href="/trips?origin={{ alert.origin | urlencode }}&destination={{ alert.destination | urlencode }}{% if alert.travel_date %}&travel_date={{ alert.travel_date.isoformat() | urlencode }}{% endif %}&seats={{ alert.seats }}"
              class="btn btn-ghost btn-sm">{{ _t('alerts_search_now') }}</a>
-          <form method="post" action="/alerts/{{ alert.id }}/delete" style="display:inline;">
-            <button type="submit" class="btn btn-ghost btn-sm btn--danger"
-                    onclick="return confirm('{{ _t('alerts_remove_confirm') }}')">{{ _t('alerts_remove') }}</button>
+          <form method="post" action="/alerts/{{ alert.id }}/delete" style="display:inline;"
+                data-confirm="{{ _t('alerts_remove_confirm') }}">
+            <button type="submit" class="btn btn-ghost btn-sm btn--danger">{{ _t('alerts_remove') }}</button>
           </form>
         </div>
       </div>

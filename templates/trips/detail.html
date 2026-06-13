@@ -263,7 +263,7 @@
                   </form>
                   <form method="post" action="/bookings/{{ booking.id }}/reject"
                         style="display:inline;"
-                        onsubmit="return confirm('Decline this request?')">
+                        data-confirm="Decline this request?">
                     <button type="submit" class="btn btn-ghost btn-xs">{{ _t('detail_decline') }}</button>
                   </form>
                 </div>
@@ -309,7 +309,7 @@
                       and now <= trip.departure_datetime + timedelta(hours=4) %}
                 <form method="post" action="/bookings/{{ booking.id }}/no-show"
                       style="display:inline; margin-left:auto;"
-                      onsubmit='return confirm({{ ("Mark " + booking.passenger.full_name.split()[0] + " as a no-show? They will not receive a refund.")|tojson }})'>
+                      data-confirm="Mark {{ booking.passenger.full_name.split()[0] }} as a no-show? They will not receive a refund.">
                   <button type="submit" class="btn btn-xs btn-danger-outline">{{ _t('detail_no_show_btn') }}</button>
                 </form>
                 {% endif %}
@@ -382,7 +382,7 @@
           <details style="margin-bottom:var(--space-2);">
             <summary class="btn btn-ghost btn-block btn-sm" style="cursor:pointer; list-style:none; text-align:center; color:var(--c-text-muted);">{{ _t('detail_back_to_beta') }}</summary>
             <form method="post" action="/trips/{{ trip.id }}/complete-beta"
-                  onsubmit="return confirm('Mark trip as completed? This cannot be undone.')"
+                  data-confirm="Mark trip as completed? This cannot be undone."
                   style="margin-top:var(--space-2);">
               <button type="submit" class="btn btn-outline btn-block btn-sm" style="color:var(--c-text-muted); border-color:var(--c-border);">
                 {{ _t('detail_mark_completed') }}
@@ -391,7 +391,7 @@
           </details>
           {% endif %}
           <form method="post" action="/trips/{{ trip.id }}/cancel"
-                onsubmit="return confirm('Cancel this trip and notify all passengers?')">
+                data-confirm="Cancel this trip and notify all passengers?">
             <button type="submit" class="btn btn-danger btn-block btn-sm">{{ _t('detail_cancel_trip') }}</button>
           </form>
 
