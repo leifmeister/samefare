@@ -61,6 +61,16 @@
   <div class="alert alert--warning" style="margin-bottom:1rem;">{{ _t('detail_booking_closed') }}</div>
   {% endif %}
 
+  {% if request.query_params.get('first') and _is_driver %}
+  <div class="first-ride-banner">
+    <div class="first-ride-banner__burst">🎉</div>
+    <div>
+      <p class="first-ride-banner__title">{{ _t('detail_first_ride_title') }}</p>
+      <p class="first-ride-banner__sub">{{ _t('detail_first_ride_sub') }}</p>
+    </div>
+  </div>
+  {% endif %}
+
   {% if request.query_params.get('posted') and _is_driver and not has_return_trip %}
   <div class="return-trip-banner">
     <div class="return-trip-banner__left">

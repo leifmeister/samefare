@@ -555,6 +555,32 @@ def trip_reminder_to_passenger(booking) -> None:
     )
 
 
+def first_ride_to_driver(trip) -> None:
+    """Celebrate a driver posting their very first ride."""
+    s         = get_settings()
+    first     = trip.driver.full_name.split()[0]
+    departure = trip.departure_datetime.strftime("%-d %B %Y at %H:%M")
+    body = (
+        _h1("🎉 Your first ride is live!") +
+        _p(f"Congratulations, {first} — you've just posted your first ride on SameFare. "
+           f"That empty seat is now a real difference: fewer cars on the road, less fuel "
+           f"burned, lower emissions, and a little more company for the journey.") +
+        f'<div style="background:#F7FAF9;border:1px solid #DDE8E5;border-radius:8px;'
+        f'padding:16px;margin:8px 0;">'
+        f'{_route_line(trip.origin, trip.destination, trip.departure_datetime)}'
+        f'</div>' +
+        _divider() +
+        _p("Every shared ride helps build a cheaper, greener way to travel around Iceland — "
+           "and it all starts with drivers like you. Thank you for getting it rolling.") +
+        _btn("View your ride", f"{s.base_url}/trips/{trip.id}")
+    )
+    _send(
+        trip.driver.email,
+        f"🎉 Your first ride is live — {trip.origin} → {trip.destination}",
+        _wrap(body),
+    )
+
+
 def verification_approved(user, verification_type: str) -> None:
     """Notify a user that their identity or driver's licence has been approved."""
     s = get_settings()

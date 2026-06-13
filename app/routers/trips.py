@@ -841,7 +841,20 @@ def create_trip(
     # Notify any passengers who set up an alert for this route
     notify_matching_alerts(db, trip)
 
-    return RedirectResponse(f"/trips/{trip.id}?posted=1", status_code=303)
+    # Celebrate the driver's very first ride (this trip is the only one they own)
+    is_first_ride = (
+        db.query(models.Trip)
+          .filter(models.Trip.driver_id == current_user.id)
+          .count() == 1
+    )
+    if is_first_ride:
+        try:
+            mailer.first_ride_to_driver(trip)
+        except Exception:
+            log.warning("first-ride email failed for trip %s", trip.id, exc_info=True)
+
+    suffix = "&first=1" if is_first_ride else ""
+    return RedirectResponse(f"/trips/{trip.id}?posted=1{suffix}", status_code=303)
 
 
 @router.get("/{trip_id}/edit", response_class=HTMLResponse)
