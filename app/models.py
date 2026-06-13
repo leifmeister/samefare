@@ -736,6 +736,9 @@ class DriverPayout(Base):
     # open to approve the transfer. Stored so it can be re-surfaced (SMS/admin)
     # and so we know a batch is awaiting manual approval. NULL once not needed.
     approval_url       = Column(Text, nullable=True)
+    # Set when an operator clears a `failed` batch from the admin board's
+    # "Needs attention" section (investigated / re-issued), so it stops showing.
+    resolved_at        = Column(DateTime, nullable=True)
 
     # Outcome timestamps
     sent_at            = Column(DateTime, nullable=True)
@@ -795,6 +798,10 @@ class PayoutItem(Base):
 
     # Stable idempotency key for the outbound transfer call (derived, not random)
     idempotency_key  = Column(String(64), nullable=False, unique=True)
+
+    # Set when an operator has dealt with a `reversed` (clawback) item on the
+    # admin board — recovered the funds — so it drops off "Needs attention".
+    resolved_at      = Column(DateTime, nullable=True)
 
     created_at       = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at       = Column(DateTime, nullable=False, default=datetime.utcnow,

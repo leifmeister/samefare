@@ -33,10 +33,13 @@
     <p style="margin:.5rem 0 .25rem; font-weight:700; color:#991b1b;">Failed payouts — driver not paid; investigate or re-issue</p>
     <div style="display:flex; flex-direction:column; gap:.5rem;">
       {% for b in failed %}
-      <div style="display:flex; align-items:baseline; gap:.75rem; font-size:.9rem;">
+      <div style="display:flex; align-items:center; gap:.75rem; font-size:.9rem;">
         <span style="font-weight:600;">{{ b.driver.full_name }}</span>
         <span style="white-space:nowrap;">{{ "{:,}".format(b.amount) }} ISK</span>
         <span style="color:var(--c-text-muted);">batch #{{ b.id }}{% if b.failure_reason %} · {{ b.failure_reason }}{% endif %}</span>
+        <form method="post" action="/admin/payouts/{{ b.id }}/resolve-failed" style="margin:0 0 0 auto;">
+          <button type="submit" class="btn btn-outline btn-sm">Mark resolved</button>
+        </form>
       </div>
       {% endfor %}
     </div>
@@ -49,10 +52,13 @@
     </p>
     <div style="display:flex; flex-direction:column; gap:.5rem;">
       {% for i in clawbacks %}
-      <div style="display:flex; align-items:baseline; gap:.75rem; font-size:.9rem;">
+      <div style="display:flex; align-items:center; gap:.75rem; font-size:.9rem;">
         <span style="font-weight:600;">{{ i.driver.full_name }}</span>
         <span style="white-space:nowrap;">{{ "{:,}".format(i.amount) }} ISK</span>
         <span style="color:var(--c-text-muted);">booking #{{ i.booking_id }} — owed back to SameFare</span>
+        <form method="post" action="/admin/payouts/item/{{ i.id }}/resolve-clawback" style="margin:0 0 0 auto;">
+          <button type="submit" class="btn btn-outline btn-sm">Mark recovered</button>
+        </form>
       </div>
       {% endfor %}
     </div>

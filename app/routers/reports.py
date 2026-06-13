@@ -261,7 +261,10 @@ def admin_payouts(
     failed = (
         db.query(models.DriverPayout)
         .options(joinedload(models.DriverPayout.driver), joinedload(models.DriverPayout.items))
-        .filter(models.DriverPayout.status == models.DriverPayoutStatus.failed)
+        .filter(
+            models.DriverPayout.status      == models.DriverPayoutStatus.failed,
+            models.DriverPayout.resolved_at == None,   # noqa: E711 — not yet cleared
+        )
         .order_by(models.DriverPayout.failed_at.desc().nullslast())
         .all()
     )
@@ -270,7 +273,10 @@ def admin_payouts(
     clawbacks = (
         db.query(models.PayoutItem)
         .options(joinedload(models.PayoutItem.driver))
-        .filter(models.PayoutItem.status == models.PayoutItemStatus.reversed)
+        .filter(
+            models.PayoutItem.status      == models.PayoutItemStatus.reversed,
+            models.PayoutItem.resolved_at == None,     # noqa: E711 — not yet recovered
+        )
         .order_by(models.PayoutItem.id.desc())
         .all()
     )
@@ -284,6 +290,34 @@ def admin_payouts(
         "clawbacks":      clawbacks,
         "clawback_total": sum(i.amount for i in clawbacks),
     })
+
+
+@router.post("/admin/payouts/{batch_id}/resolve-failed")
+def resolve_failed_payout(
+    batch_id: int,
+    admin:    models.User = Depends(_require_admin),
+    db:       Session     = Depends(get_db),
+):
+    """Operator clears a failed payout from 'Needs attention' (investigated / re-issued)."""
+    batch = db.query(models.DriverPayout).filter(models.DriverPayout.id == batch_id).first()
+    if batch and batch.status == models.DriverPayoutStatus.failed and batch.resolved_at is None:
+        batch.resolved_at = datetime.utcnow()
+        db.commit()
+    return RedirectResponse("/admin/payouts", status_code=303)
+
+
+@router.post("/admin/payouts/item/{item_id}/resolve-clawback")
+def resolve_clawback(
+    item_id: int,
+    admin:   models.User = Depends(_require_admin),
+    db:      Session     = Depends(get_db),
+):
+    """Operator marks a reversed payout item as recovered (funds clawed back)."""
+    item = db.query(models.PayoutItem).filter(models.PayoutItem.id == item_id).first()
+    if item and item.status == models.PayoutItemStatus.reversed and item.resolved_at is None:
+        item.resolved_at = datetime.utcnow()
+        db.commit()
+    return RedirectResponse("/admin/payouts", status_code=303)
 
 
 @router.post("/admin/payouts/{batch_id}/approve")
