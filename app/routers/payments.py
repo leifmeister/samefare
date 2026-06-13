@@ -406,6 +406,14 @@ def checkout_page(
             "rapyd_error":   rapyd_error,
         })
 
+    # If Rapyd's Hosted Card page bounced back with an error (declined card,
+    # failed/abandoned 3DS, or a card the issuer won't store for reuse — common
+    # with corporate cards), don't silently relaunch it. Show a clear message so
+    # the passenger can try a different card. Retrying (the "Try again" button →
+    # /checkout/{id} without card_error) re-creates a fresh card page.
+    if request.query_params.get("card_error"):
+        return _checkout_error_response(ctx["_t"]("checkout_card_error"))
+
     # ── Tokenise the card via Rapyd's Hosted Card page (every booking) ────────
     # We ALWAYS save the card via /v1/hosted/collect/card and charge later via a
     # merchant-initiated payment (MIT) — never the Hosted Checkout page, which
