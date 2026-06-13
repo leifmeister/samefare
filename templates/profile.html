@@ -53,14 +53,27 @@
           {% endif %}
           <!-- Verification badges — inline under name -->
           <div class="verify-summary" style="margin-top:.75rem;">
-            <a href="/verify" class="verify-summary__item verify-summary__item--{{ current_user.id_verification }}">
+            {# ID is an optional trust badge — show it positively, never a negative
+               "not verified" state. Unverified/rejected becomes an opt-in CTA. #}
+            {% if current_user.id_verification == 'approved' %}
+            <a href="/verify" class="verify-summary__item verify-summary__item--approved">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h2"/></svg>
-              {{ _t('profile_id_label') }}
-              {% if current_user.id_verification == 'approved' %}{{ _t('profile_id_verified') }}
-              {% elif current_user.id_verification == 'pending' %}{{ _t('profile_id_under_review') }}
-              {% elif current_user.id_verification == 'rejected' %}{{ _t('profile_id_rejected') }}
-              {% else %}{{ _t('profile_id_not_verified') }}{% endif %}
+              {{ _t('profile_id_label') }} {{ _t('profile_id_verified') }}
             </a>
+            {% elif current_user.id_verification == 'pending' %}
+            <a href="/verify" class="verify-summary__item verify-summary__item--pending">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h2"/></svg>
+              {{ _t('profile_id_label') }} {{ _t('profile_id_under_review') }}
+            </a>
+            {% else %}
+            <a href="/verify" class="verify-summary__item verify-summary__item--cta">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h2"/></svg>
+              {{ _t('profile_get_badge') }}
+            </a>
+            {% endif %}
+
+            {# Licence — only relevant to drivers #}
+            {% if completion.show_driver %}
             <a href="/verify" class="verify-summary__item verify-summary__item--{{ current_user.license_verification }}">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>
               {{ _t('profile_licence_label') }}
@@ -69,6 +82,7 @@
               {% elif current_user.license_verification == 'rejected' %}{{ _t('profile_id_rejected') }}
               {% else %}{{ _t('profile_id_not_verified') }}{% endif %}
             </a>
+            {% endif %}
           </div>
         </div>
       </div>

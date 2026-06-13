@@ -2604,6 +2604,8 @@ button, input, select, textarea { font: inherit; }
 .verify-summary__item--pending  { background: #FEF3C7; color: #92400E; }
 .verify-summary__item--rejected { background: var(--c-error-light); color: #991B1B; }
 .verify-summary__item--unverified { background: #F3F4F6; color: var(--c-text-muted); border-color: var(--c-border); }
+/* Opt-in CTA (e.g. "Get a verified badge") — inviting, never a negative status */
+.verify-summary__item--cta { background: #F0FDF4; color: #15803D; border: 1px dashed #86EFAC; }
 .verify-summary__item:hover { filter: brightness(.95); }
 
 /* Admin panel */

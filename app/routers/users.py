@@ -28,7 +28,15 @@ def profile_completion(user: models.User) -> dict:
     Return a completion summary for the given user.
     Each step is a dict: {key, label, done, url}.
     """
-    is_driver = user.role in (models.UserRole.driver, models.UserRole.both)
+    # `role` defaults to 'both' for everyone, so it can't distinguish a rider from
+    # a driver. Only surface the driver-only steps once the user shows real driver
+    # intent — they've posted a trip, started licence verification, or added payout
+    # details. A pure rider never sees "verify your licence" / "set up payout".
+    is_driver = (
+        bool(user.trips)
+        or user.license_verification != models.VerificationStatus.unverified
+        or bool(user.kennitala or user.blikk_account_iban)
+    )
     steps = [
         {
             "key":   "photo",
@@ -77,6 +85,7 @@ def profile_completion(user: models.User) -> dict:
         "total":     total,
         "percent":   round(completed / total * 100),
         "is_complete": completed == total,
+        "show_driver": is_driver,
     }
 
 
