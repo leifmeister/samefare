@@ -589,8 +589,18 @@ button, input, select, textarea { font: inherit; }
 }
 .hero-notice__icon  { font-size: 1.6rem; line-height: 1; flex-shrink: 0; }
 .hero-notice__body  { flex: 1; min-width: 0; }
-.hero-notice__title { display: block; color: #065f46; }
-.hero-notice__sub   { font-size: .9rem; color: #475569; }
+/* Keep the card compact in every language: the title may wrap to at most two
+   lines and the route/date sub-line stays on one line (ellipsis if it can't
+   fit). Without this, longer Icelandic strings wrapped to 4-5 lines, making a
+   tall card that shoved the hero heading down. */
+.hero-notice__title {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden; color: #065f46; line-height: 1.25;
+}
+.hero-notice__sub   {
+  display: block; font-size: .9rem; color: #475569;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .hero-notice__cta   { flex-shrink: 0; }
 /* Stack a second notice (e.g. driver requests + an accepted booking) cleanly. */
 .hero-notice + .hero-notice { margin-top: .6rem; }
