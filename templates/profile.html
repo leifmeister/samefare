@@ -99,7 +99,7 @@
                      value="{{ current_user.full_name }}" required />
             </div>
             <div class="form-group" id="phone"
-                 {% if not current_user.phone_verified %}x-data="phoneField({{ (current_user.phone or '')|tojson }})"{% endif %}>
+                 {% if not current_user.phone_verified %}x-data='phoneField({{ (current_user.phone or "")|tojson }})'{% endif %}>
               <label class="label">
                 {{ _t('profile_phone_label') }}
                 {% if current_user.phone_verified %}
@@ -121,7 +121,7 @@
                       {{ _t('profile_phone_change_btn') }}
                     </button>
                   </div>
-                  <div x-show="changing" x-data="phoneField({{ (current_user.phone or '')|tojson }})">
+                  <div x-show="changing" x-data='phoneField({{ (current_user.phone or "")|tojson }})'>
                     <input type="hidden" name="phone" :value="full" />
                     <div class="phone-input">
                       {{ phone_select(x_model="code") }}

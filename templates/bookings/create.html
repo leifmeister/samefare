@@ -42,7 +42,7 @@
     {# ── Inline phone verification — shown in place of the booking form so the
        passenger never leaves the trip. On success the page reloads and the
        form below renders. ───────────────────────────────────────────────── #}
-    <div class="form-card" x-data="bookingPhoneVerify({{ (current_user.phone or '')|tojson }})">
+    <div class="form-card" x-data='bookingPhoneVerify({{ (current_user.phone or "")|tojson }})'>
       <h2 class="payment-step__title">{{ _t('booking_verify_phone_title') }}</h2>
       <p class="payment-step__sub" style="margin-bottom:1.25rem;">{{ _t('booking_verify_phone_sub') }}</p>
 

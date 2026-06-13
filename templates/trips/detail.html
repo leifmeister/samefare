@@ -309,7 +309,7 @@
                       and now <= trip.departure_datetime + timedelta(hours=4) %}
                 <form method="post" action="/bookings/{{ booking.id }}/no-show"
                       style="display:inline; margin-left:auto;"
-                      onsubmit="return confirm({{ ('Mark ' + booking.passenger.full_name.split()[0] + ' as a no-show? They will not receive a refund.')|tojson }})">
+                      onsubmit='return confirm({{ ("Mark " + booking.passenger.full_name.split()[0] + " as a no-show? They will not receive a refund.")|tojson }})'>
                   <button type="submit" class="btn btn-xs btn-danger-outline">{{ _t('detail_no_show_btn') }}</button>
                 </form>
                 {% endif %}
