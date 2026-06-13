@@ -469,6 +469,29 @@ class Booking(Base):
     def subtotal(self) -> int:
         return self.total_price - self.service_fee
 
+    @property
+    def occupies_seat(self) -> bool:
+        """
+        True if this booking should count against the trip's seat inventory.
+
+        Covers the active hold states (awaiting_payment / card_saved / confirmed)
+        AND a late-cancel forfeit: when a passenger cancels within 24 h the fare
+        is captured and paid to the driver, so that seat is effectively sold —
+        it must NOT be released and resold, or the driver would be paid twice for
+        one seat (breaching the cost-sharing cap).
+        """
+        return (
+            self.status in (
+                BookingStatus.awaiting_payment,
+                BookingStatus.card_saved,
+                BookingStatus.confirmed,
+            )
+            or (
+                self.status == BookingStatus.cancelled
+                and self.cancellation_reason == "late_forfeit"
+            )
+        )
+
     def __repr__(self) -> str:
         return (f"<Booking id={self.id} trip_id={self.trip_id} "
                 f"passenger_id={self.passenger_id} status={self.status}>")

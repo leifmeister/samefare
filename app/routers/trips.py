@@ -317,7 +317,7 @@ def _find_segment_trips(
 
         # Per-segment availability check — only count bookings that overlap
         # the searched leg, not the whole-trip minimum.
-        active_bookings = [b for b in trip.bookings if b.status in _SEAT_HOLDING_STATUSES]
+        active_bookings = [b for b in trip.bookings if b.occupies_seat]
         avail = seats_for_segment(
             graph, trip.seats_total, active_bookings,
             trip.origin, trip.destination, search_origin, search_dest,
@@ -1119,7 +1119,7 @@ def update_trip(
     # Use peak-occupancy (not a simple sum) so non-overlapping segment bookings
     # are not double-counted when the driver lowers the seat count.
     _graph_edit  = build_route_graph(db)
-    _active_edit = [b for b in trip.bookings if b.status in _SEAT_HOLDING_STATUSES]
+    _active_edit = [b for b in trip.bookings if b.occupies_seat]
     # Compute raw peak occupancy using a large synthetic seats_total so the
     # floor isn't clamped by whatever the current (or requested) seats_total is.
     _BIG         = 9999
@@ -1322,7 +1322,7 @@ def trip_detail(
     # non-overlapping bookings on other legs.
     segment_available_seats: Optional[int] = None
     if segment_pickup and segment_dropoff:
-        _detail_active = [b for b in trip.bookings if b.status in _SEAT_HOLDING_STATUSES]
+        _detail_active = [b for b in trip.bookings if b.occupies_seat]
         segment_available_seats = seats_for_segment(
             _detail_graph,
             trip.seats_total,
@@ -1339,7 +1339,7 @@ def trip_detail(
         _graph = build_route_graph(db)
         # pending bookings do not hold seats anywhere else in the booking
         # logic — exclude them so the timeline shows true reserved capacity.
-        _active = [b for b in trip.bookings if b.status in _SEAT_HOLDING_STATUSES]
+        _active = [b for b in trip.bookings if b.occupies_seat]
         _waypoints = sorted(
             {b.pickup_city  or trip.origin      for b in _active} |
             {b.dropoff_city or trip.destination for b in _active} |

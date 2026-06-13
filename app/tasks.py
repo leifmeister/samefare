@@ -133,11 +133,7 @@ def _run_expire_payments() -> None:
                 )
                 if trip:
                     active = [b for b in trip.bookings
-                              if b.id != booking.id and b.status in {
-                                  models.BookingStatus.awaiting_payment,
-                                  models.BookingStatus.confirmed,
-                                  models.BookingStatus.card_saved,
-                              }]
+                              if b.id != booking.id and b.occupies_seat]
                     graph = build_route_graph(db)
                     trip.seats_available = recompute_seats_available(
                         graph, trip.seats_total, active, trip.origin, trip.destination,
@@ -712,11 +708,7 @@ def _run_retry_expiry() -> None:
                 )
                 if locked_trip:
                     active = [b for b in locked_trip.bookings
-                              if b.id != booking.id and b.status in {
-                                  models.BookingStatus.awaiting_payment,
-                                  models.BookingStatus.confirmed,
-                                  models.BookingStatus.card_saved,
-                              }]
+                              if b.id != booking.id and b.occupies_seat]
                     graph = build_route_graph(db)
                     locked_trip.seats_available = recompute_seats_available(
                         graph, locked_trip.seats_total, active,

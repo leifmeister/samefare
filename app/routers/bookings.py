@@ -37,7 +37,7 @@ _SEAT_HOLDING_STATUSES = frozenset({
 def _refresh_seats(trip: "models.Trip", db: "Session") -> None:
     """Recompute trip.seats_available from current active bookings (segment-aware)."""
     graph = build_route_graph(db)
-    active = [b for b in trip.bookings if b.status in _SEAT_HOLDING_STATUSES]
+    active = [b for b in trip.bookings if b.occupies_seat]
     trip.seats_available = recompute_seats_available(
         graph, trip.seats_total, active, trip.origin, trip.destination,
     )
@@ -126,7 +126,7 @@ def book_trip_page(
         booking_available_seats = trip.seats_available
     else:
         # Per-segment availability — peak occupancy on this specific leg.
-        active = [b for b in trip.bookings if b.status in _SEAT_HOLDING_STATUSES]
+        active = [b for b in trip.bookings if b.occupies_seat]
         seg_p  = segment_pickup  or trip.origin
         seg_d  = segment_dropoff or trip.destination
         booking_available_seats = seats_for_segment(
@@ -261,7 +261,7 @@ def create_booking(
     # Build route graph only when needed (segment bookings only) — full-route
     # bookings don't use it, so building it unconditionally wastes a DB query
     # on the majority of booking requests.
-    active_bookings = [b for b in trip.bookings if b.status in _SEAT_HOLDING_STATUSES]
+    active_bookings = [b for b in trip.bookings if b.occupies_seat]
     if is_segment:
         graph = build_route_graph(db)
         pickup_city, dropoff_city, prorated_price, seg_err = resolve_segment(
@@ -548,7 +548,7 @@ def confirm_booking(
                 and trip.departure_datetime > datetime.utcnow()
             ):
                 graph   = build_route_graph(db)
-                active  = [b for b in trip.bookings if b.status in _SEAT_HOLDING_STATUSES]
+                active  = [b for b in trip.bookings if b.occupies_seat]
                 seg_p   = booking.pickup_city  or trip.origin
                 seg_d   = booking.dropoff_city or trip.destination
                 avail   = seats_for_segment(
