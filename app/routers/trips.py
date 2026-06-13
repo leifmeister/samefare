@@ -256,6 +256,11 @@ def _find_segment_trips(
             models.Trip.departure_datetime >= datetime.utcnow(),
             models.Trip.seats_total > 0,
             models.Trip.allow_segments == True,  # noqa: E712
+            # Same driver-bookable guard as the direct-match query.
+            models.Trip.driver.has(
+                (models.User.is_active == True)            # noqa: E712
+                & (models.User.posting_suspended == False) # noqa: E712
+            ),
         )
     )
     if direct_ids:
@@ -441,6 +446,14 @@ def trips_list(
             models.Trip.status == models.TripStatus.active,
             models.Trip.departure_datetime >= datetime.utcnow(),
             models.Trip.seats_available > 0,
+            # Hide trips from drivers who are suspended/deactivated (admin report,
+            # account deletion → is_active False) or under posting suspension
+            # (no-show / cancellation thresholds). EXISTS subquery — does not
+            # disturb the joinedload above.
+            models.Trip.driver.has(
+                (models.User.is_active == True)            # noqa: E712
+                & (models.User.posting_suspended == False) # noqa: E712
+            ),
         )
     )
 

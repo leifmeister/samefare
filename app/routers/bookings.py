@@ -178,6 +178,10 @@ def create_booking(
     # requested leg still has room.  Per-segment availability is checked below.
     if trip.status != models.TripStatus.active:
         return RedirectResponse(f"/trips/{trip_id}", status_code=303)
+    # Block bookings on trips from a suspended/deactivated driver. Search already
+    # hides these, but this is the authoritative guard against a direct/stale link.
+    if not trip.driver.is_active or trip.driver.posting_suspended:
+        return RedirectResponse(f"/trips/{trip_id}", status_code=303)
     if not is_segment and trip.seats_available < 1:
         return RedirectResponse(f"/trips/{trip_id}", status_code=303)
 

@@ -99,9 +99,14 @@ def public_profile(
     if not user:
         return templates.TemplateResponse("errors/404.html", {**ctx}, status_code=404)
 
-    # Upcoming active trips as driver
+    # Upcoming active trips as driver — but not while the driver is under posting
+    # suspension (no-show / cancellation thresholds). is_active is already enforced
+    # on the profile lookup above; this hides the bookable trips of a still-active
+    # but suspended driver, matching the search/booking guards.
     upcoming_trips = (
-        db.query(models.Trip)
+        []
+        if user.posting_suspended
+        else db.query(models.Trip)
         .filter(
             models.Trip.driver_id == user_id,
             models.Trip.status == models.TripStatus.active,
