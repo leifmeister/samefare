@@ -25,9 +25,30 @@
   </div>
 
   <!-- ── Needs attention (failed payouts + clawbacks) ─────────────────── -->
-  {% if uncertain or failed or clawbacks %}
+  {% if uncertain or failed or clawbacks or stuck %}
   <div class="form-card" style="margin-top:1.5rem; border:1px solid #dc2626; background:#fef2f2; padding:1.25rem 1.5rem;">
     <h2 style="margin:0 0 .75rem; font-size:1.05rem; color:#991b1b;">⚠ Needs attention</h2>
+
+    {% if stuck %}
+    <p style="margin:.5rem 0 .25rem; font-weight:700; color:#991b1b;">
+      Couldn't be prepared — payable, never batched
+    </p>
+    <p style="margin:0 0 .5rem; font-size:.82rem; color:#7f1d1d;">
+      These payouts have been ready for over a day but the daily preparation
+      couldn't build a batch for them (it retries, then gives up to avoid
+      looping). Check the server logs for the cause, fix it, and they'll batch on
+      the next daily run.
+    </p>
+    <div style="display:flex; flex-direction:column; gap:.5rem;">
+      {% for i in stuck %}
+      <div style="display:flex; align-items:center; gap:.75rem; font-size:.9rem; flex-wrap:wrap;">
+        <span style="font-weight:600;">{{ i.driver.full_name }}</span>
+        <span style="white-space:nowrap;">{{ "{:,}".format(i.amount) }} ISK</span>
+        <span style="color:var(--c-text-muted);">item #{{ i.id }} · ready since {{ i.updated_at.strftime("%-d %b") }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
 
     {% if uncertain %}
     <p style="margin:.5rem 0 .25rem; font-weight:700; color:#991b1b;">

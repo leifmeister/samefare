@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -293,6 +293,21 @@ def admin_payouts(
         .order_by(models.PayoutItem.id.desc())
         .all()
     )
+    # Stuck items: payout_ready but never batched. The daily prep batches ready
+    # items within ~a day; an item ready longer than that has been skipped (e.g.
+    # the prep gave up after repeated build failures), so it would otherwise sit
+    # invisibly with no DriverPayout. 36 h clears the normal ready→batch window.
+    stuck = (
+        db.query(models.PayoutItem)
+        .options(joinedload(models.PayoutItem.driver))
+        .filter(
+            models.PayoutItem.status      == models.PayoutItemStatus.payout_ready,
+            models.PayoutItem.driver_payout_id == None,    # noqa: E711 — not batched
+            models.PayoutItem.updated_at  < datetime.utcnow() - timedelta(hours=36),
+        )
+        .order_by(models.PayoutItem.updated_at.asc())
+        .all()
+    )
     return templates.TemplateResponse("admin/payouts.html", {
         **ctx,
         "ready":          ready,
@@ -303,6 +318,8 @@ def admin_payouts(
         "failed":         failed,
         "clawbacks":      clawbacks,
         "clawback_total": sum(i.amount for i in clawbacks),
+        "stuck":          stuck,
+        "stuck_total":    sum(i.amount for i in stuck),
     })
 
 
