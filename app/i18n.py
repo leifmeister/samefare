@@ -39,6 +39,13 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "footer_terms": "Terms & Conditions",
         "footer_privacy": "Privacy Policy",
         "footer_contact": "Contact us",
+        "contact_title": "Contact us",
+        "contact_sub": "Questions, a problem with a ride, or feedback? We're here to help.",
+        "contact_email_label": "Email us at",
+        "contact_email_btn": "Open email app",
+        "contact_copy_btn": "Copy address",
+        "contact_copied": "Copied!",
+        "contact_response_time": "We usually reply within a couple of business days.",
         "footer_copyright": "© 2026 Wellfare ehf. — Iceland",
 
         # ── Banners ─────────────────────────────────────────────────────────
@@ -712,6 +719,13 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "footer_terms": "Notkunarskilmálar",
         "footer_privacy": "Persónuverndarstefna",
         "footer_contact": "Hafa samband",
+        "contact_title": "Hafa samband",
+        "contact_sub": "Spurningar, vandamál með ferð eða ábendingar? Við erum hér til að hjálpa.",
+        "contact_email_label": "Sendu okkur tölvupóst á",
+        "contact_email_btn": "Opna póstforrit",
+        "contact_copy_btn": "Afrita netfang",
+        "contact_copied": "Afritað!",
+        "contact_response_time": "Við svörum yfirleitt innan fárra virkra daga.",
         "footer_copyright": "© 2026 Wellfare ehf. — Ísland",
 
         # ── Banners ─────────────────────────────────────────────────────────

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ _t('contact_title') }} — SameFare{% endblock %}
+
+{% block content %}
+<div class="container container--narrow" style="margin-top:2rem; margin-bottom:4rem;">
+  <div class="form-page">
+    <div class="form-page__header">
+      <h1 class="form-page__title">{{ _t('contact_title') }}</h1>
+      <p class="form-page__sub">{{ _t('contact_sub') }}</p>
+    </div>
+
+    {# Email shown as visible, copyable text — works for everyone, not just
+       devices with a configured mail client. The mailto button is a convenience. #}
+    <div class="policy-box" style="margin-top:1.5rem;" x-data="{ copied: false }">
+      <p class="policy-box__title">{{ _t('contact_email_label') }}</p>
+      <p style="font-size:1.2rem; font-weight:700; margin:.35rem 0 1.1rem;">
+        <a href="mailto:samefare@samefare.com" class="link">samefare@samefare.com</a>
+      </p>
+      <div style="display:flex; gap:.6rem; flex-wrap:wrap;">
+        <a href="mailto:samefare@samefare.com" class="btn btn-primary">{{ _t('contact_email_btn') }}</a>
+        <button type="button" class="btn btn-outline"
+                @click="navigator.clipboard.writeText('samefare@samefare.com'); copied = true; setTimeout(() => copied = false, 1500)">
+          <span x-show="!copied">{{ _t('contact_copy_btn') }}</span>
+          <span x-show="copied">✓ {{ _t('contact_copied') }}</span>
+        </button>
+      </div>
+      <p class="form-hint" style="margin-top:1rem;">{{ _t('contact_response_time') }}</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

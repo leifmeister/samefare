@@ -869,6 +869,7 @@ def sitemap():
         ("/trips",  "hourly", "0.9"),
         ("/terms",   "monthly","0.3"),
         ("/privacy", "monthly","0.3"),
+        ("/contact", "monthly","0.3"),
         ("/kyc-aml", "monthly","0.3"),
     ]
 
@@ -925,6 +926,16 @@ def privacy(request: Request):
     finally:
         db.close()
     return templates.TemplateResponse("legal/privacy.html", {**_lc(request), "request": request, "current_user": current_user})
+
+
+@app.get("/contact", response_class=HTMLResponse)
+def contact(request: Request):
+    db = SessionLocal()
+    try:
+        current_user = get_current_user_optional(request, db)
+    finally:
+        db.close()
+    return templates.TemplateResponse("legal/contact.html", {**_lc(request), "request": request, "current_user": current_user})
 
 
 @app.get("/kyc-aml", response_class=HTMLResponse)
