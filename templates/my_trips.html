@@ -113,9 +113,6 @@
       {% else %}
         {{ _t('strip_card_saved_24h') }}
       {% endif %}
-      {% if booking.payment and booking.payment.card_last4 %}
-        <span class="bk-strip__sub">{{ booking.payment.card_brand or 'Card' }} ···{{ booking.payment.card_last4 }}</span>
-      {% endif %}
     </div>
   </div>
 
@@ -294,7 +291,7 @@
         <span class="trip-pax-summary__chip trip-pax-summary__chip--confirmed">✓ {{ n_confirmed }} confirmed</span>
       {% endif %}
       {% if n_card_saved > 0 %}
-        <span class="trip-pax-summary__chip trip-pax-summary__chip--card-saved">{{ n_card_saved }} card saved</span>
+        <span class="trip-pax-summary__chip trip-pax-summary__chip--card-saved">{{ n_card_saved }} seat held</span>
       {% endif %}
       {% if n_awaiting > 0 %}
         <span class="trip-pax-summary__chip trip-pax-summary__chip--awaiting">{{ n_awaiting }} {{ _t('riderow_awaiting_payment') }}</span>
