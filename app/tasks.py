@@ -36,14 +36,20 @@ log = logging.getLogger(__name__)
 
 def _run_auto_complete() -> None:
     """
-    Mark trips and their confirmed bookings as completed once the estimated
-    arrival time has passed.
+    Mark trips and their confirmed bookings as completed once BOTH the estimated
+    arrival time has passed AND the driver-no-show reporting window has closed.
 
     estimated_arrival = departure + (distance ÷ 80 km/h) + 1 h buffer.
     Set at trip creation; recomputed on edit.
 
-    Trips created before this column existed (estimated_arrival IS NULL) fall
-    back to departure + 6 h so nothing gets stuck.
+    The no-show window (departure + 4 h, per report_driver_no_show) gates
+    completion as well: on short rides estimated_arrival can fall inside that
+    window, and completing early would flip confirmed bookings to `completed`
+    and lock passengers/drivers out of reporting a legitimate no-show. So a trip
+    completes at max(estimated_arrival, departure + 4 h).
+
+    Trips created before estimated_arrival existed (NULL) fall back to
+    departure + 6 h — already beyond the 4 h window.
     """
     from sqlalchemy import or_, case as sa_case
     now = datetime.utcnow()
@@ -54,9 +60,13 @@ def _run_auto_complete() -> None:
             .filter(
                 models.Trip.status == models.TripStatus.active,
                 or_(
-                    # New trips: use estimated_arrival
-                    models.Trip.estimated_arrival <= now,
+                    # New trips: estimated arrival passed AND the 4 h driver-no-show
+                    # reporting window has closed.
+                    (models.Trip.estimated_arrival != None)  # noqa: E711
+                    & (models.Trip.estimated_arrival <= now)
+                    & (models.Trip.departure_datetime <= now - timedelta(hours=4)),
                     # Legacy trips without estimated_arrival: 6 h flat fallback
+                    # (already beyond the 4 h no-show window).
                     (models.Trip.estimated_arrival == None)  # noqa: E711
                     & (models.Trip.departure_datetime <= now - timedelta(hours=6)),
                 ),
