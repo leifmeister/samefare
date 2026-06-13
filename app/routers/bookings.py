@@ -79,8 +79,12 @@ def book_trip_page(
 ):
     if not current_user.email_verified and not get_settings().beta_mode:
         return RedirectResponse("/check-your-email", status_code=303)
-    if current_user.id_verification != models.VerificationStatus.approved:
-        return RedirectResponse(f"/verify?next=book&trip={trip_id}", status_code=303)
+    # Passengers ride on a verified phone (the accountability anchor) + a real
+    # card at checkout. Full ID is optional (earns an "ID verified" badge), not a
+    # gate — matching BlaBlaCar, and removing the heavy friction for one-off /
+    # tourist riders. Drivers still need licence verification to post.
+    if not current_user.phone_verified and not get_settings().beta_mode:
+        return RedirectResponse("/profile?msg=phone_required#phone", status_code=303)
 
     trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
     if not trip:
@@ -151,8 +155,9 @@ def create_booking(
 ):
     if not current_user.email_verified and not settings.beta_mode:
         return RedirectResponse("/check-your-email", status_code=303)
-    if current_user.id_verification != models.VerificationStatus.approved:
-        return RedirectResponse(f"/verify?next=book&trip={trip_id}", status_code=303)
+    # Verified phone (+ card at checkout) is the booking gate; full ID is optional.
+    if not current_user.phone_verified and not settings.beta_mode:
+        return RedirectResponse("/profile?msg=phone_required#phone", status_code=303)
 
     # Lock the trip row for the duration of this transaction so that concurrent
     # booking requests serialise here rather than racing on seats_available.

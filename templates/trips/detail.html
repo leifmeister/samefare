@@ -284,7 +284,7 @@
               <div class="pax-item">
                 {{ avatar(booking.passenger, cls="avatar--sm") }}
                 <div class="pax-item__info">
-                  <span class="pax-item__name">{{ booking.passenger.full_name.split()[0] }}</span>
+                  <span class="pax-item__name">{{ booking.passenger.full_name.split()[0] }} {{ verified_badge(booking.passenger) }}</span>
                   <span class="pax-item__seats">{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }}</span>
                 </div>
                 <div class="pax-item__status">
