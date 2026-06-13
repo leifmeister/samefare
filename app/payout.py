@@ -364,8 +364,12 @@ def handle_refund_payout_impact(
         return
 
     if item.status in (PayoutItemStatus.payout_sent, PayoutItemStatus.payout_confirmed):
-        # Driver has already been paid or the transfer is in-flight.
-        # Post a reversal so the ledger stays balanced; flag for manual recovery.
+        # Driver has already been paid or the transfer is in-flight. Post a
+        # reversal so the ledger stays balanced and the driver shows as owing the
+        # amount back; flag for manual recovery. (The daily payout delay makes
+        # this rare — most no-shows are reported before payout — and there is no
+        # automated clawback yet, so an operator collects/offsets the funds.)
+        prior_status = item.status.value   # capture before overwriting
         item.status = PayoutItemStatus.reversed
         write_ledger_entry(
             db, LedgerEntryType.driver_payout_reversed,
@@ -376,15 +380,29 @@ def handle_refund_payout_impact(
             booking_id       = booking_id,
             note             = (
                 f"Passenger refund confirmed for booking {booking_id}; "
-                f"driver payout was already {item.status.value} — "
+                f"driver payout was already {prior_status} — "
                 f"manual fund recovery required"
             ),
         )
         log.warning(
             "PayoutItem %s REVERSED for booking %s — driver payout already %s; "
             "manual fund recovery required",
-            item.id, booking_id, item.status,
+            item.id, booking_id, prior_status,
         )
+        # Fallback alert: real money was paid to the driver for a fare that is now
+        # refunded (e.g. a no-show reported after the daily payout settled). The
+        # operator must claw it back — there is no automated repayment yet. The
+        # ledger entry above is the durable record of what the driver owes.
+        try:
+            from app import sms
+            sms.admin_alert(
+                f"SameFare ALERT: payout clawback needed. Driver {item.driver_id} was "
+                f"already paid {item.amount} ISK for booking {booking_id}, now refunded "
+                f"to the passenger (e.g. a no-show reported after payout). Payout reversed "
+                f"in the ledger — recover the funds manually and review the driver."
+            )
+        except Exception as exc:  # never let alerting break refund handling
+            log.error("admin_alert raised on payout reversal: %s", exc)
     else:
         # Pre-send state — cancel cleanly so the driver is never paid.
         cancel_payout_item(
