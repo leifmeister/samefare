@@ -478,6 +478,23 @@ def _run_mit_authorizations() -> None:
         for payment in due_payments:
             booking = payment.booking
 
+            # Never authorise a card for a ride that has already departed. If the
+            # app was down across the T-24h window and only caught up after
+            # departure, charging now would bill the passenger for a service
+            # window that has already passed. Cancel the unpaid booking instead
+            # (card was only tokenised — no charge ever placed; not a payout).
+            if booking.trip.departure_datetime <= now:
+                payment.status = models.PaymentStatus.failed
+                booking.status = models.BookingStatus.cancelled
+                booking.cancellation_reason = "mit_window_missed"
+                db.commit()
+                log.error(
+                    "MIT window missed for booking %s — trip departed %s; card NOT "
+                    "authorised, booking cancelled (no charge).",
+                    booking.id, booking.trip.departure_datetime,
+                )
+                continue
+
             if not payment.rapyd_customer_id or not payment.rapyd_payment_method_id:
                 log.warning(
                     "MIT skipped for booking %s — missing Rapyd customer/PM", booking.id
