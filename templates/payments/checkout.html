@@ -59,7 +59,7 @@
         <div class="booking-summary">
           <h3 class="booking-summary__title">{{ _t('checkout_beta_production_summary') }}</h3>
           <div class="price-row">
-            <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }} × {{ "{:,}".format(booking.trip.price_per_seat) }} ISK</span>
+            <span>{{ booking.seats_booked }} {{ _t('seat') if booking.seats_booked == 1 else _t('seats') }} × {{ "{:,}".format(booking.trip.price_per_seat) }} ISK</span>
             <span>{{ "{:,}".format(contribution) }} ISK</span>
           </div>
           {% if service_fee == 0 %}
@@ -118,7 +118,7 @@
             </div>
             {% endif %}
             <div class="price-row price-row--total">
-              <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }}</span>
+              <span>{{ booking.seats_booked }} {{ _t('seat') if booking.seats_booked == 1 else _t('seats') }}</span>
               <span>{{ "{:,}".format(total) }} ISK</span>
             </div>
           </div>
