@@ -261,12 +261,19 @@ def _finalize_card_saved(db: Session, booking: models.Booking) -> bool:
         return False
 
     pms = ((customer.get("payment_methods") or {}).get("data")) or []
-    if not pms:
+    # Only consider FULLY saved cards: a real token id and no pending 3DS step.
+    # A failed/abandoned save (e.g. a corporate card stuck on 3d_verification)
+    # leaves a token-less entry on the customer — if that happens to be last in
+    # the list (and there's no default), the old `or pms[-1]` fallback picked it
+    # and bailed, ignoring a perfectly valid card the passenger also added.
+    usable = [
+        p for p in pms
+        if p.get("id") and p.get("next_action") in (None, "", "not_applicable")
+    ]
+    if not usable:
         return False
     default_id = customer.get("default_payment_method")
-    pm = next((p for p in pms if p.get("id") == default_id), None) or pms[-1]
-    if not pm.get("id"):
-        return False
+    pm = next((p for p in usable if p.get("id") == default_id), None) or usable[-1]
 
     payment.rapyd_payment_method_id = pm["id"]
     payment.card_last4 = pm.get("last4")
