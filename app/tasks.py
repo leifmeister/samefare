@@ -309,6 +309,11 @@ def _run_auto_ratings() -> None:
 
 # ── Day-before trip reminders ─────────────────────────────────────────────────
 
+# A booking confirmed less than this before the reminder run is "just booked" —
+# skip the evening-before nudge (it would land minutes after the confirmation).
+REMINDER_MIN_AGE = timedelta(hours=3)
+
+
 def _run_trip_reminders() -> None:
     """
     Send SMS reminders to drivers and confirmed passengers for trips departing
@@ -357,17 +362,36 @@ def _run_trip_reminders() -> None:
                 trip.reminder_sent = True
                 continue
 
-            # Driver reminder
-            sms.trip_reminder_to_driver(trip, len(confirmed))
-            mailer.trip_reminder_to_driver(trip, len(confirmed))
+            # Don't "remind" someone who only just booked. A next-morning ride
+            # booked during this same evening window (common for instant book)
+            # would otherwise get a reminder minutes after the confirmation —
+            # noise, not a reminder. Use the confirmation time (accepted_at for
+            # request-to-book, created_at for instant) and skip anyone who
+            # booked within REMINDER_MIN_AGE.
+            to_remind = [
+                b for b in confirmed
+                if now - (b.accepted_at or b.created_at) >= REMINDER_MIN_AGE
+            ]
 
-            # Passenger reminders
-            for booking in confirmed:
-                sms.trip_reminder_to_passenger(booking)
-                mailer.trip_reminder_to_passenger(booking)
+            if to_remind:
+                # Driver reminder — count reflects all expected passengers.
+                sms.trip_reminder_to_driver(trip, len(confirmed))
+                mailer.trip_reminder_to_driver(trip, len(confirmed))
 
+                # Passenger reminders — only those who didn't just book.
+                for booking in to_remind:
+                    sms.trip_reminder_to_passenger(booking)
+                    mailer.trip_reminder_to_passenger(booking)
+
+                log.info(
+                    "Sent reminders for trip %d (%s → %s) to %d/%d passenger(s)",
+                    trip.id, trip.origin, trip.destination, len(to_remind), len(confirmed),
+                )
+
+            # Mark the trip reminded regardless: anyone skipped booked so
+            # recently they don't need an evening-before nudge, and the only
+            # send window for a tomorrow ride is tonight.
             trip.reminder_sent = True
-            log.info("Sent reminders for trip %d (%s → %s)", trip.id, trip.origin, trip.destination)
 
         if upcoming:
             db.commit()
