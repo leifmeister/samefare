@@ -34,7 +34,10 @@
     </div>
 
     {% else %}
-    {# Case B: card saved, MIT fires at T-24h #}
+    {# Card saved. For a >24h booking the charge is in the future (T-24h); for a
+       same-day (≤24h) booking it's charged right away, so the "nothing today /
+       before the trip" timeline doesn't apply and would be misleading. #}
+    {% set less_than_24h = (booking.trip.departure_datetime - now).total_seconds() <= 86400 %}
     <div class="success-hero">
       <div class="success-hero__icon">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
@@ -46,12 +49,17 @@
       </div>
       <h1 class="success-hero__title">You're all set</h1>
       <p class="success-hero__sub">
-        Your seat is booked. We'll charge the fare before departure —
-        nothing more to do.
+        {% if less_than_24h %}
+          Your seat is booked — nothing more to do.
+        {% else %}
+          Your seat is booked. We'll charge the fare before departure —
+          nothing more to do.
+        {% endif %}
       </p>
     </div>
 
-    <!-- Timeline -->
+    {% if not less_than_24h %}
+    <!-- Timeline — only meaningful when the charge is in the future -->
     <div class="policy-box" style="margin-top:2rem;">
       <p class="policy-box__title">What happens next</p>
       <ul class="policy-box__list">
@@ -59,6 +67,7 @@
         <li><strong>Before your trip</strong> — we charge the fare to your card.</li>
       </ul>
     </div>
+    {% endif %}
     {% endif %}
 
     <!-- Trip summary -->
