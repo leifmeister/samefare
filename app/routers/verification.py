@@ -524,6 +524,50 @@ def admin_dashboard(
         .all()
     )
 
+    # ── Fuel price API health ─────────────────────────────────────────────────
+    # Read-only snapshot from the cache table — never makes an HTTP call on a
+    # normal page load (the daily background task keeps the cache warm, and the
+    # "Run live check" button below does an on-demand fetch). The status answers
+    # "is the gas price API working?" at a glance:
+    #   healthy — a successful fetch landed within the last ~36h (daily refresh
+    #             plus a buffer for one missed run)
+    #   stale   — newest fetch is 36h–7d old: pricing still uses it, but the live
+    #             source has likely been failing and needs a look
+    #   down    — no usable fetch in 7d: pricing has fallen back to the policy table
+    from app.fuel import get_cached_petrol_price, MAX_CACHE_AGE_DAYS
+
+    latest_fuel = (
+        db.query(models.FuelPriceCache)
+        .filter(models.FuelPriceCache.fuel_type == "petrol")
+        .order_by(models.FuelPriceCache.fetched_at.desc())
+        .first()
+    )
+    fuel_price_now, fuel_tier_now = get_cached_petrol_price(db)
+
+    fuel_age_hours = None
+    fuel_age_label = "never"
+    if latest_fuel:
+        fuel_age_hours = (now - latest_fuel.fetched_at).total_seconds() / 3600
+        if fuel_age_hours < 1:
+            fuel_age_label = "under an hour ago"
+        elif fuel_age_hours < 48:
+            fuel_age_label = f"{int(round(fuel_age_hours))}h ago"
+        else:
+            fuel_age_label = f"{int(fuel_age_hours // 24)}d ago"
+
+    if latest_fuel is None or fuel_age_hours > MAX_CACHE_AGE_DAYS * 24:
+        fuel_status = "down"
+    elif fuel_age_hours <= 36:
+        fuel_status = "healthy"
+    else:
+        fuel_status = "stale"
+
+    _fuel_source_labels = {"gasvaktin": "Gasvaktin", "apis_is": "apis.is"}
+    fuel_source_label = (
+        _fuel_source_labels.get(latest_fuel.source, latest_fuel.source)
+        if latest_fuel else None
+    )
+
     # ── Annual pricing policy reminder (December only) ────────────────────────
     # Show a banner in December when no PricingPolicy row has been entered for
     # the coming year yet.  The banner disappears automatically once a row with
@@ -567,7 +611,43 @@ def admin_dashboard(
         # annual pricing reminder
         "pricing_reminder": pricing_reminder,
         "next_year":        next_year,
+        # fuel price API health
+        "fuel_status":       fuel_status,
+        "fuel_age_label":    fuel_age_label,
+        "fuel_last_fetch":   latest_fuel.fetched_at if latest_fuel else None,
+        "fuel_source_label": fuel_source_label,
+        "fuel_station_count": latest_fuel.station_count if latest_fuel else None,
+        "fuel_p80":          latest_fuel.p80_price if latest_fuel else None,
+        "fuel_median":       latest_fuel.median_price if latest_fuel else None,
+        "fuel_price_now":    fuel_price_now,
+        "fuel_tier_now":     fuel_tier_now,
+        "fuel_max_age_days": MAX_CACHE_AGE_DAYS,
     })
+
+
+@router.post("/admin/fuel-check")
+def admin_fuel_check(
+    request: Request,
+    admin:   models.User = Depends(_require_admin),
+    db:      Session     = Depends(get_db),
+):
+    """
+    On-demand live test of the fuel price API. Does a real fetch (gasvaktin →
+    apis.is), stores a cache row on success, and reports the resulting tier:
+      live     — a source answered and passed sanity checks (API is working)
+      cached   — both live sources failed; price came from the DB cache
+      fallback — live + cache both unavailable; price came from the policy table
+    Redirects back to the dashboard with the result for a flash message.
+    """
+    from app.fuel import get_current_petrol_price
+    try:
+        price, tier = get_current_petrol_price(db)
+    except Exception as exc:           # get_current_petrol_price shouldn't raise,
+        log.error("Admin fuel live-check failed: %s", exc)   # but never 500 here
+        return RedirectResponse("/admin?fuel_check=error", status_code=303)
+    return RedirectResponse(
+        f"/admin?fuel_check={tier}&fuel_price={int(round(price))}", status_code=303
+    )
 
 
 @router.get("/admin/users", response_class=HTMLResponse)

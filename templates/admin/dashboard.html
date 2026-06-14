@@ -100,6 +100,83 @@
 
   </div>
 
+  <!-- ── Fuel price API health ────────────────────────────────────────────── -->
+  {% set _fuel_badge = {
+      'healthy': ('Working', '#DCFCE7', '#166534'),
+      'stale':   ('Stale — live fetch failing', '#FEF9C3', '#854D0E'),
+      'down':    ('Down — using fallback', '#FEE2E2', '#991B1B'),
+  } %}
+  {% set _fb = _fuel_badge.get(fuel_status, _fuel_badge['down']) %}
+  <div class="dash-table-card" style="margin-top:var(--space-4);">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+      <h2 class="dash-table-card__title" style="margin:0;">Fuel price API</h2>
+      <span style="display:inline-flex; align-items:center; gap:.4rem; padding:.25rem .7rem;
+                   border-radius:999px; font-size:.8rem; font-weight:700;
+                   background:{{ _fb[1] }}; color:{{ _fb[2] }};">
+        <span style="font-size:.7rem;">●</span> {{ _fb[0] }}
+      </span>
+    </div>
+
+    {# Result flash from the "Run live check" button #}
+    {% set _fc = request.query_params.get('fuel_check') %}
+    {% if _fc %}
+      {% set _fp = request.query_params.get('fuel_price') %}
+      {% if _fc == 'live' %}
+      <div class="alert alert--success" style="margin-top:1rem;">
+        ✓ Live check passed — fetched a fresh price ({{ _fp }} ISK/L). The API is working.
+      </div>
+      {% elif _fc == 'cached' %}
+      <div class="alert alert--warning" style="margin-top:1rem;">
+        ⚠ Live fetch failed — fell back to the cached price ({{ _fp }} ISK/L). The external source is not responding right now.
+      </div>
+      {% elif _fc == 'fallback' %}
+      <div class="alert alert--error" style="margin-top:1rem;">
+        ✕ Live fetch and cache both unavailable — using the policy fallback ({{ _fp }} ISK/L). The API is down and the cache is stale.
+      </div>
+      {% else %}
+      <div class="alert alert--error" style="margin-top:1rem;">
+        ✕ The live check hit an unexpected error. See server logs.
+      </div>
+      {% endif %}
+    {% endif %}
+
+    <div class="dash-grid dash-grid--4" style="margin-top:1rem;">
+      <div class="dash-card dash-card--sm">
+        <p class="dash-card__label">Last successful fetch</p>
+        <p class="dash-card__value dash-card__value--md">{{ fuel_age_label }}</p>
+        <p class="dash-card__sub">
+          {% if fuel_last_fetch %}{{ fuel_last_fetch.strftime("%-d %b %Y, %H:%M") }} UTC{% else %}No fetch on record{% endif %}
+        </p>
+      </div>
+      <div class="dash-card dash-card--sm">
+        <p class="dash-card__label">Source</p>
+        <p class="dash-card__value dash-card__value--md">{{ fuel_source_label or '—' }}</p>
+        <p class="dash-card__sub">{% if fuel_station_count %}{{ fuel_station_count }} stations sampled{% else %}—{% endif %}</p>
+      </div>
+      <div class="dash-card dash-card--sm">
+        <p class="dash-card__label">Cached price (p80)</p>
+        <p class="dash-card__value dash-card__value--md">{% if fuel_p80 %}{{ fuel_p80 | round(1) }} <span class="dash-card__currency">ISK/L</span>{% else %}—{% endif %}</p>
+        <p class="dash-card__sub">{% if fuel_median %}median {{ fuel_median | round(1) }} ISK/L{% else %}—{% endif %}</p>
+      </div>
+      {% set _tier_label = {'live': 'Live price', 'cached': 'Daily cache', 'fallback': 'Policy fallback ⚠'} %}
+      <div class="dash-card dash-card--sm">
+        <p class="dash-card__label">Pricing is using</p>
+        <p class="dash-card__value dash-card__value--md {% if fuel_tier_now == 'fallback' %}dash-card__value--warn{% endif %}">{{ _tier_label.get(fuel_tier_now, fuel_tier_now) }}</p>
+        <p class="dash-card__sub">{{ fuel_price_now | round(0) | int }} ISK/L right now</p>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; margin-top:1rem;">
+      <form method="post" action="/admin/fuel-check" style="margin:0;">
+        <button type="submit" class="btn btn-outline btn-sm">⟳ Run live check now</button>
+      </form>
+      <p class="dash-empty" style="margin:0; font-size:.78rem;">
+        Prices refresh automatically once a day. "Working" means a fetch landed within ~36h;
+        after {{ fuel_max_age_days }} days with no fetch, pricing falls back to the policy table.
+      </p>
+    </div>
+  </div>
+
   <!-- ── Row 3: tables ────────────────────────────────────────────────────── -->
   <div class="dash-tables">
 
