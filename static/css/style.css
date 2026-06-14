@@ -279,6 +279,21 @@ button, input, select, textarea { font: inherit; }
 .alert--success { background: var(--c-success-light); color: #065F46; border-color: #6EE7B7; }
 .alert--warning { background: var(--c-warning-light); color: #92400E; border-color: #FCD34D; }
 .alert--info    { background: #EFF6FF; color: #1E40AF; border-color: #93C5FD; }
+/* A retry/action button inside an alert needs to sit on its own line with room
+   above it — inline <a> margins collapse, leaving it crammed against the text. */
+.alert .btn { display: inline-block; }
+
+/* Checkout payment-timing banner (icon + title/sub) — was unstyled, so the card
+   icon and text floated out of alignment. */
+.checkout-case-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: .65rem;
+  padding: 1rem 1.5rem .25rem;
+}
+.checkout-case-banner > svg { flex-shrink: 0; margin-top: .15rem; color: var(--c-text-muted); }
+.checkout-case-banner__title { display: block; font-weight: 700; line-height: 1.3; }
+.checkout-case-banner__sub   { display: block; margin-top: .15rem; font-size: .9rem; color: var(--c-text-muted); }
 
 .verify-email-banner {
   display: flex; align-items: center; gap: var(--space-3);
