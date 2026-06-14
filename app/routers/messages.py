@@ -93,12 +93,21 @@ def inbox(
             joinedload(models.Booking.messages).joinedload(models.Message.sender),
         )
         .filter(
-            models.Booking.status.in_([
-                models.BookingStatus.confirmed,
-                models.BookingStatus.pending,
-                models.BookingStatus.awaiting_payment,
-                models.BookingStatus.card_saved,
-            ]),
+            # Active bookings always show (so you can coordinate even before any
+            # message is sent). Past bookings — cancelled / rejected / completed /
+            # no_show — show only if a conversation actually happened, so the
+            # history survives the ride instead of vanishing the moment the
+            # booking leaves an active state (which also left the nav unread
+            # badge pointing at conversations the inbox refused to display).
+            or_(
+                models.Booking.status.in_([
+                    models.BookingStatus.confirmed,
+                    models.BookingStatus.pending,
+                    models.BookingStatus.awaiting_payment,
+                    models.BookingStatus.card_saved,
+                ]),
+                models.Booking.messages.any(),
+            ),
             or_(
                 models.Booking.passenger_id == current_user.id,
                 models.Trip.driver_id       == current_user.id,
