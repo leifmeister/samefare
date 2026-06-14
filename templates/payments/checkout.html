@@ -159,9 +159,12 @@
         <div class="driver-card">
           {{ avatar(booking.trip.driver, cls="driver-card__avatar") }}
           <div class="driver-card__info">
+            <p class="driver-card__label">{{ _t('checkout_driver_label') }}</p>
             <p class="driver-card__name">{{ booking.trip.driver.full_name }}</p>
             {% if booking.trip.driver.average_rating %}
               <p class="driver-card__rating-text">★ {{ booking.trip.driver.average_rating }}</p>
+            {% else %}
+              <p class="driver-card__rating-text driver-card__rating-text--none">{{ _t('checkout_driver_norating') }}</p>
             {% endif %}
           </div>
         </div>
