@@ -69,13 +69,22 @@
       {% endif %}
     </div>
 
+    {# This page is only reached once the fare is actually charged (booking
+       confirmed). For a booking made within 24h of departure the charge already
+       happened, so the future-tense "card is authorised 24h before / cancel
+       >24h before" copy is wrong — show the in-window terms instead. #}
+    {% set less_than_24h = (booking.trip.departure_datetime - now).total_seconds() <= 86400 %}
     <div class="policy-box" style="margin-top:1.5rem;">
       <p class="policy-box__title">What happens next?</p>
       <ul class="policy-box__list">
         <li>Message your driver to confirm the exact pickup spot and time.</li>
-        <li><strong>Cancel more than 24 hours before departure</strong> — no charge is made.</li>
-        <li><strong>Once your card is authorised (24 hours before departure)</strong> — the fare is non-refundable, including no-shows.</li>
-        <li><strong>If the driver cancels</strong> — your reservation is released and you're not charged (or fully refunded if a charge was already placed).</li>
+        {% if less_than_24h %}
+        <li><strong>Your fare is paid and your seat is locked in.</strong> Departure is within 24 hours, so the fare is non-refundable, including no-shows.</li>
+        {% else %}
+        <li><strong>Cancel more than 24 hours before departure</strong> — full refund.</li>
+        <li><strong>Within 24 hours of departure</strong> — the fare is non-refundable, including no-shows.</li>
+        {% endif %}
+        <li><strong>If the driver cancels</strong> — your seat is released and you're fully refunded.</li>
       </ul>
     </div>
 
