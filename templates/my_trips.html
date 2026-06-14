@@ -31,6 +31,10 @@
 {% macro booking_row(booking) %}
 {% set trip   = booking.trip %}
 {% set status = booking.status | string %}
+{# A pre-ride booking whose trip has already left: the expiry task will cancel
+   it shortly, but until then never offer payment — the checkout route would
+   just bounce, and "pay now" on a departed ride is misleading. #}
+{% set ride_passed = trip.departure_datetime < now %}
 
 {% set deadline_hours = 0 %}
 {% set deadline_mins  = 0 %}
@@ -77,7 +81,21 @@
   </div>
 
   {# Status strip — contextual info #}
-  {% if status == 'pending' %}
+  {% if ride_passed and status in ('pending', 'awaiting_payment') %}
+  {# Trip has departed but the booking hasn't been swept yet — show a neutral
+     "ride is gone" state instead of a stale "pay now / waiting" prompt. #}
+  <div class="bk-strip bk-strip--muted">
+    <svg class="bk-strip__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd"/></svg>
+    <div>
+      {% if status == 'pending' %}
+        <strong>{{ _t('strip_expired_title') }}</strong> {{ _t('strip_expired_text') }}
+      {% else %}
+        <strong>{{ _t('strip_ride_departed_title') }}</strong> {{ _t('strip_ride_departed_sub') }}
+      {% endif %}
+    </div>
+  </div>
+
+  {% elif status == 'pending' %}
   <div class="bk-strip bk-strip--waiting">
     <svg class="bk-strip__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd"/></svg>
     <div>
@@ -178,7 +196,13 @@
 
   {# Actions — primary first, destructive last #}
   <div class="booking-row__actions">
-    {% if status == 'awaiting_payment' %}
+    {% if ride_passed and status in ('pending', 'awaiting_payment') %}
+      {# Departed, not yet swept: no payment/withdraw — just offer another ride. #}
+      <a href="/trips?origin={{ trip.origin | urlencode }}&destination={{ trip.destination | urlencode }}"
+         class="btn btn-outline btn-sm">{{ _t('action_find_another') }}</a>
+      <a href="/trips/{{ trip.id }}" class="btn btn-ghost btn-sm">{{ _t('action_view_ride_ghost') }}</a>
+
+    {% elif status == 'awaiting_payment' %}
       <a href="/payments/checkout/{{ booking.id }}" class="btn btn-primary btn-sm">{{ _t('action_pay_now') }}</a>
       <a href="/bookings/{{ booking.id }}/cancel" class="btn btn-ghost btn-sm btn-danger-outline">{{ _t('action_cancel_reservation') }}</a>
 

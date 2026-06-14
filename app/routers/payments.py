@@ -726,6 +726,13 @@ def retry_payment(
     if not payment or payment.status != models.PaymentStatus.retry_pending:
         return RedirectResponse(f"/my-trips?tab=bookings", status_code=303)
 
+    # Never send the passenger to Rapyd once the trip has left — mirror the
+    # checkout_page departure guard. (checkout_page already blocks this; the
+    # retry flow had no equivalent, so a departed trip could still open a card
+    # page here.)
+    if booking.trip.departure_datetime <= datetime.utcnow():
+        return RedirectResponse("/bookings?payment_expired=1", status_code=303)
+
     if payment.retry_deadline and datetime.utcnow() > payment.retry_deadline:
         return RedirectResponse("/bookings?retry_expired=1", status_code=303)
 
