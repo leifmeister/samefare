@@ -1374,7 +1374,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "success_drivers_phone": "Sími bílstjóra",
         "success_total": "Samtals",
         "success_next_title": "Hvað gerist næst?",
-        "success_next_message": "Sendu bílstjóranum skilaboð til að staðfesta nákvæman sækjustað og tíma.",
+        "success_next_message": "Sendu bílstjóranum skilaboð til að staðfesta nákvæman stað og tímasetningu.",
         "success_next_locked": "<strong>Sætið þitt er tryggt.</strong> Brottför er innan 24 klukkustunda, svo þessi bókun er óendurkræf, þ.m.t. ef ekki er mætt.",
         "success_next_cancel_free": "<strong>Afbókaðu meira en 24 klukkustundum fyrir brottför</strong> — full endurgreiðsla.",
         "success_next_driver_cancel": "<strong>Ef bílstjórinn afbókar</strong> — sætið er losað og þú færð fulla endurgreiðslu.",
