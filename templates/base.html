@@ -41,6 +41,49 @@
   <!-- Alpine.js -->
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
+  <!-- CSRF: echo the double-submit cookie on every unsafe request -->
+  <script>
+  (function () {
+    function csrf() {
+      var m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+      return m ? decodeURIComponent(m[1]) : "";
+    }
+    // 1) Native form submits → inject/refresh a hidden csrf_token field.
+    document.addEventListener("submit", function (e) {
+      var f = e.target;
+      if (!(f instanceof HTMLFormElement)) return;
+      if ((f.method || "get").toUpperCase() === "GET") return;
+      var field = f.querySelector('input[name="csrf_token"]');
+      if (!field) {
+        field = document.createElement("input");
+        field.type = "hidden"; field.name = "csrf_token";
+        f.appendChild(field);
+      }
+      field.value = csrf();
+    }, true);
+    // 2) HTMX requests → X-CSRF-Token header.
+    document.addEventListener("htmx:configRequest", function (e) {
+      e.detail.headers["X-CSRF-Token"] = csrf();
+    });
+    // 3) fetch() → X-CSRF-Token header for same-origin unsafe requests.
+    var _fetch = window.fetch;
+    window.fetch = function (input, init) {
+      init = init || {};
+      var method = (init.method || (typeof input === "object" && input.method) || "GET").toUpperCase();
+      if (method !== "GET" && method !== "HEAD") {
+        var url = (typeof input === "string") ? input : (input && input.url) || "";
+        var sameOrigin = !/^https?:\/\//i.test(url) || url.indexOf(location.origin) === 0;
+        if (sameOrigin) {
+          var hdrs = new Headers(init.headers || {});
+          if (!hdrs.has("X-CSRF-Token")) hdrs.set("X-CSRF-Token", csrf());
+          init.headers = hdrs;
+        }
+      }
+      return _fetch(input, init);
+    };
+  })();
+  </script>
+
   {% block head %}{% endblock %}
 </head>
 

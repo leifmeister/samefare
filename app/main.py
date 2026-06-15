@@ -7,7 +7,9 @@ from datetime import datetime
 
 log = logging.getLogger(__name__)
 
-from fastapi import FastAPI, Request
+import secrets
+
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -15,6 +17,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import joinedload, selectinload, Session
 
 from app.config import get_settings
+from app.csrf import csrf_protect
 from app.database import Base, engine, SessionLocal
 from app.dependencies import get_current_user_optional, get_template_context
 from app.i18n import get_translations, detect_lang
@@ -822,14 +825,16 @@ app = FastAPI(
     docs_url="/api/docs" if _settings.beta_mode else None,
     redoc_url="/api/redoc" if _settings.beta_mode else None,
     openapi_url="/api/openapi.json" if _settings.beta_mode else None,
+    # Validate the CSRF double-submit token on every unsafe request.
+    dependencies=[Depends(csrf_protect)],
 )
 
 
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
-    """Baseline security headers. The CSP only locks framing/base/object (which
-    can't break the app's heavy inline styles + Alpine eval); a full script-src
-    CSP would need nonces and is deferred."""
+    """Baseline security headers + CSRF cookie. The CSP only locks framing/base/
+    object (which can't break the app's heavy inline styles + Alpine eval); a
+    full script-src CSP would need nonces and is deferred."""
     response = await call_next(request)
     h = response.headers
     h.setdefault("X-Frame-Options", "DENY")
@@ -840,6 +845,13 @@ async def security_headers(request: Request, call_next):
     if _settings.secure_cookies:
         h.setdefault("Strict-Transport-Security",
                      "max-age=63072000; includeSubDomains")
+    # Issue the double-submit CSRF token (readable by JS, hence not HttpOnly).
+    if not request.cookies.get("csrftoken"):
+        response.set_cookie(
+            "csrftoken", secrets.token_urlsafe(32),
+            max_age=60 * 60 * 24 * 7, samesite="lax",
+            secure=_settings.secure_cookies, path="/",
+        )
     return response
 
 
