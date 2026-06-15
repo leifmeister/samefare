@@ -137,7 +137,7 @@
       <strong>{{ _t('strip_confirmed_title') }}</strong>
       {% if trip.pickup_address %}{{ _t('strip_confirmed_pickup') }} {{ trip.pickup_address }}.{% endif %}
       {% if trip.driver.phone and trip.driver.phone_verified %}
-        {{ _t('strip_confirmed_call') }} {{ trip.driver.full_name.split()[0] }}: <a href="tel:{{ trip.driver.phone }}" class="contact-phone contact-phone--sm">{{ trip.driver.phone }}</a>
+        {{ _t('strip_confirmed_call') }} ({{ trip.driver.full_name.split()[0] }}): <a href="tel:{{ trip.driver.phone }}" class="contact-phone contact-phone--sm">{{ trip.driver.phone }}</a>
       {% endif %}
     </div>
   </div>
