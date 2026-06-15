@@ -125,7 +125,7 @@
     {# ── ③ Identity not yet submitted / rejected ──────────────────────────── #}
     {% elif id_bad %}
     <div class="verify-card {% if current_user.id_verification == 'rejected' %}verify-card--rejected{% endif %}"
-         x-data="{ docType: '{{ current_user.id_doc_type or 'license' }}' }">
+         x-data='{ docType: {{ (current_user.id_doc_type or "license") | tojson }} }'>
 
       {% if current_user.id_verification == 'rejected' %}
       <div class="verify-card__header" style="margin-bottom:.75rem;">

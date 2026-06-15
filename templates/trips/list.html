@@ -13,7 +13,7 @@
           hx-target="#trips-results"
           hx-push-url="true"
           hx-trigger="submit"
-          x-data="Object.assign(dateShortcuts('{{ travel_date }}', '{{ date_flex }}'), {sameCityErr: false})"
+          x-data='Object.assign(dateShortcuts({{ (travel_date or "") | tojson }}, {{ (date_flex or "") | tojson }}), {sameCityErr: false})'
           @submit="
             const o = $el.querySelector('[name=origin]').value.trim().toLowerCase();
             const d = $el.querySelector('[name=destination]').value.trim().toLowerCase();
@@ -30,7 +30,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="12" height="12" aria-hidden="true"><circle cx="10" cy="10" r="3"/><path d="M10 2a8 8 0 100 16A8 8 0 0010 2z" fill-opacity=".15"/></svg>
             {{ _t('list_from') }}
           </label>
-          <div class="city-combo" x-data="cityCombo('{{ origin | e }}', _CITIES)" @click.outside="open=false">
+          <div class="city-combo" x-data='cityCombo({{ (origin or "") | tojson }}, _CITIES)' @click.outside="open=false">
             <input id="s-origin" name="origin" type="text" class="input city-combo__input"
                    placeholder="{{ _t('list_any_city') }}" autocomplete="off"
                    x-model="query" @input="onInput()" @focus="open=true"
@@ -69,7 +69,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="12" height="12" aria-hidden="true"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
             {{ _t('list_to') }}
           </label>
-          <div class="city-combo" x-data="cityCombo('{{ destination | e }}', _CITIES)" @click.outside="open=false">
+          <div class="city-combo" x-data='cityCombo({{ (destination or "") | tojson }}, _CITIES)' @click.outside="open=false">
             <input id="s-dest" name="destination" type="text" class="input city-combo__input"
                    placeholder="{{ _t('list_any_city') }}" autocomplete="off"
                    x-model="query" @input="onInput()" @focus="open=true"

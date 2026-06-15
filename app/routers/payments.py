@@ -810,6 +810,22 @@ def payment_success(
     if not booking or booking.passenger_id != current_user.id:
         return RedirectResponse("/bookings", status_code=303)
 
+    # State gate: the "You're booked!" page (incl. driver contact details) must
+    # only render for a booking that is genuinely confirmed/completed. A direct
+    # URL must not surface a false confirmation for a pending / awaiting-payment
+    # / card-saved / cancelled / rejected / failed booking — send each to the
+    # page that reflects its real state instead.
+    if booking.status not in (
+        models.BookingStatus.confirmed,
+        models.BookingStatus.completed,
+    ):
+        if booking.status in (models.BookingStatus.card_saved,
+                              models.BookingStatus.pending):
+            return RedirectResponse(f"/payments/card-saved/{booking_id}", status_code=303)
+        if booking.status == models.BookingStatus.awaiting_payment:
+            return RedirectResponse(f"/payments/checkout/{booking_id}", status_code=303)
+        return RedirectResponse("/my-trips?tab=bookings", status_code=303)
+
     return templates.TemplateResponse("payments/success.html", {
         **ctx, "booking": booking,
     })

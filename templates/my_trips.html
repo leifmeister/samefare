@@ -371,7 +371,7 @@
 </div>
 
 <div class="container" style="margin-top:2rem; margin-bottom:4rem;"
-     x-data="{ tab: '{{ tab }}' }">
+     x-data='{ tab: {{ (tab or "bookings") | tojson }} }'>
 
   <div class="page-section-header" style="margin-bottom:1.5rem;">
     <h1 class="page-title">{{ _t('mytrips_title') }}</h1>
