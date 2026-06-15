@@ -175,6 +175,12 @@ def register(
             {**_reg_ctx, "error": "Please enter your birth year."},
             status_code=400,
         )
+    if birth_year < 1900 or birth_year > current_year:
+        return templates.TemplateResponse(
+            "auth/register.html",
+            {**_reg_ctx, "error": "Please enter a valid birth year."},
+            status_code=400,
+        )
     if current_year - birth_year < 18:
         return templates.TemplateResponse(
             "auth/register.html",
@@ -387,5 +393,5 @@ def _valid_token(token: str, db: Session) -> models.User | None:
 @router.get("/logout")
 def logout():
     response = RedirectResponse("/", status_code=303)
-    response.delete_cookie("access_token")
+    response.delete_cookie("access_token", path="/", samesite="lax", secure=settings.secure_cookies)
     return response

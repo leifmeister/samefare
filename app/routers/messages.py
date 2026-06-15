@@ -201,7 +201,7 @@ def send_message(
     if not booking or not _can_access(booking, current_user):
         return HTMLResponse("", status_code=403)
 
-    body = body.strip()
+    body = body.strip()[:2000]
     if not body:
         return HTMLResponse("", status_code=400)
 

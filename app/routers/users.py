@@ -300,7 +300,7 @@ def edit_profile(
     default_car_year:  str         = Form(""),
     default_car_type:  str         = Form("sedan"),
 ):
-    current_user.full_name = full_name
+    current_user.full_name = (full_name or "").strip()[:100]
 
     new_phone = sms.normalize_phone(phone or None)
     if new_phone != current_user.phone:
@@ -310,7 +310,7 @@ def edit_profile(
         current_user.phone_otp        = None
         current_user.phone_otp_expires = None
     # If unchanged, leave phone_verified (and any pending OTP) untouched
-    current_user.bio       = bio or None
+    current_user.bio       = (bio or "").strip()[:2000] or None
     current_user.default_car_make  = default_car_make  or None
     current_user.default_car_model = default_car_model or None
     current_user.default_car_year  = int(default_car_year) if default_car_year.strip() else None

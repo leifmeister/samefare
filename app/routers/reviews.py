@@ -152,7 +152,7 @@ def submit_review(
         reviewee_id = reviewee_id,
         review_type = review_type,
         rating      = rating,
-        comment     = comment.strip() or None,
+        comment     = (comment.strip()[:2000]) or None,
     )
     db.add(review)
     db.commit()

@@ -211,6 +211,10 @@ def create_booking(
     )
     if not trip:
         return templates.TemplateResponse("errors/404.html", {**ctx}, status_code=404)
+    # Re-read bookings under the row lock so seat math sees any booking another
+    # request committed while we were blocked acquiring it (avoids a stale-view
+    # overbook on the last seat / overlapping segments).
+    db.refresh(trip, ["bookings"])
 
     # Detect segment intent early — needed to gate the availability guards below.
     # pickup_city/dropoff_city come from the submitted form fields.
@@ -592,6 +596,8 @@ def confirm_booking(
                 .with_for_update()
                 .first()
             )
+            if trip:
+                db.refresh(trip, ["bookings"])   # fresh seat view under the lock
             if (
                 trip
                 and trip.status == models.TripStatus.active

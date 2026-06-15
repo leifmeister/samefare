@@ -18,6 +18,12 @@ from app.routers.verification import _require_admin
 from app.utils import safe_redirect
 
 templates = Jinja2Templates(directory="templates")
+
+
+def _csv_safe(v) -> str:
+    """Neutralise spreadsheet formula injection in CSV cells (=, +, -, @, tab, CR)."""
+    v = "" if v is None else str(v)
+    return ("'" + v) if v[:1] in ("=", "+", "-", "@", "\t", "\r") else v
 router = APIRouter(tags=["newsletter"])
 
 
@@ -83,7 +89,7 @@ def export_newsletter_csv(
     writer = csv.writer(buf)
     writer.writerow(["email", "source", "free_ride_used", "signed_up"])
     for s in subscribers:
-        writer.writerow([s.email, s.source or "", "yes" if s.discount_used else "no",
+        writer.writerow([_csv_safe(s.email), _csv_safe(s.source or ""), "yes" if s.discount_used else "no",
                          s.created_at.strftime("%Y-%m-%d %H:%M")])
     buf.seek(0)
     filename = f"samefare_subscribers_{datetime.utcnow().strftime('%Y%m%d')}.csv"

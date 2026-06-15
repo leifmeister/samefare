@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 from app import models
 from app.database import get_db
 from app.dependencies import get_current_user, get_template_context
+from app.limiter import rate_limit
 
 log = logging.getLogger(__name__)
 
@@ -81,6 +82,7 @@ def submit_report(
     reason:     str         = Form(...),
     comment:    str         = Form(""),
     booking_id: str         = Form(""),
+    _rl=rate_limit(5, 3600),
 ):
     reported = db.query(models.User).filter(
         models.User.id == user_id,
@@ -125,7 +127,7 @@ def submit_report(
         reported_id = user_id,
         booking_id  = bk_id,
         reason      = reason_enum,
-        comment     = comment.strip() or None,
+        comment     = (comment.strip()[:2000]) or None,
     )
     db.add(report)
     db.commit()
@@ -142,7 +144,7 @@ def report_thanks(
     current_user: models.User = Depends(get_current_user),
     db:      Session = Depends(get_db),
 ):
-    reported = db.query(models.User).filter(models.User.id == user_id).first()
+    reported = db.query(models.User).filter(models.User.id == user_id, models.User.is_active == True).first()
     return templates.TemplateResponse("reports/thanks.html", {
         **ctx,
         "reported": reported,
