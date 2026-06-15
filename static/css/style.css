@@ -474,6 +474,10 @@ button, input, select, textarea { font: inherit; }
   margin-left: auto;
 }
 .navbar__burger { display: none; background: none; border: none; cursor: pointer; padding: var(--space-2); color: var(--c-text); }
+/* The burger SVG ships without width/height attributes (unlike the other nav
+   icons), so without this it collapses to 0×0 and the mobile menu can't be
+   opened at all. Size it explicitly to a tappable icon. */
+.navbar__burger svg { display: block; width: 26px; height: 26px; }
 
 /* Mobile drawer */
 .navbar__mobile {
