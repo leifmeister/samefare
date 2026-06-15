@@ -753,6 +753,11 @@ def report_driver_no_show(
     # "late_forfeit") so the captured fare is never treated as owed to the driver.
     from app.routers.payments import _issue_rapyd_refund
 
+    # Only confirmed passengers are refunded. A passenger who already
+    # late-cancelled forfeited their fare (captured, non-refundable) — that
+    # stands even if the driver later no-shows, since they cancelled the ride
+    # themselves. The driver is still paid for none of them (payout chokepoint
+    # blocks the whole no-show trip).
     affected = [b for b in trip.bookings
                 if b.status == models.BookingStatus.confirmed]
     if booking not in affected and booking.status == models.BookingStatus.confirmed:

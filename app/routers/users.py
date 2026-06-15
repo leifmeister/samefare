@@ -622,6 +622,17 @@ def export_data(
     )
 
 
+def _looks_like_image(b: bytes) -> bool:
+    """True if the bytes start with a known image signature (JPEG/PNG/WEBP/GIF/HEIF)."""
+    return (
+        b[:3] == b"\xff\xd8\xff"                       # JPEG
+        or b[:8] == b"\x89PNG\r\n\x1a\n"               # PNG
+        or (b[:4] == b"RIFF" and b[8:12] == b"WEBP")   # WEBP
+        or b[:6] in (b"GIF87a", b"GIF89a")             # GIF
+        or b[4:8] == b"ftyp"                           # HEIC/HEIF (ISO-BMFF)
+    )
+
+
 @router.post("/profile/avatar", response_class=HTMLResponse)
 def upload_avatar(
     request: Request,
@@ -637,6 +648,10 @@ def upload_avatar(
     content = photo.file.read()
     if len(content) > 5 * 1024 * 1024:  # 5 MB limit
         return RedirectResponse("/profile", status_code=303)
+    # Validate by magic bytes, not just the extension — stops an HTML/script
+    # polyglot uploaded as ".png" being stored and served from our origin.
+    if not _looks_like_image(content):
+        return RedirectResponse("/profile?avatar_error=1", status_code=303)
 
     os.makedirs("static/avatars", exist_ok=True)
 
