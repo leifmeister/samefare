@@ -60,6 +60,14 @@
   --r-xl:   28px;
   --r-full: 9999px;
 
+  /* Aliases for the --radius-* names used by admin + a few components.
+     Without these the var() resolves to nothing and those elements render
+     with square corners, out of step with the rest of the rounded UI. */
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius:    var(--r-md);
+
   /* Shadows */
   --shadow-sm:   0 2px 4px rgba(0,0,0,.08);
   --shadow-md:   0 4px 16px rgba(0,0,0,.10);
@@ -1779,6 +1787,7 @@ button, input, select, textarea { font: inherit; }
 /* ── Bookings list ───────────────────────────────────────────── */
 .page-section-header {
   display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-4); flex-wrap: wrap;
   margin-bottom: var(--space-6);
 }
 .page-title { font-size: 1.75rem; font-weight: 800; }
@@ -3552,21 +3561,30 @@ button, input, select, textarea { font: inherit; }
 }
 
 /* ── Admin: shared nav tabs ─────────────────────────────────────────────────── */
-.admin-nav-tabs { display: flex; gap: .25rem; }
+.admin-nav-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .2rem;
+  padding: .3rem;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-full);
+}
 .admin-tab {
   padding: .4rem .9rem;
-  border-radius: 6px;
+  border-radius: var(--r-full);
   font-size: .875rem;
   font-weight: 500;
   color: var(--c-text-muted);
   text-decoration: none;
   border: 1px solid transparent;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
 }
-.admin-tab:hover { background: var(--c-bg); color: var(--c-text); }
+.admin-tab:hover { color: var(--c-text); }
 .admin-tab--active {
   background: var(--c-surface);
   color: var(--c-primary);
-  border-color: var(--c-border);
+  box-shadow: var(--shadow-sm);
   font-weight: 600;
 }
 
@@ -3594,11 +3612,18 @@ button, input, select, textarea { font: inherit; }
   border: 1px solid var(--c-border);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.dash-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 .dash-card--highlight {
   background: color-mix(in srgb, var(--c-primary) 8%, var(--c-surface));
   border-color: color-mix(in srgb, var(--c-primary) 30%, transparent);
 }
+.dash-card--highlight .dash-card__value { color: var(--c-primary-dark); }
 .dash-card--sm { padding: var(--space-4); }
 
 .dash-card__label {
@@ -3638,6 +3663,7 @@ button, input, select, textarea { font: inherit; }
   background: var(--c-surface);
   border: 1px solid var(--c-border);
   border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 .dash-table-card__title {
@@ -3656,6 +3682,36 @@ button, input, select, textarea { font: inherit; }
   font-size: .875rem;
 }
 .text-right { text-align: right; }
+
+/* ── Admin tables ───────────────────────────────────────────────────────── */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .9rem;
+}
+.admin-table thead th {
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+  text-align: left;
+  padding: var(--space-3) var(--space-5);
+  background: var(--c-bg);
+  border-bottom: 1px solid var(--c-border);
+  white-space: nowrap;
+}
+.admin-table tbody td {
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--c-border);
+  color: var(--c-text);
+}
+.admin-table tbody tr:last-child td { border-bottom: none; }
+.admin-table tbody tr { transition: background .12s ease; }
+.admin-table tbody tr:hover { background: color-mix(in srgb, var(--c-primary) 5%, var(--c-surface)); }
+/* When the card already carries a header band + footnote, the table's own top
+   border would double up — let the card's title border be the only divider. */
+.dash-table-card .admin-table thead th { background: var(--c-surface); }
 
 /* ── Admin: test users ───────────────────────────────────────────────────── */
 .test-user-grid {

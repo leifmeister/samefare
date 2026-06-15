@@ -124,17 +124,11 @@
           </div>
         </div>
 
-        <!-- Rapyd.js card widget -->
+        <!-- Continue to Rapyd's secure hosted card page -->
         <div style="padding:1rem 1.5rem 1.5rem;">
-          {% if checkout_id %}
-          <div id="rapyd-checkout-container" style="min-height:280px;"></div>
-          {% elif not (rapyd_error is defined and rapyd_error) %}
-          {# Only show the in-widget error when the top banner isn't already
-             reporting the failure — otherwise the page shows two red errors. #}
-          <div class="alert alert--error">
-            {{ _t('checkout_payment_error') }}
-          </div>
-          {% endif %}
+          <form method="post" action="/payments/checkout/{{ booking.id }}/start" style="margin:0;">
+            <button type="submit" class="btn btn-primary btn-lg btn-block">{{ _t('checkout_continue_btn') }}</button>
+          </form>
         </div>
 
         <!-- Cancellation policy -->
