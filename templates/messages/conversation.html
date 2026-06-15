@@ -126,7 +126,7 @@
   {% elif _status == 'completed' %}
   <div class="chat-strip chat-strip--neutral">
     This trip is complete.
-    {% if _is_passenger and not booking.reviews %}<a href="/trips/{{ booking.trip_id }}" class="chat-strip__link">Leave a review →</a>{% endif %}
+    {% if _is_passenger and not (booking.reviews | selectattr('reviewer_id', 'equalto', current_user.id) | list) %}<a href="/trips/{{ booking.trip_id }}" class="chat-strip__link">{{ _t('action_leave_review') }} →</a>{% endif %}
   </div>
   {% elif _status == 'no_show' %}
   <div class="chat-strip chat-strip--neutral">

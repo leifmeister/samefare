@@ -32,6 +32,7 @@
     {% endif %}
 
     <form method="post" action="/login" class="auth-form">
+      <input type="hidden" name="next" value="{{ next or '' }}" />
       <div class="form-group">
         <label for="email" class="label">{{ _t('login_email') }}</label>
         <input id="email" name="email" type="email" class="input" required

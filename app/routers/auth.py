@@ -30,6 +30,22 @@ def _lc(request: Request) -> dict:
     return {"lang": lang, "_t": get_translations(lang)}
 
 
+def _safe_next(target: str | None) -> str:
+    """
+    Return `target` only if it's a safe same-site relative path, else "/".
+    Blocks open redirects: must start with a single "/", not "//" or "/\\"
+    (protocol-relative) and not be a scheme like "javascript:".
+    """
+    if (
+        target
+        and target.startswith("/")
+        and not target.startswith("//")
+        and not target.startswith("/\\")
+    ):
+        return target
+    return "/"
+
+
 def _subscribe_newsletter(db: Session, email: str, source: str = "register") -> None:
     """Subscribe email to newsletter if not already subscribed."""
     exists = (
@@ -57,10 +73,10 @@ def create_access_token(user_id: int) -> str:
 
 
 @router.get("/login", response_class=HTMLResponse)
-def login_page(request: Request, ctx: dict = Depends(get_template_context)):
+def login_page(request: Request, ctx: dict = Depends(get_template_context), next: str = ""):
     if ctx["current_user"]:
-        return RedirectResponse("/", status_code=303)
-    return templates.TemplateResponse("auth/login.html", {**ctx, "error": None, "email": ""})
+        return RedirectResponse(_safe_next(next), status_code=303)
+    return templates.TemplateResponse("auth/login.html", {**ctx, "error": None, "email": "", "next": next})
 
 
 @router.post("/login", response_class=HTMLResponse)
@@ -68,6 +84,7 @@ def login(
     request: Request,
     email: str = Form(...),
     password: str = Form(...),
+    next: str = Form(""),
     db: Session = Depends(get_db),
     _rl=rate_limit(5, 60),
 ):
@@ -76,29 +93,29 @@ def login(
     if not user:
         return templates.TemplateResponse(
             "auth/login.html",
-            {**ctx, "error": "no_account", "email": email},
+            {**ctx, "error": "no_account", "email": email, "next": next},
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
     if not verify_password(password, user.hashed_password):
         return templates.TemplateResponse(
             "auth/login.html",
-            {**ctx, "error": "wrong_password", "email": email},
+            {**ctx, "error": "wrong_password", "email": email, "next": next},
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
     if user.deleted_at:
         return templates.TemplateResponse(
             "auth/login.html",
-            {**ctx, "error": "deleted", "email": email},
+            {**ctx, "error": "deleted", "email": email, "next": next},
             status_code=status.HTTP_403_FORBIDDEN,
         )
     if not user.is_active:
         return templates.TemplateResponse(
             "auth/login.html",
-            {**ctx, "error": "suspended", "email": email},
+            {**ctx, "error": "suspended", "email": email, "next": next},
             status_code=status.HTTP_403_FORBIDDEN,
         )
     token = create_access_token(user.id)
-    response = RedirectResponse("/", status_code=303)
+    response = RedirectResponse(_safe_next(next), status_code=303)
     response.set_cookie(key="access_token", value=token, httponly=True,
                         max_age=settings.access_token_expire_minutes * 60, samesite="lax",
                         secure=settings.secure_cookies)
