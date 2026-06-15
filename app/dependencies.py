@@ -94,6 +94,7 @@ def _pending_reviews(user: models.User, db: Session) -> list:
 def get_template_context(request: Request, db: Session = Depends(get_db)):
     from datetime import datetime
     from app.i18n import get_translations, detect_lang
+    from app.dates import make_date_formatter
     lang = detect_lang(request)
     user = get_current_user_optional(request, db)
     unread_count = 0
@@ -193,6 +194,9 @@ def get_template_context(request: Request, db: Session = Depends(get_db)):
         "is_newsletter_subscriber": is_newsletter_subscriber,
         "lang":                     lang,
         "_t":                       get_translations(lang),
+        # Locale-aware date formatter: fdate(dt, "%-d %b %Y") → Icelandic month/
+        # weekday names when lang is 'is', English otherwise.
+        "fdate":                    make_date_formatter(lang),
         # Canonical city list for the shared search-bar city pickers (base.html).
         # Same source the offer-a-ride form uses, so both stay in sync.
         "canonical_cities":         list(_CANONICAL_CITIES),

@@ -158,9 +158,20 @@ def book_trip_page(
             return RedirectResponse(f"/trips/{trip_id}", status_code=303)
 
     has_discount   = _newsletter_discount(db, current_user) is not None
+    # Subscribed with an unused discount but not yet eligible (incomplete profile
+    # or unverified ID) → show how to unlock it instead of silently charging full.
+    discount_locked = (not has_discount) and (
+        db.query(models.NewsletterSubscriber)
+        .filter(
+            models.NewsletterSubscriber.email         == current_user.email,
+            models.NewsletterSubscriber.discount_used == False,  # noqa: E712
+        )
+        .first() is not None
+    )
     less_than_24h  = trip.departure_datetime <= datetime.utcnow() + timedelta(hours=24)
     return templates.TemplateResponse("bookings/create.html", {
         **ctx, "trip": trip, "error": None, "has_discount": has_discount,
+        "discount_locked": discount_locked,
         "segment_pickup": segment_pickup, "segment_dropoff": segment_dropoff,
         "segment_price": segment_price, "less_than_24h": less_than_24h,
         "instant_book": trip.instant_book,

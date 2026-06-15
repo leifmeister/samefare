@@ -1596,6 +1596,15 @@ button, input, select, textarea { font: inherit; }
   font-weight: 500;
   margin-top: var(--space-5);
 }
+/* "Locked" variant: subscribed but not yet eligible — an amber, actionable
+   nudge (a link to /verify), not the green "you have it" discount. */
+.discount-banner--locked {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  color: #92400e;
+  text-decoration: none;
+}
+.discount-banner--locked:hover { background: #fef3c7; }
 .discount-strike {
   color: #16a34a;
   font-weight: 600;

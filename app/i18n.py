@@ -587,6 +587,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "profile_step_identity": "Verify your ID for a trust badge",
         "profile_step_licence": "Verify your licence to offer rides",
         "profile_step_payout": "Set up payout details to get paid",
+        "profile_payout_setup": "Set up",
+        "profile_payout_required": "Required to offer rides",
+        "booking_with_driver": "with your driver",
+        "booking_discount_locked": "Verify your ID and complete your profile to unlock your fee-free first ride.",
 
         # ── Payment success / card-saved pages ───────────────────────────────
         "pay_summary_title": "Booking summary",
@@ -1356,6 +1360,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "profile_step_identity": "Staðfestu auðkenni fyrir traustmerki",
         "profile_step_licence": "Staðfestu ökuskírteini til að bjóða ferðir",
         "profile_step_payout": "Settu upp greiðsluupplýsingar til að fá greitt",
+        "profile_payout_setup": "Uppsett",
+        "profile_payout_required": "Nauðsynlegt til að bjóða ferðir",
+        "booking_with_driver": "með bílstjóranum",
+        "booking_discount_locked": "Staðfestu auðkenni og kláraðu prófílinn til að virkja fyrstu ferð án þjónustugjalds.",
 
         # ── Payment success / card-saved pages ───────────────────────────────
         "pay_summary_title": "Yfirlit bókunar",

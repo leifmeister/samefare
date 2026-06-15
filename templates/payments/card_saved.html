@@ -65,7 +65,7 @@
       </div>
       <div class="price-row">
         <span>{{ _t('pay_summary_departure') }}</span>
-        <span>{{ booking.trip.departure_datetime.strftime("%A %-d %B %Y, %H:%M") }}</span>
+        <span>{{ fdate(booking.trip.departure_datetime, "%A %-d %B %Y, %H:%M") }}</span>
       </div>
       <div class="price-row">
         <span>{{ _t('pay_summary_driver') }}</span>

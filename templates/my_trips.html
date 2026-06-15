@@ -73,10 +73,10 @@
   <div class="booking-row__meta">
     <span>
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
-      {{ trip.departure_datetime.strftime("%a %-d %b %Y · %H:%M") }}
+      {{ fdate(trip.departure_datetime, "%a %-d %b %Y · %H:%M") }}
     </span>
     <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }}</span>
-    <span>with <strong>{{ trip.driver.full_name.split()[0] }}</strong></span>
+    <span>{{ _t('booking_with_driver') }} (<strong>{{ trip.driver.full_name.split()[0] }}</strong>)</span>
     <span class="booking-row__price">{{ "{:,}".format(booking.total_price) }} ISK</span>
   </div>
 
@@ -297,7 +297,7 @@
 
   {# Meta row #}
   <div class="trip-table__meta">
-    <span>{{ trip.departure_datetime.strftime("%a %-d %b %Y · %H:%M") }}</span>
+    <span>{{ fdate(trip.departure_datetime, "%a %-d %b %Y · %H:%M") }}</span>
     {% if trip.status == 'active' %}
       <span>{{ trip.seats_available }}/{{ trip.seats_total }} {{ _t('riderow_seats_left') }}</span>
       <span>{{ "{:,}".format(trip.price_per_seat) }} ISK/seat</span>
@@ -533,7 +533,7 @@
               {% if booking.pickup_city and (_ro != booking.trip.origin or _rd != booking.trip.destination) %}
               <span class="booking-route__context">{{ _t('inbox_part_of') }} {{ booking.trip.origin }} → {{ booking.trip.destination }}</span>
               {% endif %}
-              · {{ booking.trip.departure_datetime.strftime("%-d %b · %H:%M") }}
+              · {{ fdate(booking.trip.departure_datetime, "%-d %b · %H:%M") }}
             </p>
           </div>
           <div class="request-card__price-aside">

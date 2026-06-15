@@ -223,9 +223,9 @@
         <summary class="details-card__summary">
           💳 Payout details
           {% if current_user.kennitala and current_user.blikk_account_iban %}
-            <span class="verify-chip verify-chip--approved" style="margin-left:.5rem;">Set up</span>
+            <span class="verify-chip verify-chip--approved" style="margin-left:.5rem;">{{ _t('profile_payout_setup') }}</span>
           {% else %}
-            <span class="verify-chip verify-chip--pending" style="margin-left:.5rem;">Required to offer rides</span>
+            <span class="verify-chip verify-chip--pending" style="margin-left:.5rem;">{{ _t('profile_payout_required') }}</span>
           {% endif %}
         </summary>
 

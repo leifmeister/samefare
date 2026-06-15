@@ -16,13 +16,13 @@
         <h1 class="form-page__title">{{ _t('checkout_save_card_title') }}</h1>
         <p class="form-page__sub">
           {{ booking.pickup_city or booking.trip.origin }} → {{ booking.dropoff_city or booking.trip.destination }} &nbsp;·&nbsp;
-          {{ booking.trip.departure_datetime.strftime("%a %-d %b, %H:%M") }}
+          {{ fdate(booking.trip.departure_datetime, "%a %-d %b, %H:%M") }}
         </p>
       {% else %}
         <h1 class="form-page__title">{{ _t('checkout_pay_title') }}</h1>
         <p class="form-page__sub">
           {{ booking.pickup_city or booking.trip.origin }} → {{ booking.dropoff_city or booking.trip.destination }} &nbsp;·&nbsp;
-          {{ booking.trip.departure_datetime.strftime("%a %-d %b, %H:%M") }}
+          {{ fdate(booking.trip.departure_datetime, "%a %-d %b, %H:%M") }}
         </p>
       {% endif %}
     </div>
@@ -189,7 +189,7 @@
           </div>
           <div class="trip-mini-detail__row">
             <span class="trip-mini-detail__label">{{ _t('checkout_departs_label') }}</span>
-            <span>{{ booking.trip.departure_datetime.strftime("%a %-d %b at %H:%M") }}</span>
+            <span>{{ fdate(booking.trip.departure_datetime, "%a %-d %b · %H:%M") }}</span>
           </div>
           <div class="trip-mini-detail__row">
             <span class="trip-mini-detail__label">{{ _t('checkout_seats_label') }}</span>
