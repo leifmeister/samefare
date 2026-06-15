@@ -48,19 +48,27 @@
       var m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
       return m ? decodeURIComponent(m[1]) : "";
     }
-    // 1) Native form submits → inject/refresh a hidden csrf_token field.
-    document.addEventListener("submit", function (e) {
-      var f = e.target;
-      if (!(f instanceof HTMLFormElement)) return;
-      if ((f.method || "get").toUpperCase() === "GET") return;
-      var field = f.querySelector('input[name="csrf_token"]');
+    function inject(form) {
+      if ((form.method || "get").toUpperCase() === "GET") return;
+      var field = form.querySelector('input[name="csrf_token"]');
       if (!field) {
         field = document.createElement("input");
         field.type = "hidden"; field.name = "csrf_token";
-        f.appendChild(field);
+        form.appendChild(field);
       }
       field.value = csrf();
+    }
+    // 1a) User-initiated submits fire the submit event.
+    document.addEventListener("submit", function (e) {
+      if (e.target instanceof HTMLFormElement) inject(e.target);
     }, true);
+    // 1b) Programmatic form.submit() (avatar picker, confirm dialogs) does NOT
+    //     fire the submit event — patch the prototype so it still gets a token.
+    var _nativeSubmit = HTMLFormElement.prototype.submit;
+    HTMLFormElement.prototype.submit = function () {
+      try { inject(this); } catch (e) {}
+      return _nativeSubmit.apply(this, arguments);
+    };
     // 2) HTMX requests → X-CSRF-Token header.
     document.addEventListener("htmx:configRequest", function (e) {
       e.detail.headers["X-CSRF-Token"] = csrf();
