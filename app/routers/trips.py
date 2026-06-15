@@ -119,7 +119,9 @@ def _pricing_ctx(
     # Server-side estimate for pre-filling price when origin/destination are known
     estimate = None
     if policy and origin and destination:
-        route = route_lookup(origin.strip(), destination.strip(), db)
+        # Canonicalise so a driver who types "Reykjavik" (no accents) still gets
+        # a price estimate — same input handling as search.
+        route = route_lookup(canonical_city(origin), canonical_city(destination), db)
         if route:
             estimate = estimate_trip_cost(
                 distance_km     = float(route.distance_km),
@@ -684,6 +686,12 @@ def create_trip(
     if current_user.posting_suspended:
         return RedirectResponse("/my-trips?tab=rides&posting_suspended=1", status_code=303)
 
+    # Canonicalise city names up front so pricing/route lookup and the stored
+    # trip use the same canonical spelling search relies on — a driver typing
+    # "Reykjavik" without accents gets a supported route, not a rejection.
+    origin      = canonical_city(origin)
+    destination = canonical_city(destination)
+
     allows_luggage  = allows_luggage_raw  is not None
     large_luggage   = large_luggage_raw   is not None
     allows_pets     = allows_pets_raw     is not None
@@ -982,6 +990,11 @@ def update_trip(
         return RedirectResponse("/profile", status_code=303)
     if trip.status != models.TripStatus.active:
         return RedirectResponse(f"/trips/{trip_id}", status_code=303)
+
+    # Canonicalise so accent-free input ("Reykjavik") resolves to a supported
+    # route and is stored consistently — same as create_trip and search.
+    origin      = canonical_city(origin)
+    destination = canonical_city(destination)
 
     # Live bookings lock the material terms (route/departure/price/segments) — see
     # the material-terms guard below. Computed up front so the re-rendered form

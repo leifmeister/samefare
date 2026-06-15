@@ -16,7 +16,10 @@ from app import models, email as mailer
 from app.database import get_db
 from app.dependencies import get_current_user_optional, get_template_context
 from app.limiter import rate_limit
-from app.utils import canonical_city, _strip_diacritics
+from app.utils import (
+    canonical_city,
+    build_route_graph, shortest_path_km, is_on_route, seats_for_segment,
+)
 
 log = logging.getLogger(__name__)
 templates = Jinja2Templates(directory="templates")
@@ -25,17 +28,48 @@ router = APIRouter(tags=["alerts"])
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+def _alert_matches_trip(graph, alert: models.RideAlert, trip: models.Trip) -> bool:
+    """
+    True if `trip` serves the alert's route with enough seats, using the same
+    segment logic as search:
+      • both alert cities lie on the trip's route, in the correct direction
+      • non-direct (mid-route) matches require the trip to allow segments
+      • availability is the per-segment count on the alert's leg, not the
+        whole-trip minimum
+    So an alert for Selfoss→Vík matches a Reykjavík→Vík segment-enabled trip
+    even when the whole-trip seat count is 0 on an earlier leg.
+    """
+    a_o = canonical_city(alert.origin)
+    a_d = canonical_city(alert.destination)
+    t_o, t_d = trip.origin, trip.destination
+    is_direct = (a_o == t_o and a_d == t_d)
+
+    total_km = shortest_path_km(graph, t_o, t_d)
+    if total_km is None:
+        # Route unknown to the graph — fall back to an exact match + whole-trip seats.
+        return is_direct and trip.seats_available >= alert.seats
+    if not is_direct and not trip.allow_segments:
+        return False
+    if not is_on_route(graph, t_o, t_d, a_o) or not is_on_route(graph, t_o, t_d, a_d):
+        return False
+    d_pick = 0.0 if t_o == a_o else shortest_path_km(graph, t_o, a_o)
+    d_drop = total_km if t_d == a_d else shortest_path_km(graph, t_o, a_d)
+    if d_pick is None or d_drop is None or d_pick >= d_drop:
+        return False
+    active = [b for b in trip.bookings if b.occupies_seat]
+    avail = seats_for_segment(graph, trip.seats_total, active, t_o, t_d, a_o, a_d)
+    return avail >= alert.seats
+
+
 def notify_matching_alerts(db: Session, trip: models.Trip) -> None:
     """
     Called right after a new trip is created.
     Finds every active alert that matches the trip and sends one email per alert.
 
-    Matching rules (mirrors the search query in trips.py):
-    • alert.origin      is a case-insensitive substring of trip.origin
-    • alert.destination is a case-insensitive substring of trip.destination
-    • trip.seats_available >= alert.seats
-    • if alert.travel_date is set, trip must depart on that date
-    • throttle: skip if notified within the last hour (prevents bursts on multi-post)
+    Matching mirrors search via _alert_matches_trip(): both alert cities on the
+    trip's route (right direction), segment availability on the alert's leg, and
+    mid-route matches only on segment-enabled trips. Plus: same-day if the alert
+    is dated, not the driver's own trip, and throttled to one email/alert/hour.
     """
     try:
         alerts = (
@@ -44,30 +78,26 @@ def notify_matching_alerts(db: Session, trip: models.Trip) -> None:
             .all()
         )
         now = datetime.utcnow()
+        graph = build_route_graph(db)
         notified = 0
         for alert in alerts:
-            # Route match — compare ASCII-folded names so 'Reykjavik' == 'Reykjavík'
-            if _strip_diacritics(alert.origin) not in _strip_diacritics(trip.origin):
-                continue
-            if _strip_diacritics(alert.destination) not in _strip_diacritics(trip.destination):
-                continue
-            # Seat availability
-            if trip.seats_available < alert.seats:
-                continue
-            # Date match (if alert has one)
-            if alert.travel_date:
-                if trip.departure_datetime.date() != alert.travel_date:
-                    continue
             # Don't notify the driver about their own trip
             if alert.user_id and alert.user_id == trip.driver_id:
                 continue
-            # Throttle: at most one notification per alert per hour
-            if alert.last_notified_at:
-                if (now - alert.last_notified_at).total_seconds() < 3600:
+            # Date: expire past-dated alerts; otherwise require a same-day trip
+            if alert.travel_date:
+                if alert.travel_date < now.date():
+                    alert.is_active = False
                     continue
-            # Expire alerts whose travel_date is in the past
-            if alert.travel_date and alert.travel_date < now.date():
-                alert.is_active = False
+                if trip.departure_datetime.date() != alert.travel_date:
+                    continue
+            # Throttle: at most one notification per alert per hour
+            if alert.last_notified_at and (now - alert.last_notified_at).total_seconds() < 3600:
+                continue
+            # Route + per-segment availability — same segment logic as search, so
+            # mid-route matches (e.g. a Selfoss→Vík alert on a Reykjavík→Vík trip)
+            # are caught and availability is checked on the alert's leg.
+            if not _alert_matches_trip(graph, alert, trip):
                 continue
 
             mailer.ride_alert_notification(alert, [trip])
