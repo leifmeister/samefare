@@ -46,10 +46,18 @@ def _refresh_seats(trip: "models.Trip", db: "Session") -> None:
 
 def _newsletter_discount(db: Session, user: models.User):
     """
-    Return the NewsletterSubscriber row if this user has an unused first-ride
-    discount, otherwise None.
+    Return the NewsletterSubscriber row if this user is eligible for their unused
+    first-ride fee waiver, otherwise None.
+
+    Eligibility requires ALL of the following. Since a verified ID is no longer
+    mandatory to book, a bare newsletter signup would let anyone farm free rides
+    from throwaway accounts — so the waiver is tied to a real, ID-verified
+    passenger profile:
+      • subscribed to the newsletter, discount still unused
+      • completed passenger profile — profile photo, bio, and a verified phone
+      • ID-verified badge (id_verification approved)
     """
-    return (
+    sub = (
         db.query(models.NewsletterSubscriber)
         .filter(
             models.NewsletterSubscriber.email         == user.email,
@@ -57,6 +65,18 @@ def _newsletter_discount(db: Session, user: models.User):
         )
         .first()
     )
+    if not sub:
+        return None
+
+    profile_complete = bool(
+        user.avatar_url
+        and user.bio
+        and user.phone and user.phone_verified
+    )
+    id_verified = user.id_verification == models.VerificationStatus.approved
+    if not (profile_complete and id_verified):
+        return None
+    return sub
 
 
 @router.get("", response_class=HTMLResponse)
