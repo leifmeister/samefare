@@ -105,12 +105,12 @@
         <div class="booking-steps">
           <div class="booking-steps__step" :class="step >= 1 ? 'booking-steps__step--active' : ''">
             <span class="booking-steps__num">1</span>
-            <span class="booking-steps__label">Your booking</span>
+            <span class="booking-steps__label">{{ _t('booking_step_your_booking') }}</span>
           </div>
           <div class="booking-steps__line"></div>
           <div class="booking-steps__step" :class="step >= 2 ? 'booking-steps__step--active' : ''">
             <span class="booking-steps__num">2</span>
-            <span class="booking-steps__label">Payment</span>
+            <span class="booking-steps__label">{{ _t('booking_step_payment') }}</span>
           </div>
         </div>
 
@@ -124,7 +124,7 @@
             <select id="seats_booked" name="seats_booked" class="input"
                     @change="seats = parseInt($event.target.value)">
               {% for i in range(1, (booking_available_seats or trip.seats_available) + 1) %}
-                <option value="{{ i }}">{{ i }} seat{{ 's' if i != 1 }}</option>
+                <option value="{{ i }}">{{ i }} {{ _t('seat') if i == 1 else _t('seats') }}</option>
               {% endfor %}
             </select>
           </div>
@@ -132,7 +132,7 @@
           <div class="form-group">
             <label for="message" class="label">{{ _t('booking_message_label') }} <span class="optional">{{ _t('booking_message_optional') }}</span></label>
             <textarea id="message" name="message" class="input textarea" rows="3"
-                      placeholder="e.g. I'll be at the BSÍ bus terminal. Can you pick me up there?"></textarea>
+                      placeholder="{{ _t('booking_msg_placeholder') }}"></textarea>
           </div>
 
           {# Price summary #}
@@ -151,7 +151,7 @@
           <div class="booking-summary">
             <h3 class="booking-summary__title">{{ _t('booking_price_summary') }}</h3>
             <div class="price-row price-row--total">
-              <span x-text="seats + ' seat' + (seats > 1 ? 's' : '')"></span>
+              <span x-text="seats + ' ' + (seats > 1 ? '{{ _t('seats') }}' : '{{ _t('seat') }}')"></span>
               <span x-text="total.toLocaleString() + ' ISK'"></span>
             </div>
           </div>
@@ -172,7 +172,7 @@
           <div class="form-actions">
             <a href="/trips/{{ trip.id }}" class="btn btn-ghost">{{ _t('booking_cancel_btn') }}</a>
             <button type="button" class="btn btn-primary btn-lg" @click="step = 2">
-              Continue to payment
+              {{ _t('booking_continue_payment') }}
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18" style="margin-left:.25rem;" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clip-rule="evenodd"/></svg>
             </button>
           </div>
@@ -184,12 +184,12 @@
         <div x-show="step === 2" x-cloak>
 
           {% if blikk_payments %}
-          <h2 class="payment-step__title">How would you like to pay?</h2>
+          <h2 class="payment-step__title">{{ _t('booking_pay_how') }}</h2>
           {% else %}
-          <h2 class="payment-step__title">Confirm payment</h2>
+          <h2 class="payment-step__title">{{ _t('booking_confirm_payment_title') }}</h2>
           {% endif %}
           <p class="payment-step__sub">
-            <span x-text="total.toLocaleString()"></span> ISK total
+            <span x-text="total.toLocaleString()"></span> ISK {{ _t('booking_total_suffix') }}
           </p>
 
           <div class="payment-options">
@@ -218,7 +218,7 @@
               <div class="payment-option__icon">🏦</div>
               <div class="payment-option__body">
                 <p class="payment-option__title">{{ _t('booking_pay_blikk') }}</p>
-                <p class="payment-option__desc">Icelandic bank transfer · no card needed</p>
+                <p class="payment-option__desc">{{ _t('booking_blikk_desc') }}</p>
               </div>
               <div class="payment-option__check" x-show="method === 'blikk'">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="20" height="20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd"/></svg>
@@ -257,7 +257,7 @@
           <div class="form-actions">
             <button type="button" class="btn btn-ghost" @click="step = 1">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" style="margin-right:.25rem;" aria-hidden="true"><path fill-rule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clip-rule="evenodd"/></svg>
-              Back
+              {{ _t('booking_step_back') }}
             </button>
             <button type="submit" class="btn btn-primary btn-lg">{{ _t('booking_confirm_btn') }}</button>
           </div>
@@ -272,7 +272,7 @@
           <div class="driver-card__info">
             <p class="driver-card__name">{{ trip.driver.full_name }}</p>
             {% if trip.driver.average_rating %}
-              <p class="driver-card__rating-text">★ {{ trip.driver.average_rating }} rating</p>
+              <p class="driver-card__rating-text">★ {{ trip.driver.average_rating }} {{ _t('booking_driver_rating') }}</p>
             {% endif %}
             {% if trip.driver.bio %}
               <p class="driver-card__bio">{{ trip.driver.bio }}</p>
@@ -303,15 +303,15 @@
         <div class="booking-prefs">
           <p class="booking-prefs__title">{{ _t('booking_ride_prefs') }}</p>
           <div class="booking-prefs__list">
-            {% if trip.allows_luggage %}<span title="Luggage allowed">🧳</span>{% endif %}
-            {% if trip.large_luggage %}<span title="Large luggage OK">🎿</span>{% endif %}
-            {% if trip.allows_pets %}<span title="Pets welcome">🐾</span>{% endif %}
-            {% if trip.child_seat %}<span title="Child seat available">🧒</span>{% endif %}
-            {% if trip.winter_ready %}<span title="Winter-ready vehicle">❄️</span>{% endif %}
-            {% if trip.chattiness == 'quiet' %}<span title="Quiet ride preferred">🤫</span>{% endif %}
-            {% if trip.chattiness == 'chatty' %}<span title="Chatty driver">💬</span>{% endif %}
-            {% if trip.flexible_pickup %}<span title="Flexible pickup">📍</span>{% endif %}
-            {% if trip.smoking %}<span title="Smoking OK">🚬</span>{% endif %}
+            {% if trip.allows_luggage %}<span title="{{ _t('booking_pref_luggage') }}">🧳</span>{% endif %}
+            {% if trip.large_luggage %}<span title="{{ _t('booking_pref_large_luggage') }}">🎿</span>{% endif %}
+            {% if trip.allows_pets %}<span title="{{ _t('booking_pref_pets') }}">🐾</span>{% endif %}
+            {% if trip.child_seat %}<span title="{{ _t('booking_pref_child_seat') }}">🧒</span>{% endif %}
+            {% if trip.winter_ready %}<span title="{{ _t('booking_pref_winter') }}">❄️</span>{% endif %}
+            {% if trip.chattiness == 'quiet' %}<span title="{{ _t('booking_pref_quiet') }}">🤫</span>{% endif %}
+            {% if trip.chattiness == 'chatty' %}<span title="{{ _t('booking_pref_chatty') }}">💬</span>{% endif %}
+            {% if trip.flexible_pickup %}<span title="{{ _t('booking_pref_flexible') }}">📍</span>{% endif %}
+            {% if trip.smoking %}<span title="{{ _t('booking_pref_smoking') }}">🚬</span>{% endif %}
           </div>
         </div>
         {% endif %}
