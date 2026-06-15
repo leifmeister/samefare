@@ -62,12 +62,12 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "banner_review_nudge_pre": "You have",
         "banner_review_nudge_post": "waiting for a review.",
         "banner_review_rate": "Rate now →",
-        "banner_subscribed": "✓ You're on the list — your first ride service fee is waived!",
+        "banner_subscribed": "✓ You're on the list! Verify your ID and complete your profile to unlock your fee-free first ride.",
 
         # ── Newsletter strip ─────────────────────────────────────────────────
         "newsletter_label": "Subscribe and get your",
         "newsletter_label_bold": "first ride fee-free",
-        "newsletter_label_end": "— plus Iceland travel updates",
+        "newsletter_label_end": "for verified members — plus Iceland travel updates",
         "newsletter_subscribe": "Subscribe",
 
         # ── Cookie consent ──────────────────────────────────────────────────
@@ -108,7 +108,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "register_age_confirm": "I confirm I am 18 or older",
         "register_newsletter_pre": "Get my",
         "register_newsletter_bold": "first ride fee-free",
-        "register_newsletter_post": "— subscribe to Iceland travel updates & SameFare offers",
+        "register_newsletter_post": "for verified members — plus Iceland travel updates & SameFare offers",
         "register_terms_pre": "By joining you agree to our",
         "register_terms_link": "Terms of Service",
         "register_terms_and": "and",
@@ -831,12 +831,12 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "banner_review_nudge_pre": "Þú átt",
         "banner_review_nudge_post": "sem bíðar umsagnar.",
         "banner_review_rate": "Gefa einkunn →",
-        "banner_subscribed": "✓ Þú ert á listanum — þjónustugjald fyrstu ferðar þinnar er fellt niður!",
+        "banner_subscribed": "✓ Þú ert á listanum! Staðfestu auðkenni og kláraðu prófílinn til að virkja fyrstu ferð án þjónustugjalds.",
 
         # ── Newsletter strip ─────────────────────────────────────────────────
         "newsletter_label": "Gerstu áskrifandi og fáðu",
         "newsletter_label_bold": "fyrstu ferð ókeypis",
-        "newsletter_label_end": "— auk ferðafrétta frá Íslandi",
+        "newsletter_label_end": "fyrir staðfesta notendur — auk ferðafrétta frá Íslandi",
         "newsletter_subscribe": "Gerast áskrifandi",
 
         # ── Cookie consent ──────────────────────────────────────────────────
@@ -877,7 +877,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "register_age_confirm": "Ég staðfesti að ég sé 18 ára eða eldri",
         "register_newsletter_pre": "Fáðu",
         "register_newsletter_bold": "fyrstu ferð ókeypis",
-        "register_newsletter_post": "— gerstu áskrifandi að ferðafréttum frá Íslandi og tilboðum SameFare",
+        "register_newsletter_post": "fyrir staðfesta notendur — auk ferðafrétta frá Íslandi og tilboða SameFare",
         "register_terms_pre": "Með því að skrá þig samþykkirðu",
         "register_terms_link": "Notkunarskilmála",
         "register_terms_and": "og",

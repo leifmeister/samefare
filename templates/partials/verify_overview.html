@@ -1,0 +1,66 @@
+{#
+  Goal-oriented verification overview: Ride / Drive / ID-badge, each with the
+  member's current status. Shared by /verify and /profile so both pages show
+  the identical three-way split. Import with context (uses current_user + _t).
+#}
+{% macro verify_overview() %}
+{% set email_ok    = current_user.email_verified %}
+{% set phone_ok    = current_user.phone_verified %}
+{% set id_ok       = current_user.id_verification      == 'approved' %}
+{% set id_pending  = current_user.id_verification      == 'pending'  %}
+{% set lic_ok      = current_user.license_verification == 'approved' %}
+{% set lic_pending = current_user.license_verification == 'pending'  %}
+<div class="verify-overview">
+  <p class="verify-overview__title">{{ _t('verify_ov_title') }}</p>
+
+  {# Ride — email + phone #}
+  <div class="verify-goal">
+    <span class="verify-goal__icon">🧍</span>
+    <div class="verify-goal__body">
+      <p class="verify-goal__name">{{ _t('verify_ov_ride') }}</p>
+      <p class="verify-goal__req">{{ _t('verify_ov_ride_req') }}</p>
+    </div>
+    {% if email_ok and phone_ok %}
+      <span class="verify-goal__status verify-goal__status--ok">✓ {{ _t('verify_ov_ready') }}</span>
+    {% else %}
+      <a href="/verify" class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_email') if not email_ok else _t('verify_ov_need_phone') }}</a>
+    {% endif %}
+  </div>
+
+  {# Drive — licence + phone #}
+  <div class="verify-goal">
+    <span class="verify-goal__icon">🚗</span>
+    <div class="verify-goal__body">
+      <p class="verify-goal__name">{{ _t('verify_ov_drive') }}</p>
+      <p class="verify-goal__req">{{ _t('verify_ov_drive_req') }}</p>
+    </div>
+    {% if lic_ok and phone_ok %}
+      <span class="verify-goal__status verify-goal__status--ok">✓ {{ _t('verify_ov_ready') }}</span>
+    {% elif lic_pending %}
+      <span class="verify-goal__status verify-goal__status--pending">{{ _t('verify_ov_pending') }}</span>
+    {% elif lic_ok and not phone_ok %}
+      <a href="/verify" class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_phone') }}</a>
+    {% elif phone_ok and not lic_ok %}
+      <a href="/verify" class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_licence') }}</a>
+    {% else %}
+      <a href="/verify" class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_licence_phone') }}</a>
+    {% endif %}
+  </div>
+
+  {# ID-verified badge — optional #}
+  <div class="verify-goal">
+    <span class="verify-goal__icon">🛡️</span>
+    <div class="verify-goal__body">
+      <p class="verify-goal__name">{{ _t('verify_ov_badge') }} <span class="verify-goal__optional">{{ _t('verify_ov_badge_optional') }}</span></p>
+      <p class="verify-goal__req">{{ _t('verify_ov_badge_req') }}</p>
+    </div>
+    {% if id_ok %}
+      <span class="verify-goal__status verify-goal__status--ok">✓ {{ _t('verify_ov_active') }}</span>
+    {% elif id_pending %}
+      <span class="verify-goal__status verify-goal__status--pending">{{ _t('verify_ov_pending') }}</span>
+    {% else %}
+      <a href="/verify" class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_id') }}</a>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}

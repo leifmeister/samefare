@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/verify_overview.html" import verify_overview with context %}
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
 {% block title %}{{ _t('verify_title') }} — SameFare{% endblock %}
 
@@ -65,59 +66,7 @@
     {% set is_driver  = current_user.role in ('driver','both') %}
 
     {# ── Overview: what each goal needs + your current status ─────────────── #}
-    <div class="verify-overview">
-      <p class="verify-overview__title">{{ _t('verify_ov_title') }}</p>
-
-      {# Ride — email + phone #}
-      <div class="verify-goal">
-        <span class="verify-goal__icon">🧍</span>
-        <div class="verify-goal__body">
-          <p class="verify-goal__name">{{ _t('verify_ov_ride') }}</p>
-          <p class="verify-goal__req">{{ _t('verify_ov_ride_req') }}</p>
-        </div>
-        {% if email_ok and phone_ok %}
-          <span class="verify-goal__status verify-goal__status--ok">✓ {{ _t('verify_ov_ready') }}</span>
-        {% else %}
-          <span class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_email') if not email_ok else _t('verify_ov_need_phone') }}</span>
-        {% endif %}
-      </div>
-
-      {# Drive — licence + phone #}
-      <div class="verify-goal">
-        <span class="verify-goal__icon">🚗</span>
-        <div class="verify-goal__body">
-          <p class="verify-goal__name">{{ _t('verify_ov_drive') }}</p>
-          <p class="verify-goal__req">{{ _t('verify_ov_drive_req') }}</p>
-        </div>
-        {% if lic_ok and phone_ok %}
-          <span class="verify-goal__status verify-goal__status--ok">✓ {{ _t('verify_ov_ready') }}</span>
-        {% elif lic_pending %}
-          <span class="verify-goal__status verify-goal__status--pending">{{ _t('verify_ov_pending') }}</span>
-        {% elif lic_ok and not phone_ok %}
-          <span class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_phone') }}</span>
-        {% elif phone_ok and not lic_ok %}
-          <span class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_licence') }}</span>
-        {% else %}
-          <span class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_licence_phone') }}</span>
-        {% endif %}
-      </div>
-
-      {# ID-verified badge — optional #}
-      <div class="verify-goal">
-        <span class="verify-goal__icon">🛡️</span>
-        <div class="verify-goal__body">
-          <p class="verify-goal__name">{{ _t('verify_ov_badge') }} <span class="verify-goal__optional">{{ _t('verify_ov_badge_optional') }}</span></p>
-          <p class="verify-goal__req">{{ _t('verify_ov_badge_req') }}</p>
-        </div>
-        {% if id_ok %}
-          <span class="verify-goal__status verify-goal__status--ok">✓ {{ _t('verify_ov_active') }}</span>
-        {% elif id_pending %}
-          <span class="verify-goal__status verify-goal__status--pending">{{ _t('verify_ov_pending') }}</span>
-        {% else %}
-          <span class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_id') }}</span>
-        {% endif %}
-      </div>
-    </div>
+    {{ verify_overview() }}
 
     {# Phone is the cross-cutting requirement and is handled on the profile /
        inline at booking — surface it here if still missing. #}
