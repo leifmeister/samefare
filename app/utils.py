@@ -4,11 +4,39 @@ Shared utility helpers.
 import difflib
 import heapq
 import unicodedata
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Optional
 from urllib.parse import urlparse
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
+    from app import models
+
+# ── Trip settlement timing ────────────────────────────────────────────────────
+
+# Minimum time after departure before a trip settles, even for a very short ride.
+# This is the floor on the driver-no-show reporting window (a passenger needs a
+# realistic chance to report) and on payout eligibility. Kept in sync with the
+# T&C (§9.2): the window closes at the LATER of estimated arrival or this floor.
+NO_SHOW_MIN_WINDOW = timedelta(hours=2)
+
+# Fallback drive+buffer for legacy trips with no estimated_arrival snapshot.
+_LEGACY_SETTLE_FALLBACK = timedelta(hours=4)
+
+
+def trip_settle_at(trip: "models.Trip") -> datetime:
+    """
+    When a trip is considered over: the no-show reporting window closes and the
+    trip becomes eligible for auto-complete + driver payout.
+
+    = max(estimated_arrival, departure + NO_SHOW_MIN_WINDOW)
+
+    estimated_arrival already bakes in drive time (distance ÷ 80 km/h) + 1 h
+    buffer; the floor stops a quick hop from settling so fast nobody could report
+    a no-show. Legacy trips with no estimate fall back to departure + 4 h.
+    """
+    est = trip.estimated_arrival or (trip.departure_datetime + _LEGACY_SETTLE_FALLBACK)
+    return max(est, trip.departure_datetime + NO_SHOW_MIN_WINDOW)
 
 # ── City name normalisation ───────────────────────────────────────────────────
 

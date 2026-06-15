@@ -19,6 +19,7 @@ from app.routers.payments import calc_fees, _issue_rapyd_refund
 from app.utils import (
     build_route_graph, resolve_segment,
     seats_for_segment, recompute_seats_available,
+    trip_settle_at,
 )
 
 settings = get_settings()
@@ -657,13 +658,13 @@ def mark_passenger_no_show(
         return RedirectResponse("/my-trips?tab=rides", status_code=303)
 
     # A no-show is determined at the pickup, so the action is only open for a
-    # grace window after departure — from +15 min (allow for a late passenger) up
-    # to +4 h. The +4 h upper bound mirrors the driver-no-show report window and
-    # is when the trip auto-completes; beyond it the booking has effectively
-    # settled and the driver could otherwise mark a no-show midway through (or
-    # even after) a long ride.
+    # grace window after departure — from +15 min (allow for a late passenger)
+    # until the trip settles. The upper bound is trip_settle_at (later of
+    # estimated arrival or departure + 2 h) — the same moment the trip
+    # auto-completes; beyond it the booking has settled and the driver could
+    # otherwise mark a no-show midway through (or after) a long ride.
     no_show_open_from  = booking.trip.departure_datetime + timedelta(minutes=15)
-    no_show_open_until = booking.trip.departure_datetime + timedelta(hours=4)
+    no_show_open_until = trip_settle_at(booking.trip)
     if now < no_show_open_from or now > no_show_open_until:
         return RedirectResponse("/my-trips?tab=rides", status_code=303)
 
@@ -694,7 +695,7 @@ def report_driver_no_show(
         return RedirectResponse("/my-trips?tab=bookings", status_code=303)
 
     report_open_from  = booking.trip.departure_datetime + timedelta(minutes=15)
-    report_open_until = booking.trip.departure_datetime + timedelta(hours=4)
+    report_open_until = trip_settle_at(booking.trip)
     if now < report_open_from or now > report_open_until:
         return RedirectResponse("/my-trips?tab=bookings", status_code=303)
 

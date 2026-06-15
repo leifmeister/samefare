@@ -218,8 +218,11 @@
     {% elif status == 'confirmed' %}
       <a href="/trips/{{ trip.id }}" class="btn btn-outline btn-sm">{{ _t('action_view_ride') }}</a>
       <a href="/messages/{{ booking.id }}" class="btn btn-ghost btn-sm">{{ _t('action_message') }}</a>
+      {# No-show report window closes when the trip settles: later of estimated
+         arrival or departure + 2h (mirrors trip_settle_at / T&C §9.2). #}
       {% set _report_from  = trip.departure_datetime + timedelta(minutes=15) %}
-      {% set _report_until = trip.departure_datetime + timedelta(hours=4) %}
+      {% set _settle_est   = trip.estimated_arrival or (trip.departure_datetime + timedelta(hours=4)) %}
+      {% set _report_until = _settle_est if _settle_est > (trip.departure_datetime + timedelta(hours=2)) else (trip.departure_datetime + timedelta(hours=2)) %}
       {% if now < _report_from %}
         <a href="/bookings/{{ booking.id }}/cancel" class="btn btn-ghost btn-sm btn-danger-outline">{{ _t('action_cancel') }}</a>
       {% elif now <= _report_until %}
