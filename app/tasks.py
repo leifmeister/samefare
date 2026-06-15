@@ -522,6 +522,21 @@ def authorise_booking_mit(db, booking: "models.Booking", now: "datetime" = None)
             payment.status          = models.PaymentStatus.authorised
             payment.auth_expires_at = now + timedelta(days=7)
             booking.status          = models.BookingStatus.confirmed
+            # Consume the first-ride fee waiver here — the single MIT confirm
+            # point for Case B / request-to-book bookings. Without this a
+            # discounted booking (service_fee == 0) never marks the subscriber's
+            # discount used, so they ride fee-free indefinitely.
+            if booking.service_fee == 0:
+                _sub = (
+                    db.query(models.NewsletterSubscriber)
+                    .filter(
+                        models.NewsletterSubscriber.email == booking.passenger.email,
+                        models.NewsletterSubscriber.discount_used == False,  # noqa: E712
+                    )
+                    .first()
+                )
+                if _sub:
+                    _sub.discount_used = True
             db.commit()
             db.refresh(booking)
             if not was_already_confirmed:

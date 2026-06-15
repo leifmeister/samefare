@@ -811,14 +811,37 @@ async def lifespan(app: FastAPI):
     task.cancel()
 
 
+_settings = get_settings()
+
 app = FastAPI(
     title="SameFare",
     description="Icelandic ridesharing — share the journey across Iceland",
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
+    # Don't expose the full route/schema surface publicly in production.
+    docs_url="/api/docs" if _settings.beta_mode else None,
+    redoc_url="/api/redoc" if _settings.beta_mode else None,
+    openapi_url="/api/openapi.json" if _settings.beta_mode else None,
 )
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """Baseline security headers. The CSP only locks framing/base/object (which
+    can't break the app's heavy inline styles + Alpine eval); a full script-src
+    CSP would need nonces and is deferred."""
+    response = await call_next(request)
+    h = response.headers
+    h.setdefault("X-Frame-Options", "DENY")
+    h.setdefault("X-Content-Type-Options", "nosniff")
+    h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    h.setdefault("Content-Security-Policy",
+                 "frame-ancestors 'none'; object-src 'none'; base-uri 'self'")
+    if _settings.secure_cookies:
+        h.setdefault("Strict-Transport-Security",
+                     "max-age=63072000; includeSubDomains")
+    return response
+
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
