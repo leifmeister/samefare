@@ -505,7 +505,11 @@ def authorise_booking_mit(db, booking: "models.Booking", now: "datetime" = None)
             customer_id       = payment.rapyd_customer_id,
             payment_method_id = payment.rapyd_payment_method_id,
             capture           = False,
-            idempotency_key   = f"mit-{payment.id}",
+            # Per-attempt key: payment.idempotency_key is rotated by the retry
+            # flow, so a retried MIT on a NEW card gets a fresh key instead of
+            # Rapyd returning the original declined result. Stable within a
+            # single attempt, so the loop re-firing can't double-charge.
+            idempotency_key   = f"mit-{payment.id}-{payment.idempotency_key or '0'}",
             metadata          = {"booking_id": booking.id, "case": "B"},
         )
 

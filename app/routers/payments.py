@@ -210,6 +210,10 @@ def _issue_rapyd_refund(
         return
 
     payment.refund_amount = amount
+    # Cancel any scheduled capture so the capture task can't race this refund
+    # intent and charge (then drop) a booking we're cancelling. Harmless if the
+    # payment was already captured (capture task ignores captured payments).
+    payment.capture_at = None
 
     if not payment.rapyd_payment_id:
         # Beta mode or pre-authorisation cancellation — no Rapyd payment exists.
