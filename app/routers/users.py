@@ -37,28 +37,31 @@ def profile_completion(user: models.User) -> dict:
         or user.license_verification != models.VerificationStatus.unverified
         or bool(user.kennitala or user.blikk_account_iban)
     )
+    # Labels are i18n keys (resolved in the template via _t) and name what the
+    # step is FOR — e.g. ID verification earns a trust badge, licence unlocks
+    # offering rides — rather than the old vague "Get a verified badge".
     steps = [
         {
             "key":   "photo",
-            "label": "Add a profile photo",
+            "label_key": "profile_step_photo",
             "done":  bool(user.avatar_url),
             "url":   "/profile#photo",
         },
         {
             "key":   "phone",
-            "label": "Verify your phone number",
+            "label_key": "profile_step_phone",
             "done":  bool(user.phone and user.phone_verified),
             "url":   "/profile#phone",
         },
         {
             "key":   "bio",
-            "label": "Write a short bio",
+            "label_key": "profile_step_bio",
             "done":  bool(user.bio),
             "url":   "/profile#bio",
         },
         {
             "key":   "identity",
-            "label": "Get a verified badge",
+            "label_key": "profile_step_identity",
             "done":  user.id_verification == models.VerificationStatus.approved,
             "url":   "/verify",
         },
@@ -66,13 +69,13 @@ def profile_completion(user: models.User) -> dict:
     if is_driver:
         steps.append({
             "key":   "licence",
-            "label": "Verify your driver's licence",
+            "label_key": "profile_step_licence",
             "done":  user.license_verification == models.VerificationStatus.approved,
             "url":   "/verify",
         })
         steps.append({
             "key":   "payout",
-            "label": "Set up payout details",
+            "label_key": "profile_step_payout",
             "done":  bool(user.kennitala and user.blikk_account_iban),
             "url":   "/profile#payout",
         })

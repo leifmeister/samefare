@@ -53,9 +53,9 @@
         </svg>
       {% endif %}
       {% if not step.done %}
-        <a href="{{ step.url }}" class="completion-card__step-label">{{ step.label }}</a>
+        <a href="{{ step.url }}" class="completion-card__step-label">{{ _t(step.label_key) }}</a>
       {% else %}
-        <span class="completion-card__step-label">{{ step.label }}</span>
+        <span class="completion-card__step-label">{{ _t(step.label_key) }}</span>
       {% endif %}
     </li>
     {% endfor %}

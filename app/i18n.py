@@ -581,6 +581,12 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "profile_completion_title": "Complete your profile",
         "profile_completion_steps_of": "of",
         "profile_completion_steps_done": "steps done",
+        "profile_step_photo": "Add a profile photo",
+        "profile_step_phone": "Verify your phone number",
+        "profile_step_bio": "Write a short bio",
+        "profile_step_identity": "Verify your ID for a trust badge",
+        "profile_step_licence": "Verify your licence to offer rides",
+        "profile_step_payout": "Set up payout details to get paid",
 
         # ── Messages ─────────────────────────────────────────────────────────
         "messages_title": "Messages",
@@ -1305,6 +1311,12 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "profile_completion_title": "Ljúktu við prófílinn þinn",
         "profile_completion_steps_of": "af",
         "profile_completion_steps_done": "skrefum lokið",
+        "profile_step_photo": "Bættu við prófílmynd",
+        "profile_step_phone": "Staðfestu símanúmerið þitt",
+        "profile_step_bio": "Skrifaðu stutta lýsingu",
+        "profile_step_identity": "Staðfestu auðkenni fyrir traustmerki",
+        "profile_step_licence": "Staðfestu ökuskírteini til að bjóða ferðir",
+        "profile_step_payout": "Settu upp greiðsluupplýsingar til að fá greitt",
 
         # ── Messages ─────────────────────────────────────────────────────────
         "messages_title": "Skilaboð",
