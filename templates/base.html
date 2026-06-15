@@ -86,7 +86,7 @@
 
           <div class="navbar__end">
             {% if current_user %}
-              <a href="/profile" class="btn btn-ghost btn-sm">
+              <a href="/profile" class="btn btn-ghost btn-sm" style="border-color:transparent;">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="2" width="16" height="16" aria-hidden="true">
                   <circle cx="12" cy="8" r="4"/>
@@ -211,9 +211,11 @@
       <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
     </svg>
     <span>
-      {{ _t('banner_review_nudge_pre') }}
-      <strong>{{ pending_reviews|length }} completed trip{{ 's' if pending_reviews|length != 1 }}</strong>
-      {{ _t('banner_review_nudge_post') }}
+      {% if pending_reviews|length == 1 %}
+        {{ _t('banner_review_one') | safe }}
+      {% else %}
+        {{ _t('banner_review_many').replace('{n}', pending_reviews|length|string) | safe }}
+      {% endif %}
     </span>
     <a href="/reviews/new/{{ pending_reviews[0] }}" class="review-nudge__btn">
       {{ _t('banner_review_rate') }}
