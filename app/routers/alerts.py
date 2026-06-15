@@ -186,10 +186,17 @@ def create_alert(
     )
     was_update = bool(existing)
 
+    # Guests must double-opt-in: a logged-in user owns their account email, but
+    # a guest can type any address — without confirmation, alerts would let an
+    # attacker email-bomb a victim with trip notifications. Guest alerts are
+    # created/kept INACTIVE until the recipient clicks the email confirm link.
+    needs_confirm = current_user is None
+
     if existing:
-        existing.is_active   = True
         existing.travel_date = parsed_date
         existing.seats       = max(1, seats)
+        existing.is_active   = not needs_confirm
+        alert = existing
         db.commit()
     else:
         alert = models.RideAlert(
@@ -200,9 +207,21 @@ def create_alert(
             travel_date = parsed_date,
             seats       = max(1, seats),
             token       = secrets.token_urlsafe(32),
+            is_active   = not needs_confirm,
         )
         db.add(alert)
         db.commit()
+
+    if needs_confirm:
+        try:
+            mailer.ride_alert_confirm(alert)
+        except Exception as exc:
+            log.warning("ride_alert_confirm email failed: %s", exc)
+        return RedirectResponse(
+            "/trips?" + urlencode({"origin": origin, "destination": destination,
+                                   "alert_confirm": "1"}),
+            status_code=303,
+        )
 
     # Redirect back to the same search with a success flag.
     # Logged-in users who updated existing criteria also get a link to /my-alerts
@@ -215,6 +234,30 @@ def create_alert(
     if seats and seats > 1:
         params["seats"] = str(seats)
     return RedirectResponse("/trips?" + urlencode(params), status_code=303)
+
+
+# ── Public: confirm (double opt-in) via token ────────────────────────────────
+
+@router.get("/alerts/confirm/{token}", response_class=HTMLResponse)
+def confirm_alert(
+    token:   str,
+    request: Request,
+    ctx:     dict    = Depends(get_template_context),
+    db:      Session = Depends(get_db),
+):
+    alert = (
+        db.query(models.RideAlert)
+        .filter(models.RideAlert.token == token)
+        .first()
+    )
+    if alert:
+        alert.is_active = True
+        db.commit()
+    return templates.TemplateResponse("alerts/confirmed.html", {
+        **ctx,
+        "success": bool(alert),
+        "alert":   alert,
+    })
 
 
 # ── Public: unsubscribe via token ─────────────────────────────────────────────

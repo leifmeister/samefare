@@ -360,6 +360,26 @@ def email_verification(user, token: str) -> None:
     _send(user.email, "Verify your SameFare email address", _wrap(body))
 
 
+def ride_alert_confirm(alert) -> None:
+    """
+    Double opt-in for a guest-created ride alert: send a confirmation link the
+    recipient must click before any match notifications are sent. Prevents using
+    alerts to email-bomb an arbitrary address.
+    """
+    s = get_settings()
+    route_label = f"{html.escape(alert.origin)} → {html.escape(alert.destination)}"
+    confirm_url = f"{s.base_url}/alerts/confirm/{alert.token}"
+    body = (
+        _h1("Confirm your ride alert") +
+        _p(f"You (or someone) asked to be notified when a ride matching "
+           f"<strong>{route_label}</strong> is posted on SameFare. "
+           f"Confirm to activate the alert — if this wasn't you, just ignore this email "
+           f"and no alerts will be sent.") +
+        _btn("Confirm my alert", confirm_url)
+    )
+    _send(alert.email, f"Confirm your ride alert: {route_label} — SameFare", _wrap(body))
+
+
 def ride_alert_notification(alert, trips: list) -> None:
     """
     Notify a user (or guest) that one or more rides matching their alert

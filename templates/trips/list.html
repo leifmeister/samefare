@@ -216,6 +216,12 @@
     {% endif %}
   </div>
 </div>
+{% elif alert_confirm %}
+<div class="container" style="margin-top:1.25rem;">
+  <div class="banner banner--success" role="status">
+    📩 Almost there — check your email and click the confirmation link to activate your ride alert.
+  </div>
+</div>
 {% elif alert_error %}
 <div class="container" style="margin-top:1.25rem;">
   <div class="banner banner--error" role="alert">

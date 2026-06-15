@@ -413,6 +413,7 @@ def trips_list(
     sort:        Optional[str] = None,
     alert_saved: Optional[str] = None,
     alert_error: Optional[str] = None,
+    alert_confirm: Optional[str] = None,
 ):
     # Sanitise date_flex — accept only known values, default to "exact"
     date_flex = date_flex if date_flex in _VALID_FLEX else "exact"
@@ -437,7 +438,7 @@ def trips_list(
             "date_range_label": "", "seats": seats or 1,
             "sort": sort or "soonest", "active_filters": 0,
             "cities": ICELANDIC_CITIES,
-            "alert_saved": False, "alert_error": False,
+            "alert_saved": False, "alert_error": False, "alert_confirm": False,
             "same_city_error": True,
             "popular_routes": POPULAR_ROUTES,
             "travel_date_display": "",
@@ -526,6 +527,7 @@ def trips_list(
         "cities": ICELANDIC_CITIES,
         "alert_saved": bool(alert_saved),
         "alert_error": bool(alert_error),
+        "alert_confirm": bool(alert_confirm),
         "same_city_error": False,
         "popular_routes": POPULAR_ROUTES,
         "travel_date_display": parsed_date.strftime("%-d %b") if parsed_date else "",
