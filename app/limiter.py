@@ -33,10 +33,19 @@ def _real_ip(request: Request) -> str:
     """Return the real client IP, honouring X-Forwarded-For from Railway's proxy."""
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
-        # Header may be a comma-separated list: "client, proxy1, proxy2"
-        # The leftmost entry is the original client.
-        return forwarded.split(",")[0].strip()
+        # The header is "client, proxy1, proxy2, ...". The LEFTMOST entries are
+        # client-supplied and spoofable; Railway appends the real peer as the
+        # last hop, so trust the rightmost entry (single trusted proxy).
+        return forwarded.split(",")[-1].strip()
     return request.client.host if request.client else "unknown"
+
+
+def limit_ok(key: str, max_calls: int, window_seconds: int) -> bool:
+    """
+    Imperative rate-limit check for use inside a handler (not as a dependency) —
+    e.g. per-user or per-destination caps. Returns True if allowed.
+    """
+    return _check(key, max_calls, window_seconds)
 
 
 def _check(key: str, max_calls: int, window: float) -> bool:

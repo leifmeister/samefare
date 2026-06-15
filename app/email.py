@@ -143,14 +143,14 @@ def booking_request_to_driver(booking) -> None:
     pax  = booking.passenger
     body = (
         _h1("New booking request") +
-        _p(f"<strong>{pax.full_name}</strong> is requesting "
+        _p(f"<strong>{html.escape(pax.full_name)}</strong> is requesting "
            f"<strong>{booking.seats_booked} seat{'s' if booking.seats_booked != 1 else ''}</strong> "
            f"on your trip:") +
         f'<div style="background:#F7FAF9;border:1px solid #DDE8E5;border-radius:8px;'
         f'padding:16px;margin:8px 0 4px;">'
         f'{_route_line(trip.origin, trip.destination, trip.departure_datetime)}</div>' +
         (f'<p style="margin:12px 0 0;font-size:.875rem;font-style:italic;color:#475569;">'
-         f'"{booking.message}"</p>' if booking.message else '') +
+         f'"{html.escape(booking.message)}"</p>' if booking.message else '') +
         _divider() +
         _p("Review and accept or decline this request on your trips page.") +
         _btn("Review request", f"{s.base_url}/my-trips?tab=rides")
@@ -164,7 +164,7 @@ def booking_confirmed_to_driver(booking) -> None:
     pax  = booking.passenger
     body = (
         _h1("New confirmed passenger") +
-        _p(f"<strong>{pax.full_name}</strong> has confirmed "
+        _p(f"<strong>{html.escape(pax.full_name)}</strong> has confirmed "
            f"<strong>{booking.seats_booked} seat{'s' if booking.seats_booked != 1 else ''}</strong> "
            f"on your trip:") +
         f'<div style="background:#F7FAF9;border:1px solid #DDE8E5;border-radius:8px;'
@@ -186,10 +186,10 @@ def booking_confirmed_to_passenger(booking) -> None:
         f'padding:16px;margin:8px 0;">'
         f'{_route_line(trip.origin, trip.destination, trip.departure_datetime)}' +
         (f'<p style="margin:12px 0 0;font-size:.875rem;color:#475569;">'
-         f'📍 Pick up: {trip.pickup_address}</p>' if trip.pickup_address else '') +
+         f'📍 Pick up: {html.escape(trip.pickup_address)}</p>' if trip.pickup_address else '') +
         f'</div>' +
         _divider() +
-        _p(f"Driver: <strong>{trip.driver.full_name}</strong>") +
+        _p(f"Driver: <strong>{html.escape(trip.driver.full_name)}</strong>") +
         _p(f"Total paid: <strong>{booking.total_price:,} ISK</strong>") +
         _btn("View my booking", f"{s.base_url}/my-trips?tab=bookings")
     )
@@ -203,7 +203,7 @@ def booking_approved_to_passenger(booking) -> None:
     payment_note = "Complete your payment"
     body = (
         _h1("Your request was approved!") +
-        _p(f"<strong>{trip.driver.full_name}</strong> has accepted your booking request for:") +
+        _p(f"<strong>{html.escape(trip.driver.full_name)}</strong> has accepted your booking request for:") +
         f'<div style="background:#F7FAF9;border:1px solid #DDE8E5;border-radius:8px;'
         f'padding:16px;margin:8px 0;">'
         f'{_route_line(trip.origin, trip.destination, trip.departure_datetime)}</div>' +
@@ -228,7 +228,7 @@ def booking_cancelled_charged(booking) -> None:
     amount = booking.subtotal
     body = (
         _h1("Passenger cancelled — you will still be paid") +
-        _p(f"<strong>{pax.full_name}</strong> cancelled their booking, but because "
+        _p(f"<strong>{html.escape(pax.full_name)}</strong> cancelled their booking, but because "
            f"the cancellation was made within 24 hours of departure the full amount "
            f"will still be captured and your contribution paid out.") +
         f'<div style="background:#F7FAF9;border:1px solid #DDE8E5;border-radius:8px;'
@@ -252,7 +252,7 @@ def booking_cancelled_to_driver(booking) -> None:
     pax  = booking.passenger
     body = (
         _h1("Booking cancelled") +
-        _p(f"<strong>{pax.full_name}</strong> has cancelled their booking on your trip:") +
+        _p(f"<strong>{html.escape(pax.full_name)}</strong> has cancelled their booking on your trip:") +
         f'<div style="background:#F7FAF9;border:1px solid #DDE8E5;border-radius:8px;'
         f'padding:16px;margin:8px 0;">'
         f'{_route_line(trip.origin, trip.destination, trip.departure_datetime)}</div>' +
@@ -316,7 +316,7 @@ def trip_cancelled_to_passenger(booking) -> None:
     trip = booking.trip
     body = (
         _h1("Trip cancelled") +
-        _p(f"We're sorry — <strong>{trip.driver.full_name}</strong> has cancelled the following trip:") +
+        _p(f"We're sorry — <strong>{html.escape(trip.driver.full_name)}</strong> has cancelled the following trip:") +
         f'<div style="background:#FEE2E2;border:1px solid #FCA5A5;border-radius:8px;'
         f'padding:16px;margin:8px 0;">'
         f'{_route_line(trip.origin, trip.destination, trip.departure_datetime)}</div>' +
@@ -334,15 +334,15 @@ def new_message_to_recipient(message, recipient) -> None:
     trip    = booking.trip
     sender  = message.sender
     body = (
-        _h1(f"New message from {sender.full_name.split()[0]}") +
+        _h1(f"New message from {html.escape(sender.full_name.split()[0])}") +
         f'<div style="background:#F7FAF9;border-left:3px solid #006C5B;'
         f'padding:12px 16px;margin:8px 0 16px;border-radius:0 8px 8px 0;">'
-        f'<p style="margin:0;font-size:.9375rem;color:#1A2B3C;">{message.body}</p></div>' +
+        f'<p style="margin:0;font-size:.9375rem;color:#1A2B3C;">{html.escape(message.body)}</p></div>' +
         _p(f"Regarding your trip: <strong>{trip.origin} → {trip.destination}</strong>, "
            f"{trip.departure_datetime.strftime('%-d %B %Y')}") +
         _btn("Reply", f"{s.base_url}/messages/{booking.id}")
     )
-    _send(recipient.email, f"New message from {sender.full_name.split()[0]} — SameFare", _wrap(body))
+    _send(recipient.email, f"New message from {html.escape(sender.full_name.split()[0])} — SameFare", _wrap(body))
 
 
 def email_verification(user, token: str) -> None:
@@ -350,7 +350,7 @@ def email_verification(user, token: str) -> None:
     url = f"{s.base_url}/verify-email?token={token}"
     body = (
         _h1("Verify your email address") +
-        _p(f"Hi {user.full_name.split()[0]}, thanks for joining SameFare! "
+        _p(f"Hi {html.escape(user.full_name.split()[0])}, thanks for joining SameFare! "
            f"Please verify your email address to start booking rides.") +
         _btn("Verify email", url) +
         _divider() +
@@ -510,7 +510,7 @@ def trip_reminder_to_driver(trip, passenger_count: int) -> None:
     pax_label  = f"{passenger_count} passenger{'s' if passenger_count != 1 else ''}"
     body = (
         _h1("Your trip is tomorrow") +
-        _p(f"Hi {trip.driver.full_name.split()[0]}, just a heads-up — you have "
+        _p(f"Hi {html.escape(trip.driver.full_name.split()[0])}, just a heads-up — you have "
            f"<strong>{pax_label}</strong> confirmed for tomorrow's trip:") +
         f'<div style="background:#F7FAF9;border:1px solid #DDE8E5;border-radius:8px;'
         f'padding:16px;margin:8px 0;">'
@@ -530,19 +530,19 @@ def trip_reminder_to_driver(trip, passenger_count: int) -> None:
 def trip_reminder_to_passenger(booking) -> None:
     s        = get_settings()
     trip     = booking.trip
-    driver   = trip.driver.full_name.split()[0]
+    driver   = html.escape(trip.driver.full_name.split()[0])
     origin   = booking.pickup_city or trip.origin
     dest     = booking.dropoff_city or trip.destination
     departure = trip.departure_datetime.strftime("%-d %B %Y at %H:%M")
     body = (
         _h1("Your ride is tomorrow") +
-        _p(f"Hi {booking.passenger.full_name.split()[0]}, just a reminder — "
+        _p(f"Hi {html.escape(booking.passenger.full_name.split()[0])}, just a reminder — "
            f"your ride with <strong>{driver}</strong> is tomorrow:") +
         f'<div style="background:#F7FAF9;border:1px solid #DDE8E5;border-radius:8px;'
         f'padding:16px;margin:8px 0;">'
         f'{_route_line(origin, dest, trip.departure_datetime)}' +
         (f'<p style="margin:12px 0 0;font-size:.875rem;color:#475569;">'
-         f'📍 Pickup: {trip.pickup_address}</p>' if trip.pickup_address else '') +
+         f'📍 Pickup: {html.escape(trip.pickup_address)}</p>' if trip.pickup_address else '') +
         f'</div>' +
         _divider() +
         _p(f"Message {driver} if you need to confirm the exact pickup point.") +
@@ -558,7 +558,7 @@ def trip_reminder_to_passenger(booking) -> None:
 def first_ride_to_driver(trip) -> None:
     """Celebrate a driver posting their very first ride."""
     s         = get_settings()
-    first     = trip.driver.full_name.split()[0]
+    first     = html.escape(trip.driver.full_name.split()[0])
     departure = trip.departure_datetime.strftime("%-d %B %Y at %H:%M")
     body = (
         _h1("🎉 Your first ride is live!") +
@@ -603,7 +603,7 @@ def verification_approved(user, verification_type: str) -> None:
         )
     body = (
         _h1(title) +
-        _p(f"Hi {user.full_name.split()[0]},") +
+        _p(f"Hi {html.escape(user.full_name.split()[0])},") +
         _p(message) +
         _btn("Go to SameFare", s.base_url)
     )
@@ -629,7 +629,7 @@ def verification_rejected(user, verification_type: str, reason: str | None = Non
 
     body = (
         _h1(title) +
-        _p(f"Hi {user.full_name.split()[0]},") +
+        _p(f"Hi {html.escape(user.full_name.split()[0])},") +
         _p(
             f"Unfortunately we were unable to verify your {doc_name}. "
             "Please resubmit using a clear, unobstructed photo of a valid document."
@@ -645,7 +645,7 @@ def password_reset(user, token: str) -> None:
     url  = f"{s.base_url}/reset-password?token={token}"
     body = (
         _h1("Reset your password") +
-        _p(f"Hi {user.full_name.split()[0]}, we received a request to reset your SameFare password.") +
+        _p(f"Hi {html.escape(user.full_name.split()[0])}, we received a request to reset your SameFare password.") +
         _btn("Reset password", url) +
         _divider() +
         _p('This link expires in <strong>1 hour</strong>. '

@@ -162,6 +162,13 @@ def register(
             status_code=400,
         )
 
+    if len(password) < 8:
+        return templates.TemplateResponse(
+            "auth/register.html",
+            {**_reg_ctx, "error": "Password must be at least 8 characters."},
+            status_code=400,
+        )
+
     if not birth_year:
         return templates.TemplateResponse(
             "auth/register.html",

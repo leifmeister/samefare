@@ -1497,25 +1497,29 @@ async def auto_complete_loop() -> None:
     """
     while True:
         await asyncio.sleep(10 * 60)
-        # ── Incoming payment lifecycle ──────────────────────────────────────
-        _run_capture_payments()         # capture authorised payments at departure
-        _run_mit_authorizations()       # Case B: auth 24 h before departure
-        _run_retry_expiry()             # expire failed-MIT retry windows
-        _run_auth_expiry_check()        # surface lapsed auth windows
-        _run_expire_payments()          # expire uncompleted checkout sessions
-        _run_retry_refunds()            # re-submit refund_requested / refund_failed
-        # ── Trip/booking lifecycle ──────────────────────────────────────────
-        _run_auto_complete()            # confirmed → completed (2 h after departure)
-        _run_auto_ratings()
-        _run_trip_reminders()
-        # ── Outgoing payout lifecycle (depends on completed bookings above) ─
-        _run_create_payout_items()      # pair captured+completed → PayoutItem
-        _run_advance_payout_items()     # pending → payout_ready when bank details added
-        _run_prepare_driver_payouts()   # daily: build batches + digest (approve on-demand in admin)
-        _run_reconcile_driver_payouts() # confirm/fail sent Blikk payouts by bank settlement status
-        # ── Pricing data ────────────────────────────────────────────────────────
-        _run_refresh_fuel_price()       # cache apis.is p80 petrol price (once/day)
-        # ── Daily once-per-day checks ────────────────────────────────────────────
-        _run_licence_expiry_check()     # 30-day warning + suspend expired licences
-        _run_aml_monitoring()           # red-flag sweep; emails admin if anything hits
-        _run_counter_reset()            # zero 90-day cancel counters when window has cleared
+        try:
+            # ── Incoming payment lifecycle ──────────────────────────────────────
+            _run_capture_payments()         # capture authorised payments at departure
+            _run_mit_authorizations()       # Case B: auth 24 h before departure
+            _run_retry_expiry()             # expire failed-MIT retry windows
+            _run_auth_expiry_check()        # surface lapsed auth windows
+            _run_expire_payments()          # expire uncompleted checkout sessions
+            _run_retry_refunds()            # re-submit refund_requested / refund_failed
+            # ── Trip/booking lifecycle ──────────────────────────────────────────
+            _run_auto_complete()            # confirmed → completed (2 h after departure)
+            _run_auto_ratings()
+            _run_trip_reminders()
+            # ── Outgoing payout lifecycle (depends on completed bookings above) ─
+            _run_create_payout_items()      # pair captured+completed → PayoutItem
+            _run_advance_payout_items()     # pending → payout_ready when bank details added
+            _run_prepare_driver_payouts()   # daily: build batches + digest (approve on-demand in admin)
+            _run_reconcile_driver_payouts() # confirm/fail sent Blikk payouts by bank settlement status
+            # ── Pricing data ────────────────────────────────────────────────────────
+            _run_refresh_fuel_price()       # cache apis.is p80 petrol price (once/day)
+            # ── Daily once-per-day checks ────────────────────────────────────────────
+            _run_licence_expiry_check()     # 30-day warning + suspend expired licences
+            _run_aml_monitoring()           # red-flag sweep; emails admin if anything hits
+            _run_counter_reset()            # zero 90-day cancel counters when window has cleared
+
+        except Exception:
+            log.exception("auto_complete_loop tick raised; continuing to next tick")

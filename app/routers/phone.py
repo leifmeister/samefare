@@ -17,7 +17,7 @@ from fastapi.responses import JSONResponse
 from app import models, sms
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.limiter import rate_limit
+from app.limiter import rate_limit, limit_ok
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/verify-phone", tags=["phone"])
@@ -65,6 +65,13 @@ def send_otp(
     phone = current_user.phone
     if not phone:
         return JSONResponse({"ok": False, "error": "No phone number saved."}, status_code=400)
+
+    # Hard caps on real SMS sends (Twilio cost + anti-harassment), independent of
+    # the per-IP limiter: at most 8/day per user and 5/day per destination number.
+    if not limit_ok(f"otp-user:{current_user.id}", 8, 86400):
+        return JSONResponse({"ok": False, "error": "Too many code requests today. Try again later."}, status_code=429)
+    if not limit_ok(f"otp-dest:{phone}", 5, 86400):
+        return JSONResponse({"ok": False, "error": "Too many codes sent to this number today."}, status_code=429)
 
     code    = _generate_otp()
     expires = datetime.utcnow() + timedelta(minutes=OTP_TTL_MINUTES)
