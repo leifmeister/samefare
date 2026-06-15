@@ -38,8 +38,16 @@
     <div class="completion-card__bar" style="width:{{ completion.percent }}%"></div>
   </div>
 
+  {% for group in completion.groups %}
+  <p class="completion-card__group"
+     style="margin:1.1rem 0 .35rem; font-size:.72rem; font-weight:700; letter-spacing:.04em;
+            text-transform:uppercase; color:var(--c-text-muted);">
+    {{ _t(group.title_key) }}{% if group.optional %}
+      <span style="font-weight:500; text-transform:none; letter-spacing:0;">· {{ _t('verify_ov_badge_optional') }}</span>
+    {% endif %}
+  </p>
   <ul class="completion-card__steps">
-    {% for step in completion.steps %}
+    {% for step in group.steps %}
     <li class="completion-card__step {% if step.done %}completion-card__step--done{% endif %}">
       {% if step.done %}
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
@@ -60,6 +68,7 @@
     </li>
     {% endfor %}
   </ul>
+  {% endfor %}
 </div>
 {% endif %}
 

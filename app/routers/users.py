@@ -25,68 +25,59 @@ router = APIRouter(tags=["users"])
 
 def profile_completion(user: models.User) -> dict:
     """
-    Return a completion summary for the given user.
-    Each step is a dict: {key, label, done, url}.
+    Return a completion summary, grouped by goal so the checklist mirrors the
+    /verify page (Ride / Drive / ID-badge) instead of one flat list — passengers,
+    drivers, and badge-seekers each see only what's relevant to them.
+
+    Shape: {groups: [{key, title_key, optional, steps:[{key,label_key,done,url}]}],
+            completed, total, percent, is_complete, show_driver}. Counts cover the
+    REQUIRED groups only; the optional ID badge never blocks reaching 100 %.
     """
     # `role` defaults to 'both' for everyone, so it can't distinguish a rider from
-    # a driver. Only surface the driver-only steps once the user shows real driver
+    # a driver. Only surface the driver-only group once the user shows real driver
     # intent — they've posted a trip, started licence verification, or added payout
-    # details. A pure rider never sees "verify your licence" / "set up payout".
+    # details. A pure rider never sees the "Drive — offer rides" group.
     is_driver = (
         bool(user.trips)
         or user.license_verification != models.VerificationStatus.unverified
         or bool(user.kennitala or user.blikk_account_iban)
     )
-    # Labels are i18n keys (resolved in the template via _t) and name what the
-    # step is FOR — e.g. ID verification earns a trust badge, licence unlocks
-    # offering rides — rather than the old vague "Get a verified badge".
-    steps = [
-        {
-            "key":   "photo",
-            "label_key": "profile_step_photo",
-            "done":  bool(user.avatar_url),
-            "url":   "/profile#photo",
-        },
-        {
-            "key":   "phone",
-            "label_key": "profile_step_phone",
-            "done":  bool(user.phone and user.phone_verified),
-            "url":   "/profile#phone",
-        },
-        {
-            "key":   "bio",
-            "label_key": "profile_step_bio",
-            "done":  bool(user.bio),
-            "url":   "/profile#bio",
-        },
-        {
-            "key":   "identity",
-            "label_key": "profile_step_identity",
-            "done":  user.id_verification == models.VerificationStatus.approved,
-            "url":   "/verify",
-        },
+
+    photo = {"key": "photo", "label_key": "profile_step_photo",
+             "done": bool(user.avatar_url), "url": "/profile#photo"}
+    phone = {"key": "phone", "label_key": "profile_step_phone",
+             "done": bool(user.phone and user.phone_verified), "url": "/profile#phone"}
+    bio   = {"key": "bio", "label_key": "profile_step_bio",
+             "done": bool(user.bio), "url": "/profile#bio"}
+    identity = {"key": "identity", "label_key": "profile_step_identity",
+                "done": user.id_verification == models.VerificationStatus.approved,
+                "url": "/verify"}
+    licence = {"key": "licence", "label_key": "profile_step_licence",
+               "done": user.license_verification == models.VerificationStatus.approved,
+               "url": "/verify"}
+    payout  = {"key": "payout", "label_key": "profile_step_payout",
+               "done": bool(user.kennitala and user.blikk_account_iban),
+               "url": "/profile#payout"}
+
+    # Group titles reuse the /verify overview keys for consistency across pages.
+    groups = [
+        {"key": "ride", "title_key": "verify_ov_ride", "optional": False,
+         "steps": [photo, phone, bio]},
     ]
     if is_driver:
-        steps.append({
-            "key":   "licence",
-            "label_key": "profile_step_licence",
-            "done":  user.license_verification == models.VerificationStatus.approved,
-            "url":   "/verify",
-        })
-        steps.append({
-            "key":   "payout",
-            "label_key": "profile_step_payout",
-            "done":  bool(user.kennitala and user.blikk_account_iban),
-            "url":   "/profile#payout",
-        })
+        groups.append({"key": "drive", "title_key": "verify_ov_drive", "optional": False,
+                       "steps": [licence, payout]})
+    groups.append({"key": "badge", "title_key": "verify_ov_badge", "optional": True,
+                   "steps": [identity]})
 
-    completed = sum(1 for s in steps if s["done"])
-    total     = len(steps)
+    required = [s for g in groups if not g["optional"] for s in g["steps"]]
+    completed = sum(1 for s in required if s["done"])
+    total     = len(required)
     return {
-        "steps":     steps,
-        "completed": completed,
-        "total":     total,
-        "percent":   round(completed / total * 100),
+        "groups":      groups,
+        "completed":   completed,
+        "total":       total,
+        "percent":     round(completed / total * 100) if total else 100,
         "is_complete": completed == total,
         "show_driver": is_driver,
     }
