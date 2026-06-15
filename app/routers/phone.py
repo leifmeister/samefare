@@ -17,12 +17,21 @@ from fastapi.responses import JSONResponse
 from app import models, sms
 from app.database import get_db
 from app.dependencies import get_current_user
+from app.i18n import detect_lang, get_translations
 from app.limiter import rate_limit, limit_ok
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/verify-phone", tags=["phone"])
 
 OTP_TTL_MINUTES = 10
+
+# Maps the stable token returned by sms.send_otp to a translation key. Anything
+# unmapped (incl. "unconfigured"/"no_number") falls back to the generic message.
+_SMS_ERROR_KEYS = {
+    "region_unsupported": "otp_sms_region_unsupported",
+    "invalid_number":     "otp_sms_invalid_number",
+    "optout":             "otp_sms_optout",
+}
 
 
 def _generate_otp() -> str:
@@ -46,14 +55,16 @@ def send_otp(
     passenger with no saved number can verify without a separate profile save).
     The profile page sends no `phone` and uses the already-saved number.
     """
+    _t = get_translations(detect_lang(request))
+
     if current_user.phone_verified:
-        return JSONResponse({"ok": False, "error": "Phone already verified."}, status_code=400)
+        return JSONResponse({"ok": False, "error": _t("otp_already_verified")}, status_code=400)
 
     if phone:
         normalized = sms.normalize_phone(phone)
         if not normalized:
             return JSONResponse(
-                {"ok": False, "error": "That doesn't look like a valid phone number."},
+                {"ok": False, "error": _t("otp_invalid_format")},
                 status_code=400,
             )
         if normalized != current_user.phone:
@@ -64,14 +75,14 @@ def send_otp(
 
     phone = current_user.phone
     if not phone:
-        return JSONResponse({"ok": False, "error": "No phone number saved."}, status_code=400)
+        return JSONResponse({"ok": False, "error": _t("otp_no_phone")}, status_code=400)
 
     # Hard caps on real SMS sends (Twilio cost + anti-harassment), independent of
     # the per-IP limiter: at most 8/day per user and 5/day per destination number.
     if not limit_ok(f"otp-user:{current_user.id}", 8, 86400):
-        return JSONResponse({"ok": False, "error": "Too many code requests today. Try again later."}, status_code=429)
+        return JSONResponse({"ok": False, "error": _t("otp_rate_user")}, status_code=429)
     if not limit_ok(f"otp-dest:{phone}", 5, 86400):
-        return JSONResponse({"ok": False, "error": "Too many codes sent to this number today."}, status_code=429)
+        return JSONResponse({"ok": False, "error": _t("otp_rate_dest")}, status_code=429)
 
     code    = _generate_otp()
     expires = datetime.utcnow() + timedelta(minutes=OTP_TTL_MINUTES)
@@ -82,12 +93,13 @@ def send_otp(
 
     sent, sms_error = sms.send_otp(phone, code)
     if not sent:
+        # sms_error is a stable token (never raw Twilio output); translate it.
         return JSONResponse({
             "ok": False,
-            "error": f"Could not send SMS: {sms_error}"
+            "error": _t(_SMS_ERROR_KEYS.get(sms_error, "otp_sms_generic")),
         }, status_code=502)
 
-    return JSONResponse({"ok": True, "message": f"Code sent to {phone}."})
+    return JSONResponse({"ok": True, "message": _t("otp_sent").format(phone=phone)})
 
 
 @router.post("/confirm")
@@ -101,17 +113,19 @@ def confirm_otp(
     """
     Validate the OTP the user typed in.  Returns JSON.
     """
+    _t = get_translations(detect_lang(request))
+
     if current_user.phone_verified:
-        return JSONResponse({"ok": True, "message": "Already verified."})
+        return JSONResponse({"ok": True, "message": _t("otp_verified")})
 
     if not current_user.phone_otp:
-        return JSONResponse({"ok": False, "error": "No code was sent. Request a new one."}, status_code=400)
+        return JSONResponse({"ok": False, "error": _t("otp_none_sent")}, status_code=400)
 
     if datetime.utcnow() > current_user.phone_otp_expires:
-        return JSONResponse({"ok": False, "error": "Code expired. Request a new one."}, status_code=400)
+        return JSONResponse({"ok": False, "error": _t("otp_expired")}, status_code=400)
 
     if code.strip() != current_user.phone_otp:
-        return JSONResponse({"ok": False, "error": "Incorrect code. Please try again."}, status_code=400)
+        return JSONResponse({"ok": False, "error": _t("otp_incorrect")}, status_code=400)
 
     # Success
     current_user.phone_verified       = True
@@ -119,4 +133,4 @@ def confirm_otp(
     current_user.phone_otp_expires    = None
     db.commit()
 
-    return JSONResponse({"ok": True, "message": "Phone verified!"})
+    return JSONResponse({"ok": True, "message": _t("otp_verified")})

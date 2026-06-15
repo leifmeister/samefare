@@ -56,17 +56,45 @@ def normalize_phone(raw: str | None) -> str | None:
     return p
 
 
+# ── Error classification ───────────────────────────────────────────────────────
+
+# Map Twilio error codes (https://www.twilio.com/docs/api/errors) to stable,
+# user-safe tokens. Callers translate the token for display; the raw Twilio body
+# is only ever logged. Anything unmapped falls through to "generic".
+_SMS_ERROR_CODES = {
+    21408: "region_unsupported",  # messaging not enabled for the destination region
+    21211: "invalid_number",      # 'To' is not a valid phone number
+    21214: "invalid_number",      # 'To' failed validation
+    21614: "invalid_number",      # 'To' is not a valid mobile number
+    21612: "region_unsupported",  # can't route to this number from the From number
+    21610: "optout",              # recipient has unsubscribed
+}
+
+
+def _classify_sms_error(body_err: str) -> str:
+    """Reduce a raw Twilio error body to a stable, user-safe token."""
+    try:
+        code = int(json.loads(body_err).get("code"))
+    except Exception:
+        return "generic"
+    return _SMS_ERROR_CODES.get(code, "generic")
+
+
 # ── Low-level sender ──────────────────────────────────────────────────────────
 
 def _send(to: str, body: str) -> tuple[bool, str]:
-    """Send a single SMS via Twilio REST API. Returns (success, error_message)."""
+    """Send a single SMS via Twilio REST API.
+
+    Returns (success, error_token). On failure the second element is a stable,
+    user-safe token (see _SMS_ERROR_CODES) — never raw Twilio output.
+    """
     s = get_settings()
     if not s.twilio_account_sid or not s.twilio_auth_token or not s.twilio_from_number:
         log.debug("Twilio not configured — skipping SMS to %s", to)
-        return False, "Twilio not configured."
+        return False, "unconfigured"
     if not to:
         log.debug("No phone number — skipping SMS")
-        return False, "No phone number provided."
+        return False, "no_number"
 
     # Defensive: never hand Twilio a non-E.164 number — a country-code-less
     # value (e.g. '6184321') triggers a 21211 rejection.
@@ -114,10 +142,13 @@ def _send(to: str, body: str) -> tuple[bool, str]:
     except urllib.error.HTTPError as exc:
         body_err = exc.read().decode("utf-8", errors="replace")
         log.warning("SMS failed → %s: %s %s", to, exc.code, body_err)
-        return False, f"Twilio {exc.code}: {body_err}"
+        # Classify the Twilio error into a stable, user-safe token. The raw
+        # JSON (carrier names, error URLs, the obfuscated 'To' number) is logged
+        # above but must never reach the browser — see _classify_sms_error.
+        return False, _classify_sms_error(body_err)
     except Exception as exc:
         log.warning("SMS failed → %s: %s", to, exc)
-        return False, str(exc)
+        return False, "generic"
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
