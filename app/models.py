@@ -172,6 +172,9 @@ class User(Base):
     role            = Column(Enum(UserRole), nullable=False, default=UserRole.both)
     is_active          = Column(Boolean, nullable=False, default=True)
     is_admin           = Column(Boolean, nullable=False, default=False)
+    # Bumped on password reset/change to invalidate any previously-issued JWTs
+    # (the token embeds this value; a mismatch is rejected at auth).
+    token_version      = Column(Integer, nullable=False, default=0, server_default="0")
     suspension_reason  = Column(String(500), nullable=True)
     deleted_at         = Column(DateTime,    nullable=True)
     avatar_url      = Column(String(512))

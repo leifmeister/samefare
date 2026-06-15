@@ -394,12 +394,27 @@ def change_password(
         return _err("New password must be different from your current password.")
 
     current_user.hashed_password = hash_password(new_password)
+    # Invalidate any previously-issued tokens (revokes other sessions)...
+    current_user.token_version = (current_user.token_version or 0) + 1
     db.commit()
 
-    return templates.TemplateResponse(
+    resp = templates.TemplateResponse(
         "profile.html",
         {**ctx, "completion": completion, "password_ok": True},
     )
+    # ...but keep THIS session signed in by re-issuing its cookie with the new
+    # token_version (otherwise the user who just changed their password is
+    # immediately logged out).
+    from app.routers.auth import create_access_token
+    from app.config import get_settings as _get_settings
+    _s = _get_settings()
+    resp.set_cookie(
+        "access_token",
+        create_access_token(current_user.id, current_user.token_version),
+        httponly=True, max_age=_s.access_token_expire_minutes * 60,
+        samesite="lax", secure=_s.secure_cookies,
+    )
+    return resp
 
 
 @router.post("/profile/delete", response_class=HTMLResponse)

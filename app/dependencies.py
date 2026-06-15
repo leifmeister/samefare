@@ -24,10 +24,16 @@ def get_current_user_optional(
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
         user_id: int = int(payload.get("sub"))
+        token_version: int = int(payload.get("tv", 0) or 0)
     except (JWTError, TypeError, ValueError):
         return None
     user = db.query(models.User).filter(models.User.id == user_id).first()
-    return user if (user and user.is_active) else None
+    if not user or not user.is_active:
+        return None
+    # Reject any token issued before the user's latest password reset/change.
+    if int(user.token_version or 0) != token_version:
+        return None
+    return user
 
 
 def get_current_user(

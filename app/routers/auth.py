@@ -66,9 +66,9 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-def create_access_token(user_id: int) -> str:
+def create_access_token(user_id: int, token_version: int = 0) -> str:
     expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
-    return jwt.encode({"sub": str(user_id), "exp": expire},
+    return jwt.encode({"sub": str(user_id), "tv": int(token_version or 0), "exp": expire},
                       settings.secret_key, algorithm=settings.algorithm)
 
 
@@ -114,7 +114,7 @@ def login(
             {**ctx, "error": "suspended", "email": email, "next": next},
             status_code=status.HTTP_403_FORBIDDEN,
         )
-    token = create_access_token(user.id)
+    token = create_access_token(user.id, user.token_version or 0)
     response = RedirectResponse(_safe_next(next), status_code=303)
     response.set_cookie(key="access_token", value=token, httponly=True,
                         max_age=settings.access_token_expire_minutes * 60, samesite="lax",
@@ -226,7 +226,7 @@ def register(
         db.refresh(user)
         if newsletter == "1":
             _subscribe_newsletter(db, subscribed_email, source="register")
-        token = create_access_token(user.id)
+        token = create_access_token(user.id, user.token_version or 0)
         response = RedirectResponse("/", status_code=303)
         response.set_cookie(key="access_token", value=token, httponly=True,
                             max_age=settings.access_token_expire_minutes * 60, samesite="lax",
@@ -251,7 +251,7 @@ def register(
 
     mailer.email_verification(user, verify_token)
 
-    token = create_access_token(user.id)
+    token = create_access_token(user.id, user.token_version or 0)
     response = RedirectResponse("/check-your-email", status_code=303)
     response.set_cookie(key="access_token", value=token, httponly=True,
                         max_age=settings.access_token_expire_minutes * 60, samesite="lax",
@@ -370,6 +370,7 @@ def reset_password(
              "error": "Password must be at least 8 characters.", "success": False}, status_code=400)
 
     user.hashed_password     = hash_password(new_password)
+    user.token_version       = (user.token_version or 0) + 1   # invalidate existing sessions
     user.reset_token         = None
     user.reset_token_expires = None
     db.commit()
