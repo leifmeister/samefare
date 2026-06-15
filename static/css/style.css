@@ -161,14 +161,14 @@ button, input, select, textarea { font: inherit; }
 }
 .btn-outline:hover { background: var(--c-primary-light); }
 
-/* Tertiary action: lighter than the outline button, but bordered (not a
-   borderless black button) so it stays coherent with the primary/outline set. */
+/* Tertiary action: a bordered black button (text + border share --c-text)
+   so it stays coherent with the primary/outline set instead of borderless. */
 .btn-ghost {
   background: transparent;
   color: var(--c-text);
-  border-color: var(--c-border);
+  border-color: var(--c-text);
 }
-.btn-ghost:hover { background: var(--c-border-light); border-color: var(--c-text-muted); }
+.btn-ghost:hover { background: var(--c-border-light); }
 
 .btn-danger-outline {
   color: var(--c-error);
