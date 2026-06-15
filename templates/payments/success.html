@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
-{% block title %}Booking confirmed — {{ booking.pickup_city or booking.trip.origin }} → {{ booking.dropoff_city or booking.trip.destination }}{% endblock %}
+{% block title %}{{ _t('success_tab_title') }} — {{ booking.pickup_city or booking.trip.origin }} → {{ booking.dropoff_city or booking.trip.destination }}{% endblock %}
 
 {% block content %}
 <div class="container container--narrow" style="margin-top:2rem; margin-bottom:4rem;">
@@ -13,35 +13,35 @@
           <path d="M20 6L9 17l-5-5"/>
         </svg>
       </div>
-      <h1 class="success-hero__title">You're booked!</h1>
+      <h1 class="success-hero__title">{{ _t('success_hero_title') }}</h1>
       <p class="success-hero__sub">
-        Your seat is confirmed. Here are your driver's contact details.
+        {{ _t('success_hero_sub') }}
       </p>
     </div>
 
     <div class="booking-summary" style="margin-top:2rem;">
-      <h3 class="booking-summary__title">Booking summary</h3>
+      <h3 class="booking-summary__title">{{ _t('pay_summary_title') }}</h3>
 
       <div class="price-row">
-        <span>Route</span>
+        <span>{{ _t('pay_summary_route') }}</span>
         <span>
           <strong>{{ booking.pickup_city or booking.trip.origin }} → {{ booking.dropoff_city or booking.trip.destination }}</strong>
           {% if booking.pickup_city and (booking.pickup_city != booking.trip.origin or booking.dropoff_city != booking.trip.destination) %}
-          <span class="booking-route__context">Part of {{ booking.trip.origin }} → {{ booking.trip.destination }}</span>
+          <span class="booking-route__context">{{ _t('pay_summary_part_of') }} {{ booking.trip.origin }} → {{ booking.trip.destination }}</span>
           {% endif %}
         </span>
       </div>
       <div class="price-row">
-        <span>Departure</span>
+        <span>{{ _t('pay_summary_departure') }}</span>
         <span>{{ booking.trip.departure_datetime.strftime("%A %-d %B %Y, %H:%M") }}</span>
       </div>
       <div class="price-row">
-        <span>Driver</span>
+        <span>{{ _t('pay_summary_driver') }}</span>
         <span>{{ booking.trip.driver.full_name }}</span>
       </div>
       {% if booking.trip.driver.phone and booking.trip.driver.phone_verified %}
       <div class="price-row">
-        <span>Driver's phone</span>
+        <span>{{ _t('success_drivers_phone') }}</span>
         <span>
           <a href="tel:{{ booking.trip.driver.phone }}" class="contact-phone">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
@@ -54,18 +54,18 @@
       </div>
       {% endif %}
       <div class="price-row">
-        <span>Seats</span>
-        <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }}</span>
+        <span>{{ _t('pay_summary_seats') }}</span>
+        <span>{{ booking.seats_booked }} {{ _t('seat') if booking.seats_booked == 1 else _t('seats') }}</span>
       </div>
 
       {% if booking.payment %}
       <div class="price-row price-row--total" style="margin-top:.75rem; padding-top:.75rem; border-top:1px solid var(--color-border);">
-        <span>Total</span>
+        <span>{{ _t('success_total') }}</span>
         <span>{{ "{:,}".format(booking.payment.passenger_total) }} ISK</span>
       </div>
       {% if booking.payment.card_last4 %}
       <p class="price-note">
-        {{ booking.payment.card_brand }} ending ····{{ booking.payment.card_last4 }}
+        {{ booking.payment.card_brand }} {{ _t('pay_card_ending') }}{{ booking.payment.card_last4 }}
       </p>
       {% endif %}
       {% endif %}
@@ -77,22 +77,22 @@
        >24h before" copy is wrong — show the in-window terms instead. #}
     {% set less_than_24h = (booking.trip.departure_datetime - now).total_seconds() <= 86400 %}
     <div class="policy-box" style="margin-top:1.5rem;">
-      <p class="policy-box__title">What happens next?</p>
+      <p class="policy-box__title">{{ _t('success_next_title') }}</p>
       <ul class="policy-box__list">
-        <li>Message your driver to confirm the exact pickup spot and time.</li>
+        <li>{{ _t('success_next_message') }}</li>
         {% if less_than_24h %}
-        <li><strong>Your seat is locked in.</strong> Departure is within 24 hours, so this booking is non-refundable, including no-shows.</li>
+        <li>{{ _t('success_next_locked') | safe }}</li>
         {% else %}
-        <li><strong>Cancel more than 24 hours before departure</strong> — full refund.</li>
-        <li><strong>Within 24 hours of departure</strong> — the fare is non-refundable, including no-shows.</li>
+        <li>{{ _t('success_next_cancel_free') | safe }}</li>
+        <li>{{ _t('pay_cancel_late') | safe }}</li>
         {% endif %}
-        <li><strong>If the driver cancels</strong> — your seat is released and you're fully refunded.</li>
+        <li>{{ _t('success_next_driver_cancel') | safe }}</li>
       </ul>
     </div>
 
     <div class="form-actions" style="margin-top:2rem; justify-content:center; gap:1rem;">
-      <a href="/bookings" class="btn btn-primary">View my trips</a>
-      <a href="/trips/{{ booking.trip_id }}" class="btn btn-outline">View trip details</a>
+      <a href="/bookings" class="btn btn-primary">{{ _t('pay_view_my_trips') }}</a>
+      <a href="/trips/{{ booking.trip_id }}" class="btn btn-outline">{{ _t('pay_view_trip_details') }}</a>
     </div>
 
     {% set _dest = booking.dropoff_city or booking.trip.destination %}
@@ -108,13 +108,13 @@
         </svg>
       </div>
       <div class="carfare-nudge__body">
-        <p class="carfare-nudge__headline">Coming in from the airport?</p>
-        <p class="carfare-nudge__sub">Browse rental cars waiting for you in Reykjavík on CarFare.</p>
+        <p class="carfare-nudge__headline">{{ _t('carfare_nudge_headline') }}</p>
+        <p class="carfare-nudge__sub">{{ _t('carfare_nudge_sub') }}</p>
       </div>
       <div class="carfare-nudge__price">
-        <span class="carfare-nudge__price-from">from</span>
+        <span class="carfare-nudge__price-from">{{ _t('carfare_nudge_from') }}</span>
         <span class="carfare-nudge__price-amount">9,500 kr</span>
-        <span class="carfare-nudge__price-unit">/day</span>
+        <span class="carfare-nudge__price-unit">{{ _t('carfare_nudge_unit') }}</span>
       </div>
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
            width="16" height="16" class="carfare-nudge__arrow" aria-hidden="true">

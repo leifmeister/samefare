@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
-{% block title %}Card saved — {{ booking.pickup_city or booking.trip.origin }} → {{ booking.dropoff_city or booking.trip.destination }}{% endblock %}
+{% block title %}{{ _t('cardsaved_tab_title') }} — {{ booking.pickup_city or booking.trip.origin }} → {{ booking.dropoff_city or booking.trip.destination }}{% endblock %}
 
 {% block content %}
 <div class="container container--narrow" style="margin-top:2rem; margin-bottom:4rem;">
@@ -17,18 +17,17 @@
           <line x1="1" y1="10" x2="23" y2="10"/>
         </svg>
       </div>
-      <h1 class="success-hero__title">Card saved — waiting for driver</h1>
+      <h1 class="success-hero__title">{{ _t('cardsaved_pending_title') }}</h1>
       <p class="success-hero__sub">
-        Your card is securely saved. The driver will review your request
-        and you'll be notified when they accept.
+        {{ _t('cardsaved_pending_sub') }}
       </p>
     </div>
 
     <div class="policy-box" style="margin-top:2rem;">
-      <p class="policy-box__title">What happens next</p>
+      <p class="policy-box__title">{{ _t('cardsaved_next_title') }}</p>
       <ul class="policy-box__list">
-        <li><strong>The driver reviews your request.</strong> You'll be notified as soon as they accept.</li>
-        <li><strong>Once accepted</strong> — your seat is confirmed automatically.</li>
+        <li>{{ _t('cardsaved_next_review') | safe }}</li>
+        <li>{{ _t('cardsaved_next_accepted') | safe }}</li>
       </ul>
     </div>
 
@@ -44,47 +43,47 @@
           <line x1="1" y1="10" x2="23" y2="10"/>
         </svg>
       </div>
-      <h1 class="success-hero__title">You're all set</h1>
+      <h1 class="success-hero__title">{{ _t('cardsaved_allset_title') }}</h1>
       <p class="success-hero__sub">
-        Your seat is booked — nothing more to do.
+        {{ _t('cardsaved_allset_sub') }}
       </p>
     </div>
     {% endif %}
 
     <!-- Trip summary -->
     <div class="booking-summary" style="margin-top:1.5rem;">
-      <h3 class="booking-summary__title">Booking summary</h3>
+      <h3 class="booking-summary__title">{{ _t('pay_summary_title') }}</h3>
 
       <div class="price-row">
-        <span>Route</span>
+        <span>{{ _t('pay_summary_route') }}</span>
         <span>
           <strong>{{ booking.pickup_city or booking.trip.origin }} → {{ booking.dropoff_city or booking.trip.destination }}</strong>
           {% if booking.pickup_city and (booking.pickup_city != booking.trip.origin or booking.dropoff_city != booking.trip.destination) %}
-          <span class="booking-route__context">Part of {{ booking.trip.origin }} → {{ booking.trip.destination }}</span>
+          <span class="booking-route__context">{{ _t('pay_summary_part_of') }} {{ booking.trip.origin }} → {{ booking.trip.destination }}</span>
           {% endif %}
         </span>
       </div>
       <div class="price-row">
-        <span>Departure</span>
+        <span>{{ _t('pay_summary_departure') }}</span>
         <span>{{ booking.trip.departure_datetime.strftime("%A %-d %B %Y, %H:%M") }}</span>
       </div>
       <div class="price-row">
-        <span>Driver</span>
+        <span>{{ _t('pay_summary_driver') }}</span>
         <span>{{ booking.trip.driver.full_name }}</span>
       </div>
       <div class="price-row">
-        <span>Seats</span>
-        <span>{{ booking.seats_booked }} seat{{ 's' if booking.seats_booked != 1 }}</span>
+        <span>{{ _t('pay_summary_seats') }}</span>
+        <span>{{ booking.seats_booked }} {{ _t('seat') if booking.seats_booked == 1 else _t('seats') }}</span>
       </div>
 
       {% if booking.payment %}
       <div class="price-row" style="margin-top:.75rem; padding-top:.75rem; border-top:1px solid var(--color-border);">
-        <span>Fare</span>
+        <span>{{ _t('cardsaved_fare') }}</span>
         <span>{{ "{:,}".format(booking.payment.passenger_total) }} ISK</span>
       </div>
       {% if booking.payment.card_last4 %}
       <p class="price-note">
-        Card: {{ booking.payment.card_brand or '' }} ending ····{{ booking.payment.card_last4 }}
+        {{ _t('cardsaved_card_prefix') }} {{ booking.payment.card_brand or '' }} {{ _t('pay_card_ending') }}{{ booking.payment.card_last4 }}
       </p>
       {% endif %}
       {% endif %}
@@ -92,17 +91,17 @@
 
     <!-- Cancellation reminder -->
     <div class="policy-box" style="margin-top:1.5rem;">
-      <p class="policy-box__title">Cancellation policy</p>
+      <p class="policy-box__title">{{ _t('cardsaved_cancel_title') }}</p>
       <ul class="policy-box__list">
-        <li><strong>More than 24 hours before departure</strong> — cancel for free.</li>
-        <li><strong>Within 24 hours of departure</strong> — the fare is non-refundable, including no-shows.</li>
-        <li><strong>If the driver cancels</strong> — you're not charged, or fully refunded.</li>
+        <li>{{ _t('cardsaved_cancel_free') | safe }}</li>
+        <li>{{ _t('pay_cancel_late') | safe }}</li>
+        <li>{{ _t('cardsaved_cancel_driver') | safe }}</li>
       </ul>
     </div>
 
     <div class="form-actions" style="margin-top:2rem; justify-content:center; gap:1rem;">
-      <a href="/my-trips?tab=bookings" class="btn btn-primary">View my trips</a>
-      <a href="/trips/{{ booking.trip_id }}" class="btn btn-outline">View trip details</a>
+      <a href="/my-trips?tab=bookings" class="btn btn-primary">{{ _t('pay_view_my_trips') }}</a>
+      <a href="/trips/{{ booking.trip_id }}" class="btn btn-outline">{{ _t('pay_view_trip_details') }}</a>
     </div>
 
   </div>
