@@ -60,12 +60,14 @@
 
       {% if booking.payment %}
       <div class="price-row price-row--total" style="margin-top:.75rem; padding-top:.75rem; border-top:1px solid var(--color-border);">
-        <span>Total paid</span>
+        <span>Total</span>
         <span>{{ "{:,}".format(booking.payment.passenger_total) }} ISK</span>
       </div>
+      {% if booking.payment.card_last4 %}
       <p class="price-note">
-        Charged to {{ booking.payment.card_brand }} ending ····{{ booking.payment.card_last4 }}
+        {{ booking.payment.card_brand }} ending ····{{ booking.payment.card_last4 }}
       </p>
+      {% endif %}
       {% endif %}
     </div>
 
@@ -79,7 +81,7 @@
       <ul class="policy-box__list">
         <li>Message your driver to confirm the exact pickup spot and time.</li>
         {% if less_than_24h %}
-        <li><strong>Your fare is paid and your seat is locked in.</strong> Departure is within 24 hours, so the fare is non-refundable, including no-shows.</li>
+        <li><strong>Your seat is locked in.</strong> Departure is within 24 hours, so this booking is non-refundable, including no-shows.</li>
         {% else %}
         <li><strong>Cancel more than 24 hours before departure</strong> — full refund.</li>
         <li><strong>Within 24 hours of departure</strong> — the fare is non-refundable, including no-shows.</li>
