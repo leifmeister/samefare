@@ -66,7 +66,10 @@
     {% set is_driver  = current_user.role in ('driver','both') %}
 
     {# ── Overview: what each goal needs + your current status ─────────────── #}
-    {{ verify_overview() }}
+    {# Highlight the goal that matches why the member was sent here. #}
+    {% set _verify_hl = 'drive' if request.query_params.get('next') == 'driver'
+                        else ('ride' if request.query_params.get('next') == 'book' else '') %}
+    {{ verify_overview(highlight=_verify_hl) }}
 
     {# Phone is the cross-cutting requirement and is handled on the profile /
        inline at booking — surface it here if still missing. #}

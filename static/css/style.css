@@ -1380,6 +1380,17 @@ button, input, select, textarea { font: inherit; }
   padding: .7rem 0; border-top: 1px solid var(--c-border);
 }
 .verify-goal:first-of-type { border-top: none; }
+/* Highlight the goal the member was routed here to complete (e.g. Drive when
+   they came from "Offer a ride"). Bleeds to the card edges with a left accent. */
+.verify-goal--highlight {
+  background: color-mix(in srgb, var(--c-primary) 8%, var(--c-surface));
+  border-left: 3px solid var(--c-primary);
+  border-top-color: transparent;
+  margin: 0 -1.4rem;
+  padding-left: calc(1.4rem - 3px);
+  padding-right: 1.4rem;
+}
+.verify-goal--highlight + .verify-goal { border-top-color: transparent; }
 .verify-goal__icon { font-size: 1.35rem; flex-shrink: 0; width: 1.8rem; text-align: center; }
 .verify-goal__body { flex: 1; min-width: 0; }
 .verify-goal__name { font-weight: 600; font-size: .95rem; margin: 0; }

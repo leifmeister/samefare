@@ -3,7 +3,9 @@
   member's current status. Shared by /verify and /profile so both pages show
   the identical three-way split. Import with context (uses current_user + _t).
 #}
-{% macro verify_overview() %}
+{% macro verify_overview(highlight='') %}
+{# `highlight` ('ride' | 'drive') tints the cell relevant to why the member was
+   sent here — e.g. routed from "Offer a ride" highlights Drive. #}
 {% set email_ok    = current_user.email_verified %}
 {% set phone_ok    = current_user.phone_verified %}
 {% set id_ok       = current_user.id_verification      == 'approved' %}
@@ -14,7 +16,7 @@
   <p class="verify-overview__title">{{ _t('verify_ov_title') }}</p>
 
   {# Ride — email + phone #}
-  <div class="verify-goal">
+  <div class="verify-goal{% if highlight == 'ride' %} verify-goal--highlight{% endif %}">
     <span class="verify-goal__icon">🧍</span>
     <div class="verify-goal__body">
       <p class="verify-goal__name">{{ _t('verify_ov_ride') }}</p>
@@ -28,7 +30,7 @@
   </div>
 
   {# Drive — licence + phone #}
-  <div class="verify-goal">
+  <div class="verify-goal{% if highlight == 'drive' %} verify-goal--highlight{% endif %}">
     <span class="verify-goal__icon">🚗</span>
     <div class="verify-goal__body">
       <p class="verify-goal__name">{{ _t('verify_ov_drive') }}</p>
