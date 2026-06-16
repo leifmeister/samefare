@@ -240,6 +240,14 @@ button, input, select, textarea { font: inherit; }
   border-bottom: 2px solid var(--c-border-light);
 }
 .form-actions { display: flex; justify-content: flex-end; gap: var(--space-3); padding-top: var(--space-4); }
+/* On a narrow phone two side-by-side buttons (e.g. Cancel + "Send verification
+   code") can exceed the card width; with justify-content:flex-end the overflow
+   pushes the first button off the left edge and clips it. Stack them instead —
+   primary on top (DOM order is Cancel, then primary → column-reverse). */
+@media (max-width: 480px) {
+  .form-actions { flex-direction: column-reverse; align-items: stretch; }
+  .form-actions > .btn { width: 100%; }
+}
 
 .form-card {
   background: var(--c-surface);
