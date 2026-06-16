@@ -47,13 +47,26 @@
         <div class="admin-card__section">
           <div class="admin-card__section-header">
             <strong>Government ID</strong>
-            <span class="verify-status verify-status--pending">⏳ Pending</span>
+            {% if user.id_doc_filename %}
+              <span class="verify-status verify-status--pending">⏳ Awaiting review</span>
+            {% elif user.didit_identity_session_id %}
+              <span class="verify-status verify-status--pending">⏳ In Didit review</span>
+            {% else %}
+              <span class="verify-status verify-status--pending">⏳ Pending</span>
+            {% endif %}
           </div>
           {% if user.id_doc_filename %}
             <a href="/admin/verifications/doc/{{ user.id_doc_filename }}"
                target="_blank" class="btn btn-ghost btn-sm" style="margin-bottom:.75rem;">
               View document ↗
             </a>
+          {% elif user.didit_identity_session_id %}
+            <p class="admin-card__meta" style="margin:.1rem 0 .75rem;">
+              Submitted through Didit — no document is stored here. Review the result in your Didit dashboard before approving.<br>
+              <span style="font-size:.78rem;">Didit session: <code>{{ user.didit_identity_session_id }}</code></span>
+            </p>
+          {% else %}
+            <p class="admin-card__meta" style="margin:.1rem 0 .75rem;">No document on file.</p>
           {% endif %}
           <div class="admin-card__actions">
             <form method="post" action="/admin/verifications/{{ user.id }}/approve-id" style="display:inline">
@@ -82,13 +95,26 @@
         <div class="admin-card__section">
           <div class="admin-card__section-header">
             <strong>Driver's licence</strong>
-            <span class="verify-status verify-status--pending">⏳ Pending</span>
+            {% if user.license_doc_filename %}
+              <span class="verify-status verify-status--pending">⏳ Awaiting review</span>
+            {% elif user.didit_licence_session_id %}
+              <span class="verify-status verify-status--pending">⏳ In Didit review</span>
+            {% else %}
+              <span class="verify-status verify-status--pending">⏳ Pending</span>
+            {% endif %}
           </div>
           {% if user.license_doc_filename %}
             <a href="/admin/verifications/doc/{{ user.license_doc_filename }}"
                target="_blank" class="btn btn-ghost btn-sm" style="margin-bottom:.75rem;">
               View document ↗
             </a>
+          {% elif user.didit_licence_session_id %}
+            <p class="admin-card__meta" style="margin:.1rem 0 .75rem;">
+              Submitted through Didit — no document is stored here. Review the result in your Didit dashboard before approving.<br>
+              <span style="font-size:.78rem;">Didit session: <code>{{ user.didit_licence_session_id }}</code></span>
+            </p>
+          {% else %}
+            <p class="admin-card__meta" style="margin:.1rem 0 .75rem;">No document on file.</p>
           {% endif %}
           <div class="admin-card__actions">
             <form method="post" action="/admin/verifications/{{ user.id }}/approve-license" style="display:inline">
