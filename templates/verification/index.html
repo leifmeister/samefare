@@ -44,6 +44,16 @@
         {{ _t('verify_id_required_alert') }}
       </div>
       {% endif %}
+    {% elif request.query_params.get('next') == 'driver'
+            and not (current_user.license_verification == 'approved' and current_user.phone_verified) %}
+      {# Routed here from "Offer a ride" — tell them exactly what's still needed. #}
+      {% set _need_lic   = current_user.license_verification != 'approved' %}
+      {% set _need_phone = not current_user.phone_verified %}
+      <div class="alert alert--success" role="alert">
+        {% if _need_lic and _need_phone %}{{ _t('verify_driver_alert_both') }}
+        {% elif _need_lic %}{{ _t('verify_driver_alert_licence') }}
+        {% else %}{{ _t('verify_driver_alert_phone') }}{% endif %}
+      </div>
     {% endif %}
 
     {% if error %}
