@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     app_name: str = "SameFare"
     secret_key: str = _DEV_SECRET
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 60 * 24 * 7  # 7 days
+    access_token_expire_minutes: int = 60 * 24 * 30  # 30 days (sliding — refreshed on activity)
 
     # Railway injects DATABASE_URL automatically from the Postgres plugin
     database_url: str = "postgresql://postgres:password@localhost:5432/samferd"

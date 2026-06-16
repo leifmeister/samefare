@@ -3,13 +3,14 @@ import json
 import logging
 import urllib.request
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 
 log = logging.getLogger(__name__)
 
 import secrets
 
 from fastapi import Depends, FastAPI, Request
+from jose import JWTError, jwt
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -847,12 +848,43 @@ async def security_headers(request: Request, call_next):
         h.setdefault("Strict-Transport-Security",
                      "max-age=63072000; includeSubDomains")
     # Issue the double-submit CSRF token (readable by JS, hence not HttpOnly).
+    # Match the session lifetime so it can't expire under a still-logged-in user.
     if not request.cookies.get("csrftoken"):
         response.set_cookie(
             "csrftoken", secrets.token_urlsafe(32),
-            max_age=60 * 60 * 24 * 7, samesite="lax",
+            max_age=_settings.access_token_expire_minutes * 60, samesite="lax",
             secure=_settings.secure_cookies, path="/",
         )
+    return response
+
+
+@app.middleware("http")
+async def sliding_session(request: Request, call_next):
+    """Keep active users logged in: re-issue the auth cookie once a day so the
+    30-day window rolls forward on each visit. Expired tokens are left alone
+    (the user must log in again); routes that set/clear the cookie themselves
+    (login, logout, register, password change) are skipped so we don't undo
+    them."""
+    response = await call_next(request)
+    token = request.cookies.get("access_token")
+    if not token:
+        return response
+    # If this response already manages the auth cookie, don't fight it.
+    if any(name == b"set-cookie" and b"access_token=" in value
+           for name, value in response.raw_headers):
+        return response
+    try:
+        payload = jwt.decode(token, _settings.secret_key, algorithms=[_settings.algorithm])
+        iat = payload.get("iat")
+        if iat and (datetime.utcnow() - datetime.utcfromtimestamp(iat)) > timedelta(days=1):
+            fresh = auth.create_access_token(int(payload["sub"]), payload.get("tv", 0))
+            response.set_cookie(
+                "access_token", fresh, httponly=True,
+                max_age=_settings.access_token_expire_minutes * 60,
+                samesite="lax", secure=_settings.secure_cookies, path="/",
+            )
+    except (JWTError, ValueError, KeyError, TypeError):
+        pass
     return response
 
 

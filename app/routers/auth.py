@@ -67,8 +67,12 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def create_access_token(user_id: int, token_version: int = 0) -> str:
-    expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
-    return jwt.encode({"sub": str(user_id), "tv": int(token_version or 0), "exp": expire},
+    now    = datetime.utcnow()
+    expire = now + timedelta(minutes=settings.access_token_expire_minutes)
+    # `iat` lets the sliding-session middleware tell how old a token is and
+    # re-issue it on activity so an active user's window keeps rolling.
+    return jwt.encode({"sub": str(user_id), "tv": int(token_version or 0),
+                       "iat": now, "exp": expire},
                       settings.secret_key, algorithm=settings.algorithm)
 
 
