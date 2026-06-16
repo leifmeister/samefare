@@ -2740,10 +2740,16 @@ button, input, select, textarea { font: inherit; }
   .navbar__mobile { display: flex; }
   .navbar__end .btn-ghost { display: none; }
   .navbar__end .btn-outline { display: none; }
-  /* Logged-out, a phone has to fit Login + Register + language + burger, so the
-     wordmark is dropped to make room (Home stays in the burger drawer). Logged
+  /* Logged-out, a phone fits Login + Register + language + burger but not the
+     wordmark too, so it's dropped (Home stays in the drawer). The action cluster
+     then spreads across the full width instead of bunching on the right. Logged
      in there's no Login/Register, so the logo stays. */
   .navbar--guest .navbar__brand { display: none; }
+  .navbar--guest .navbar__end {
+    margin-left: 0;
+    flex: 1;
+    justify-content: space-between;
+  }
   .navbar__end .navbar__login {
     display: inline-flex;
     border-color: transparent;
@@ -2751,7 +2757,6 @@ button, input, select, textarea { font: inherit; }
     color: var(--c-primary);
     font-weight: 600;
   }
-  .navbar__end { gap: var(--space-2); }
   .navbar__end { gap: var(--space-2); }
 
   .hero { padding: 3rem 0 2.5rem; }
