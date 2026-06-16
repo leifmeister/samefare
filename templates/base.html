@@ -31,7 +31,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/css/style.css?v=45" />
+  <link rel="stylesheet" href="/static/css/style.css?v=46" />
   <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml" />
 
   <!-- HTMX -->
@@ -103,7 +103,7 @@
        NAVBAR
   ═══════════════════════════════════════ -->
   <header>
-    <nav class="navbar" aria-label="Main navigation">
+    <nav class="navbar{% if not current_user %} navbar--guest{% endif %}" aria-label="Main navigation">
       <div class="container">
         <div class="navbar__inner">
 

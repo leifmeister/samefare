@@ -2740,14 +2740,10 @@ button, input, select, textarea { font: inherit; }
   .navbar__mobile { display: flex; }
   .navbar__end .btn-ghost { display: none; }
   .navbar__end .btn-outline { display: none; }
-  /* Returning visitors need an obvious way in, not just "Register". Surface a
-     compact text Login link next to the burger; the redundant top-bar language
-     switcher (also present in the drawer) makes way for it. */
-  /* Returning visitors need an obvious way in. Surface a compact text Login link
-     in the top bar; Register stays prominent (green) inside the drawer, and the
-     redundant top-bar language switcher (also in the drawer) is hidden. Showing
-     logo + Login + Register button + burger together overflows a 360px phone, so
-     Register moves into the menu rather than clipping the burger. */
+  /* Logged-out, a phone has to fit Login + Register + language + burger, so the
+     wordmark is dropped to make room (Home stays in the burger drawer). Logged
+     in there's no Login/Register, so the logo stays. */
+  .navbar--guest .navbar__brand { display: none; }
   .navbar__end .navbar__login {
     display: inline-flex;
     border-color: transparent;
@@ -2755,11 +2751,7 @@ button, input, select, textarea { font: inherit; }
     color: var(--c-primary);
     font-weight: 600;
   }
-  .navbar__end .btn-primary { display: none; }
-  /* Compact the wordmark so the language switcher fits in the header next to
-     Login + burger on a 360px phone. */
-  .navbar__brand { font-size: 1.25rem; }
-  .navbar__inner { gap: var(--space-3); }
+  .navbar__end { gap: var(--space-2); }
   .navbar__end { gap: var(--space-2); }
 
   .hero { padding: 3rem 0 2.5rem; }
