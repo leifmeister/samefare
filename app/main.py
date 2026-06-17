@@ -856,6 +856,10 @@ async def security_headers(request: Request, call_next):
     if _settings.secure_cookies:
         h.setdefault("Strict-Transport-Security",
                      "max-age=63072000; includeSubDomains")
+    # Cache static assets so repeat visits skip the per-request revalidation.
+    # Safe: the CSS is ?v=-busted and fonts/images/favicon are stable.
+    if request.url.path.startswith("/static/"):
+        h.setdefault("Cache-Control", "public, max-age=86400")
     # Issue the double-submit CSRF token (readable by JS, hence not HttpOnly).
     # Match the session lifetime so it can't expire under a still-logged-in user.
     if not request.cookies.get("csrftoken"):

@@ -1,7 +1,7 @@
 {% macro avatar(user, cls="avatar--md", style="") %}
 {% if user.avatar_url %}
 <img src="{{ user.avatar_url }}" alt="{{ user.full_name }}"
-     class="avatar-img {{ cls }}" style="{{ style }}" />
+     class="avatar-img {{ cls }}" style="{{ style }}" loading="lazy" decoding="async" />
 {% else %}
 <div class="avatar avatar--empty {{ cls }}" style="{{ style }}" aria-label="No profile photo">
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">

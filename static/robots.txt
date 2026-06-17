@@ -10,4 +10,4 @@ Disallow: /verify
 Disallow: /reviews/new/
 Disallow: /logout
 
-Sitemap: https://samefare.com/sitemap.xml
+Sitemap: https://www.samefare.com/sitemap.xml
