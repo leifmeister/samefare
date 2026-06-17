@@ -96,7 +96,7 @@
       <div class="trip-hero">
         {% if trip.status != 'active' %}
         <div class="trip-status-banner trip-status-banner--{{ trip.status }}">
-          {% if trip.status == 'completed' %}{{ _t('detail_trip_completed') }}{% else %}{{ _t('detail_trip_has_been') }} {{ trip.status }}.{% endif %}
+          {% if trip.status == 'completed' %}{{ _t('detail_trip_completed') }}{% elif trip.status == 'cancelled' %}{{ _t('detail_trip_cancelled') }}{% else %}{{ _t('detail_trip_has_been') }} {{ trip.status }}.{% endif %}
         </div>
         {% endif %}
         {% if trip.driver_no_show %}
@@ -546,7 +546,7 @@
 
         {% else %}
         <div class="booking-state booking-state--inactive">
-          <p class="booking-state__label">Trip {{ trip.status }}</p>
+          <p class="booking-state__label">{{ _t('status_' ~ (trip.status | string)) }}</p>
           <p class="booking-state__sub">{{ _t('detail_trip_inactive_sub') }}</p>
         </div>
         {% endif %}
