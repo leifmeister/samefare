@@ -227,8 +227,11 @@ button, input, select, textarea { font: inherit; }
 
 /* ── Form helpers ────────────────────────────────────────────── */
 .form-group  { display: flex; flex-direction: column; gap: var(--space-2); }
-.form-row    { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
-.form-row--3 { grid-template-columns: 1fr 1fr 1fr; }
+.form-row    { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-5); }
+.form-row--3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); }
+/* Grid items default to min-width:auto, which refuses to shrink below their
+   content and overflows the track (esp. with enlarged text). Let them shrink. */
+.form-row > * { min-width: 0; }
 .label       { font-size: .875rem; font-weight: 600; color: var(--c-text); }
 .input-hint  { font-size: .8125rem; color: var(--c-text-muted); margin-top: .25rem; }
 .required    { color: var(--c-error); }
@@ -3360,12 +3363,14 @@ button, input, select, textarea { font: inherit; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-6);
+  flex-wrap: wrap;
+  gap: var(--space-4);
   padding: var(--space-4) var(--space-5);
   background: var(--c-surface);
   border: 1px solid var(--c-border);
   border-radius: var(--r-lg);
 }
+.instant-book-toggle > :first-child { min-width: 0; }
 .instant-book-toggle__title {
   font-weight: 600;
   font-size: .9375rem;
@@ -4063,10 +4068,18 @@ button, input, select, textarea { font: inherit; }
   display: flex;
   gap: 0;
   border-bottom: 2px solid var(--border);
+  /* Let the tab row scroll rather than push the page wider than the screen when
+     labels (or enlarged text) don't fit. */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.tab-bar::-webkit-scrollbar { display: none; }
 .tab-bar__tab {
   background: none;
   border: none;
+  flex-shrink: 0;
+  white-space: nowrap;
   padding: .75rem 1.5rem;
   font-size: .9375rem;
   font-weight: 500;
@@ -4347,9 +4360,12 @@ button, input, select, textarea { font: inherit; }
 /* ── Visual preference checkboxes (form) ─────────────────────────────────── */
 .pref-check-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  /* min(200px, 100%) lets the min track collapse on screens narrower than 200px
+     (or under zoom) instead of forcing horizontal overflow. */
+  grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
   gap: .625rem;
 }
+.pref-check { min-width: 0; }
 .pref-check {
   display: flex;
   cursor: pointer;
@@ -4415,9 +4431,10 @@ button, input, select, textarea { font: inherit; }
 /* ── Preference grid (detail page) ──────────────────────────────────────── */
 .pref-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
   gap: .625rem;
 }
+.pref-grid .pref-item { min-width: 0; }
 .pref-grid .pref-item {
   display: flex;
   align-items: flex-start;
@@ -4447,7 +4464,7 @@ button, input, select, textarea { font: inherit; }
   margin-top: 1px;
 }
 @media (max-width: 480px) {
-  .pref-grid { grid-template-columns: 1fr 1fr; }
+  .pref-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
 
 /* ── Booking page: preference summary ───────────────────────────────────── */
