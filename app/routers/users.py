@@ -9,6 +9,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import text
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app import models, sms
@@ -512,6 +513,7 @@ def delete_account(
     current_user.phone_verified   = False
     current_user.bio              = None
     current_user.avatar_url       = None
+    db.execute(text("DELETE FROM user_avatars WHERE user_id = :uid"), {"uid": uid})
     current_user.birth_year       = None
     current_user.hashed_password  = ""
     current_user.is_active        = False
@@ -661,25 +663,58 @@ def upload_avatar(
         return RedirectResponse("/profile", status_code=303)
 
     content = photo.file.read()
-    if len(content) > 5 * 1024 * 1024:  # 5 MB limit
-        return RedirectResponse("/profile", status_code=303)
+    if len(content) > 8 * 1024 * 1024:  # 8 MB raw-upload guard (downscaled before storing)
+        return RedirectResponse("/profile?avatar_error=1", status_code=303)
     # Validate by magic bytes, not just the extension — stops an HTML/script
     # polyglot uploaded as ".png" being stored and served from our origin.
     if not _looks_like_image(content):
         return RedirectResponse("/profile?avatar_error=1", status_code=303)
 
-    os.makedirs("static/avatars", exist_ok=True)
+    # Downscale and re-encode to a small JPEG. This keeps the stored bytes tiny
+    # (~20-40 KB), normalises every upload to a format all browsers render, and
+    # strips EXIF. Stored in the DB (user_avatars) — NOT the container disk,
+    # which Railway wipes on every redeploy (the old cause of vanishing photos).
+    try:
+        from io import BytesIO
+        from PIL import Image, ImageOps
+        img = Image.open(BytesIO(content))
+        img = ImageOps.exif_transpose(img)      # honour orientation, then drop EXIF
+        img = img.convert("RGB")
+        img.thumbnail((512, 512))
+        buf = BytesIO()
+        img.save(buf, format="JPEG", quality=82, optimize=True)
+        data = buf.getvalue()
+    except Exception:
+        # Unreadable / unsupported (e.g. a true HEIC with no decoder) — ask for another.
+        return RedirectResponse("/profile?avatar_error=1", status_code=303)
 
-    # Delete old avatar file if it exists
-    if current_user.avatar_url:
-        old_path = current_user.avatar_url.lstrip("/")
-        if os.path.exists(old_path):
-            os.remove(old_path)
+    db.execute(text("""
+        INSERT INTO user_avatars (user_id, data, content_type, updated_at)
+        VALUES (:uid, :data, 'image/jpeg', now())
+        ON CONFLICT (user_id) DO UPDATE
+          SET data = EXCLUDED.data, content_type = EXCLUDED.content_type, updated_at = now()
+    """), {"uid": current_user.id, "data": data})
 
-    filename = f"{uuid.uuid4().hex}{ext}"
-    with open(f"static/avatars/{filename}", "wb") as f:
-        f.write(content)
-
-    current_user.avatar_url = f"/static/avatars/{filename}"
+    # Point at the serve route with a cache-busting version so a new photo
+    # replaces the old one immediately (the route sends a long, immutable cache).
+    current_user.avatar_url = f"/u/{current_user.id}/avatar?v={uuid.uuid4().hex[:8]}"
     db.commit()
-    return RedirectResponse("/profile", status_code=303)
+    return RedirectResponse("/profile?avatar_saved=1", status_code=303)
+
+
+@router.get("/u/{user_id}/avatar")
+def serve_avatar(user_id: int, db: Session = Depends(get_db)):
+    """Serve a stored profile photo. The URL carries a ?v= cache-buster that
+    changes on each upload, so the response is safely cacheable for a long time."""
+    row = db.execute(
+        text("SELECT data, content_type FROM user_avatars WHERE user_id = :uid"),
+        {"uid": user_id},
+    ).first()
+    if not row:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404)
+    return Response(
+        content=bytes(row[0]),
+        media_type=row[1] or "image/jpeg",
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )

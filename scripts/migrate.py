@@ -124,6 +124,24 @@ def migrate() -> None:
     steps.append(("index: ix_messages_sender_id",
         "CREATE INDEX IF NOT EXISTS ix_messages_sender_id  ON messages(sender_id)"))
 
+    # ── 7. avatar blobs (persist across Railway's ephemeral filesystem) ────────
+    # Profile photos used to be written to static/avatars on the container disk,
+    # which is wiped on every redeploy — so they vanished. Store the bytes in the
+    # DB instead, in their own table so the users row stays lean.
+    steps.append(("table: user_avatars", """
+        CREATE TABLE IF NOT EXISTS user_avatars (
+            user_id      INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            data         BYTEA       NOT NULL,
+            content_type VARCHAR(40) NOT NULL DEFAULT 'image/jpeg',
+            updated_at   TIMESTAMP   NOT NULL DEFAULT now()
+        )
+    """))
+    # Old avatar_url values point at static/avatars files that no longer exist on
+    # disk — clear them so the UI shows the placeholder instead of a broken image.
+    # New uploads set avatar_url to the /u/<id>/avatar serve route.
+    steps.append(("clear stale avatar_url",
+        "UPDATE users SET avatar_url = NULL WHERE avatar_url LIKE '/static/avatars/%'"))
+
     # ── Run ────────────────────────────────────────────────────────────────────
     for label, sql in steps:
         cur.execute(sql)
