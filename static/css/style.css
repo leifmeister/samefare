@@ -779,6 +779,27 @@ button, input, select, textarea { font: inherit; }
   white-space: nowrap;
 }
 
+/* ── Hero trust strip ────────────────────────────────────────── */
+.trust-strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .4rem 1.5rem;
+  list-style: none;
+  margin: 1.1rem auto 0;
+  padding: 0;
+  max-width: 640px;
+}
+.trust-strip__item {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--c-text);
+}
+.trust-strip__item svg { color: var(--c-primary); flex-shrink: 0; }
+
 /* ── Search bar (list page) ──────────────────────────────────── */
 .page-header {
   background: var(--c-surface);
