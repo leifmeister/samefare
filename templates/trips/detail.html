@@ -6,11 +6,14 @@
 {% block meta_description %}Rideshare from {{ trip.origin }} to {{ trip.destination }} on {{ fdate(trip.departure_datetime, "%-d %b %Y") }}. {{ trip.seats_available }} seat{{ 's' if trip.seats_available != 1 else '' }} available at {{ "{:,}".format(trip.price_per_seat) }} ISK. Book your seat on SameFare.{% endblock %}
 {% block og_type %}event{% endblock %}
 {% block og_image %}
-<meta property="og:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/img/og-default.jpg" />
+{# Per-trip branded share card (route + date + price), generated at /trips/<id>/og.png #}
+{% set _og = request.url.scheme ~ "://" ~ request.url.netloc ~ "/trips/" ~ trip.id ~ "/og.png" %}
+<meta property="og:image" content="{{ _og }}" />
 <meta property="og:image:width"  content="1200" />
 <meta property="og:image:height" content="630" />
+<meta property="og:image:type"   content="image/png" />
 <meta name="twitter:card"  content="summary_large_image" />
-<meta name="twitter:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/img/og-default.jpg" />
+<meta name="twitter:image" content="{{ _og }}" />
 {% endblock %}
 
 {% block head %}

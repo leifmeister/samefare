@@ -5,8 +5,8 @@ from typing import List, Optional
 
 log = logging.getLogger(__name__)
 
-from fastapi import APIRouter, Depends, Form, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload, selectinload
 
@@ -538,6 +538,29 @@ def trips_list(
     if request.headers.get("HX-Request"):
         return templates.TemplateResponse("trips/_list_partial.html", {**ctx, **ctx_extra})
     return templates.TemplateResponse("trips/list.html", {**ctx, **ctx_extra})
+
+
+@router.get("/{trip_id}/og.png")
+def trip_og_image(trip_id: int, db: Session = Depends(get_db)):
+    """Branded 1200×630 share card for a trip (used as the og:image on the detail
+    page) so shared ride links preview as a polished card. Public — social
+    crawlers fetch it unauthenticated."""
+    from app.og_image import render_trip_og
+    from app.routers.payments import calc_fees
+
+    trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
+    if not trip:
+        raise HTTPException(status_code=404)
+
+    _, total, _ = calc_fees(trip.price_per_seat)
+    date_label  = trip.departure_datetime.strftime("%a %-d %b · %H:%M")
+    price_label = f"{total:,} ISK / seat"
+    seats       = trip.seats_available or 0
+    seats_label = (f"{seats} seat" + ("" if seats == 1 else "s")) if seats > 0 else ""
+
+    png = render_trip_og(trip.origin, trip.destination, date_label, price_label, seats_label)
+    return Response(content=png, media_type="image/png",
+                    headers={"Cache-Control": "public, max-age=86400"})
 
 
 # ── Detail ────────────────────────────────────────────────────────────────────
