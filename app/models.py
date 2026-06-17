@@ -220,6 +220,11 @@ class User(Base):
     license_doc_filename     = Column(String(255))
     id_rejection_reason      = Column(Text)
     license_rejection_reason = Column(Text)
+    # Set when an admin manually approves/rejects this verification — locks it so
+    # a later (stale or contradictory) Didit webhook can't silently overturn the
+    # human decision. Cleared by "reset for testing".
+    id_verification_locked      = Column(Boolean, nullable=False, default=False, server_default="false")
+    license_verification_locked = Column(Boolean, nullable=False, default=False, server_default="false")
 
     # Didit KYC session IDs — set when a Didit session is created, cleared on retry.
     # ⚠️  AML RETENTION — DO NOT NULL THESE OUT ON ACCOUNT DELETION.

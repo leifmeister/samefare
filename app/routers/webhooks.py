@@ -756,6 +756,16 @@ async def didit_webhook(request: Request):
             log.debug("Didit webhook: status %r requires no action", status)
             return JSONResponse({"status": "ok"})
 
+        # ── 5a. Respect a manual admin decision ───────────────────────────────
+        # If an admin has manually settled this verification, a later (possibly
+        # contradictory) Didit webhook must not silently overturn the human call.
+        locked = (user.license_verification_locked if vtype == "licence"
+                  else user.id_verification_locked)
+        if locked:
+            log.info("Didit webhook: %s for user %s is admin-locked — webhook ignored",
+                     vtype, user_id)
+            return JSONResponse({"status": "ignored_admin_locked"})
+
         # ── 5b. Ignore events from a stale (superseded/abandoned) session ──────
         # The webhook only carries user_id + type, but Didit can fire late events
         # for an OLD session the user abandoned and restarted. Applying those

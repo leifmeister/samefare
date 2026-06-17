@@ -142,6 +142,14 @@ def migrate() -> None:
     steps.append(("clear stale avatar_url",
         "UPDATE users SET avatar_url = NULL WHERE avatar_url LIKE '/static/avatars/%'"))
 
+    # ── 8. admin verification locks ────────────────────────────────────────────
+    # A manual admin approve/reject locks the verification so a later Didit
+    # webhook can't silently overturn the human decision.
+    steps.append(("users.id_verification_locked",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS id_verification_locked      BOOLEAN NOT NULL DEFAULT FALSE"))
+    steps.append(("users.license_verification_locked",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS license_verification_locked BOOLEAN NOT NULL DEFAULT FALSE"))
+
     # ── Run ────────────────────────────────────────────────────────────────────
     for label, sql in steps:
         cur.execute(sql)

@@ -35,6 +35,15 @@ from app.tasks import (
 
 settings = get_settings()
 
+# Enable HEIC/HEIF decoding (iPhone photos) for Pillow — used by avatar uploads.
+# Guarded so a missing/broken pillow-heif never stops the app booting; HEIC just
+# falls back to "unsupported" as before.
+try:
+    import pillow_heif
+    pillow_heif.register_heif_opener()
+except Exception:
+    log.warning("pillow-heif unavailable — HEIC uploads will be rejected")
+
 # ── Schema migrations (idempotent — safe to run on every startup) ─────────────
 # Covers every column in every table. ADD COLUMN IF NOT EXISTS is a no-op when
 # the column already exists, so this is safe regardless of DB state.

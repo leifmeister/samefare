@@ -757,6 +757,8 @@ def reset_user_for_testing(
         user.email_verified               = False
         user.id_verification              = models.VerificationStatus.unverified
         user.license_verification         = models.VerificationStatus.unverified
+        user.id_verification_locked       = False
+        user.license_verification_locked  = False
         user.id_rejection_reason          = None
         user.license_rejection_reason     = None
         user.didit_identity_session_id    = None
@@ -808,12 +810,14 @@ def approve_id(
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user:
-        user.id_verification     = models.VerificationStatus.approved
-        user.id_rejection_reason = None
+        user.id_verification        = models.VerificationStatus.approved
+        user.id_rejection_reason    = None
+        user.id_verification_locked = True   # manual decision — Didit can't overturn it
         # If a driver's licence was used for identity, it also covers driving
         if user.id_doc_type == "license":
-            user.license_verification     = models.VerificationStatus.approved
-            user.license_rejection_reason = None
+            user.license_verification        = models.VerificationStatus.approved
+            user.license_rejection_reason    = None
+            user.license_verification_locked = True
         db.commit()
     return RedirectResponse("/admin/verifications", status_code=303)
 
@@ -827,14 +831,16 @@ def reject_id(
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user:
-        user.id_verification     = models.VerificationStatus.rejected
-        user.id_rejection_reason = reason or "Document could not be verified."
-        user.id_doc_filename     = None
+        user.id_verification        = models.VerificationStatus.rejected
+        user.id_rejection_reason    = reason or "Document could not be verified."
+        user.id_doc_filename        = None
+        user.id_verification_locked = True   # manual decision — Didit can't overturn it
         # If this was a dual-use licence, reset the driving status too
         if user.id_doc_type == "license":
-            user.license_verification     = models.VerificationStatus.rejected
-            user.license_rejection_reason = reason or "Document could not be verified."
-            user.license_doc_filename     = None
+            user.license_verification        = models.VerificationStatus.rejected
+            user.license_rejection_reason    = reason or "Document could not be verified."
+            user.license_doc_filename        = None
+            user.license_verification_locked = True
         db.commit()
     return RedirectResponse("/admin/verifications", status_code=303)
 
@@ -847,8 +853,9 @@ def approve_license(
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user:
-        user.license_verification      = models.VerificationStatus.approved
-        user.license_rejection_reason  = None
+        user.license_verification        = models.VerificationStatus.approved
+        user.license_rejection_reason    = None
+        user.license_verification_locked = True   # manual decision — Didit can't overturn it
         db.commit()
     return RedirectResponse("/admin/verifications", status_code=303)
 
@@ -862,9 +869,10 @@ def reject_license(
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user:
-        user.license_verification      = models.VerificationStatus.rejected
-        user.license_rejection_reason  = reason or "Document could not be verified."
-        user.license_doc_filename      = None
+        user.license_verification        = models.VerificationStatus.rejected
+        user.license_rejection_reason    = reason or "Document could not be verified."
+        user.license_doc_filename        = None
+        user.license_verification_locked = True   # manual decision — Didit can't overturn it
         db.commit()
     return RedirectResponse("/admin/verifications", status_code=303)
 

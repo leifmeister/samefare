@@ -16,3 +16,4 @@ twilio==9.4.3
 certifi>=2024.0.0
 httpx>=0.27.0
 Pillow==10.4.0
+pillow-heif==0.18.0
