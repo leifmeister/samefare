@@ -138,19 +138,20 @@ def start_didit_verification(
 
     session_id = session.get("session_id", "")
 
-    # Persist session ID and set status to pending
+    # Persist the session ID only — do NOT mark the verification "pending" here.
+    # A created session means nothing has been submitted yet; the user may abandon
+    # the hosted flow without uploading anything. Marking it pending now would show
+    # a false "In review" forever. The Didit webhook is the source of truth: it
+    # moves the status to pending when Didit actually reviews a submission, and to
+    # approved/rejected on the decision (and resets to unverified on Abandoned/
+    # Expired). We deliberately don't touch the verification status or rejection
+    # reason so an already-approved identity (e.g. when adding a licence later)
+    # isn't downgraded mid-attempt.
     if is_licence:
         current_user.didit_licence_session_id  = session_id
-        current_user.license_verification      = models.VerificationStatus.pending
-        current_user.license_rejection_reason  = None
-        # Licence covers identity — pre-set identity to pending too
-        current_user.didit_identity_session_id = session_id
-        current_user.id_verification           = models.VerificationStatus.pending
-        current_user.id_rejection_reason       = None
+        current_user.didit_identity_session_id = session_id   # licence covers identity
     else:
         current_user.didit_identity_session_id = session_id
-        current_user.id_verification           = models.VerificationStatus.pending
-        current_user.id_rejection_reason       = None
 
     db.commit()
 
