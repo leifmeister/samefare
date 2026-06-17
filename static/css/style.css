@@ -2800,6 +2800,10 @@ button, input, select, textarea { font: inherit; }
 
   .list-layout   { grid-template-columns: 1fr; }
   .sidebar       { position: static; }
+  /* Stacked on mobile, show the ride results first — the sort/filter + "Offer a
+     ride" sidebar is in the DOM before the results (for the desktop side column),
+     so drop it below the results here instead of making people scroll past it. */
+  .list-main     { order: -1; }
   .detail-layout { grid-template-columns: minmax(0, 1fr); }
   .booking-layout { grid-template-columns: minmax(0, 1fr); }
   .profile-layout { grid-template-columns: minmax(0, 1fr); }
