@@ -1662,14 +1662,21 @@ def detect_lang(request) -> str:
     """Return the UI language for a request.
 
     Priority:
-    1. ``lang`` cookie — explicit user choice, sticks for a year.
-    2. ``Accept-Language`` header — browser / OS preference.
-    3. Host domain — samefare.com (and any *.com host) defaults to English;
-       samefare.is and everything else defaults to Icelandic.
+    1. ``lang`` cookie — explicit user choice (the EN|ÍS toggle), sticks for a year.
+    2. Host domain — the Icelandic ccTLD (samefare.is) is an explicit locale
+       signal, so it always defaults to Icelandic regardless of the browser's
+       Accept-Language (Icelandic users very often run English-language
+       browsers). A user can still switch via the toggle (which sets the cookie).
+    3. ``Accept-Language`` header — for the .com / preview / localhost hosts.
+    4. Per-domain fallback: *.com → English, everything else → Icelandic.
     """
     cookie = request.cookies.get("lang")
     if cookie in {"en", "is"}:
         return cookie
+
+    host = request.headers.get("host", "").split(":")[0].lower()
+    if host.endswith(".is"):
+        return "is"
 
     accept = request.headers.get("accept-language", "")
     # Accept-Language is comma-separated, e.g. "is,en-GB;q=0.9,en;q=0.8"
@@ -1678,8 +1685,4 @@ def detect_lang(request) -> str:
         if tag in {"en", "is"}:
             return tag
 
-    # Domain-based default: strip port, check TLD
-    host = request.headers.get("host", "").split(":")[0].lower()
     return "en" if host.endswith(".com") else "is"
-
-    return "is"  # default: Icelandic for samefare.is
