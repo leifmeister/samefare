@@ -875,16 +875,36 @@ async def sliding_session(request: Request, call_next):
         return response
     try:
         payload = jwt.decode(token, _settings.secret_key, algorithms=[_settings.algorithm])
-        iat = payload.get("iat")
-        if iat and (datetime.utcnow() - datetime.utcfromtimestamp(iat)) > timedelta(days=1):
-            fresh = auth.create_access_token(int(payload["sub"]), payload.get("tv", 0))
+    except (JWTError, ValueError):
+        return response   # expired/invalid — leave it alone, the user logs in again
+    iat = payload.get("iat")
+    # Still fresh (< a day old) — no need to re-issue. Tokens minted before `iat`
+    # existed have no iat and fall through to refresh, rolling them to 30 days.
+    if iat and (datetime.utcnow() - datetime.utcfromtimestamp(iat)) <= timedelta(days=1):
+        return response
+    # About to refresh: only do so for a still-valid user, and re-mint with their
+    # CURRENT token_version — so a suspended/deleted/password-reset account can't
+    # keep a perpetually self-renewing cookie.
+    try:
+        sub = int(payload.get("sub"))
+        tv  = int(payload.get("tv", 0) or 0)
+    except (TypeError, ValueError):
+        return response
+    db = SessionLocal()
+    try:
+        user = db.query(models.User).filter(models.User.id == sub).first()
+        if (user and user.is_active and not user.deleted_at
+                and int(user.token_version or 0) == tv):
+            fresh = auth.create_access_token(user.id, user.token_version or 0)
             response.set_cookie(
                 "access_token", fresh, httponly=True,
                 max_age=_settings.access_token_expire_minutes * 60,
                 samesite="lax", secure=_settings.secure_cookies, path="/",
             )
-    except (JWTError, ValueError, KeyError, TypeError):
+    except Exception:
         pass
+    finally:
+        db.close()
     return response
 
 

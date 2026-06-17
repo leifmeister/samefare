@@ -756,6 +756,30 @@ async def didit_webhook(request: Request):
             log.debug("Didit webhook: status %r requires no action", status)
             return JSONResponse({"status": "ok"})
 
+        # ── 5b. Ignore events from a stale (superseded/abandoned) session ──────
+        # The webhook only carries user_id + type, but Didit can fire late events
+        # for an OLD session the user abandoned and restarted. Applying those
+        # would overturn a newer decision (e.g. a delayed "Abandoned" for session
+        # A knocking out the "Approved" the user earned in session B). Only act on
+        # the user's CURRENT session for this verification type.
+        current_sid = (user.didit_licence_session_id if vtype == "licence"
+                       else user.didit_identity_session_id)
+        if session_id and current_sid and session_id != current_sid:
+            log.info("Didit webhook: ignoring stale session %s (current=%s) for user %s/%s",
+                     session_id, current_sid, user_id, vtype)
+            return JSONResponse({"status": "ignored_stale_session"})
+
+        # ── 5c. Never let abandoned/expired downgrade a settled status ─────────
+        # Abandoned/Expired → unverified only makes sense while still pending.
+        # If the field is already approved (or rejected), a stray reset would
+        # silently strip a verified user — leave it untouched.
+        current_status = (user.license_verification if vtype == "licence"
+                          else user.id_verification)
+        if new_status == unverified and current_status != pending:
+            log.info("Didit webhook: not resetting %s for user %s — status %s is not pending",
+                     vtype, user_id, current_status)
+            return JSONResponse({"status": "ignored_no_downgrade"})
+
         # ── 6. Extract rejection reason if declined ────────────────────────────
         rejection_reason: str | None = None
         if new_status == rejected:
@@ -767,8 +791,13 @@ async def didit_webhook(request: Request):
 
         # ── 7. Apply to the correct verification field(s) ─────────────────────
         if vtype == "licence":
-            user.license_verification     = new_status
-            user.license_rejection_reason = rejection_reason
+            user.license_verification = new_status
+            # Only touch the reason on a decision; don't wipe it on a later
+            # In Review / reset event.
+            if new_status == rejected:
+                user.license_rejection_reason = rejection_reason
+            elif new_status == approved:
+                user.license_rejection_reason = None
             if new_status == unverified:
                 user.didit_licence_session_id = None
             # Licence covers identity — propagate approval
@@ -805,8 +834,11 @@ async def didit_webhook(request: Request):
                     log.warning("Didit: failed to extract expiry date for user %s: %s", user_id, exc)
             # On decline/unverified: only reset licence; identity keeps its state
         else:
-            user.id_verification      = new_status
-            user.id_rejection_reason  = rejection_reason
+            user.id_verification = new_status
+            if new_status == rejected:
+                user.id_rejection_reason = rejection_reason
+            elif new_status == approved:
+                user.id_rejection_reason = None
             if new_status == unverified:
                 user.didit_identity_session_id = None
 

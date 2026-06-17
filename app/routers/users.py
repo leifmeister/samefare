@@ -678,6 +678,11 @@ def upload_avatar(
         from io import BytesIO
         from PIL import Image, ImageOps
         img = Image.open(BytesIO(content))
+        # Guard against decompression bombs: an 8 MB upload can still decode to
+        # hundreds of MB of pixels. img.size is metadata (no full decode yet), so
+        # reject oversized images before convert()/thumbnail() allocate them.
+        if (img.width or 0) * (img.height or 0) > 40_000_000:   # ~40 MP
+            return RedirectResponse("/profile?avatar_error=1", status_code=303)
         img = ImageOps.exif_transpose(img)      # honour orientation, then drop EXIF
         img = img.convert("RGB")
         img.thumbnail((512, 512))
