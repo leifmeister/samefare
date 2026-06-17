@@ -82,7 +82,15 @@
 
 /* ── Reset ───────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 16px; scroll-behavior: smooth; }
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  /* Stop iOS Safari from auto-inflating text (which widens nowrap elements and
+     causes horizontal overflow on some pages). Respects an explicit user
+     text-size choice; only disables the automatic boosting. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 body {
   font-family: var(--font-sans);
   color: var(--c-text);
@@ -1940,7 +1948,10 @@ button, input, select, textarea { font: inherit; }
 /* ── Profile ─────────────────────────────────────────────────── */
 .profile-layout {
   display: grid;
-  grid-template-columns: 1fr 360px;
+  /* minmax(0, …) lets the main column shrink below its content's min-width —
+     without it a wide/nowrap child (or enlarged text) blows the column past the
+     viewport and clips every card. */
+  grid-template-columns: minmax(0, 1fr) 360px;
   gap: var(--space-8);
   align-items: start;
 }
@@ -2076,6 +2087,10 @@ button, input, select, textarea { font: inherit; }
   background: var(--c-surface); border-radius: var(--r-lg); padding: var(--space-5) var(--space-6);
   border: 1px solid var(--c-border-light); margin-bottom: var(--space-5);
 }
+/* Some details-cards are laid out as a flex row (label + action button) via an
+   inline style. Allow them to wrap so a nowrap button (or enlarged text) drops
+   below the label instead of forcing the card wider than the screen. */
+.details-card { flex-wrap: wrap; }
 .details-card__summary {
   font-weight: 700; cursor: pointer; font-size: .9375rem; color: var(--c-primary);
   padding: var(--space-2) 0; list-style: none;
@@ -2785,9 +2800,9 @@ button, input, select, textarea { font: inherit; }
 
   .list-layout   { grid-template-columns: 1fr; }
   .sidebar       { position: static; }
-  .detail-layout { grid-template-columns: 1fr; }
-  .booking-layout { grid-template-columns: 1fr; }
-  .profile-layout { grid-template-columns: 1fr; }
+  .detail-layout { grid-template-columns: minmax(0, 1fr); }
+  .booking-layout { grid-template-columns: minmax(0, 1fr); }
+  .profile-layout { grid-template-columns: minmax(0, 1fr); }
   .how-grid       { grid-template-columns: 1fr; gap: var(--space-6); }
   .stats-grid     { grid-template-columns: repeat(2, 1fr); }
   .routes-grid    { grid-template-columns: 1fr; }
