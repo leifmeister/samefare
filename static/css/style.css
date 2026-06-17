@@ -806,9 +806,17 @@ button, input, select, textarea { font: inherit; }
 }
 .trust-strip__item svg { color: var(--c-primary); flex-shrink: 0; }
 @media (max-width: 600px) {
-  .trust-band { padding: .9rem 1rem; }
-  .trust-strip { gap: .55rem 1.25rem; }
-  .trust-strip__item { font-size: .82rem; }
+  /* Stack as a tidy left-aligned column instead of an uneven 2-then-1 wrap. */
+  .trust-band { padding: 1rem 1.25rem; border-bottom: none; }
+  .trust-strip {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .65rem;
+    width: max-content;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+  .trust-strip__item { font-size: .9rem; }
 }
 
 /* ── Search bar (list page) ──────────────────────────────────── */
