@@ -2798,12 +2798,22 @@ button, input, select, textarea { font: inherit; }
   .search-box__fields { grid-template-columns: 1fr; gap: var(--space-3); }
   .search-swap-btn { display: none; }
 
-  .list-layout   { grid-template-columns: 1fr; }
-  .sidebar       { position: static; }
-  /* Stacked on mobile, show the ride results first — the sort/filter + "Offer a
-     ride" sidebar is in the DOM before the results (for the desktop side column),
-     so drop it below the results here instead of making people scroll past it. */
-  .list-main     { order: -1; }
+  .list-layout   { grid-template-columns: minmax(0, 1fr); }
+  /* On mobile, dissolve the sidebar card (display:contents) so its parts can be
+     ordered around the results: a compact Sort block stays on top, the ride
+     results come next, and the "Offer a ride" button drops to the bottom —
+     instead of the whole sidebar sitting either above or below the results. */
+  .sidebar { display: contents; }
+  .sidebar__section {
+    order: 1; margin-bottom: 0;
+    background: var(--c-surface); border: 1px solid var(--c-border-light);
+    border-radius: var(--r-lg); box-shadow: var(--shadow-sm);
+    padding: var(--space-4) var(--space-5);
+  }
+  .sidebar__divider { display: none; }
+  #sort-form        { display: none; }
+  .list-main        { order: 2; }
+  .sidebar .btn-primary { order: 3; }
   .detail-layout { grid-template-columns: minmax(0, 1fr); }
   .booking-layout { grid-template-columns: minmax(0, 1fr); }
   .profile-layout { grid-template-columns: minmax(0, 1fr); }
