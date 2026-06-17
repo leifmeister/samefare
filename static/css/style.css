@@ -779,26 +779,37 @@ button, input, select, textarea { font: inherit; }
   white-space: nowrap;
 }
 
-/* ── Hero trust strip ────────────────────────────────────────── */
+/* ── Trust strip (clean band below the hero, on the page body) ──── */
+.trust-band {
+  background: var(--c-surface);
+  padding: 1.1rem 1rem;
+  border-bottom: 1px solid var(--c-border-light);
+}
 .trust-strip {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: .4rem 1.5rem;
+  align-items: center;
+  gap: .6rem 2rem;
   list-style: none;
-  margin: 1.1rem auto 0;
+  margin: 0 auto;
   padding: 0;
-  max-width: 640px;
+  max-width: 760px;
 }
 .trust-strip__item {
   display: inline-flex;
   align-items: center;
-  gap: .4rem;
-  font-size: .85rem;
+  gap: .5rem;
+  font-size: .9rem;
   font-weight: 600;
   color: var(--c-text);
 }
 .trust-strip__item svg { color: var(--c-primary); flex-shrink: 0; }
+@media (max-width: 600px) {
+  .trust-band { padding: .9rem 1rem; }
+  .trust-strip { gap: .55rem 1.25rem; }
+  .trust-strip__item { font-size: .82rem; }
+}
 
 /* ── Search bar (list page) ──────────────────────────────────── */
 .page-header {
