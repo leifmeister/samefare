@@ -45,6 +45,55 @@ def _fit_font(draw, text, max_width, size, weight, min_size=40):
     return _font(min_size, weight)
 
 
+def _center(draw, text, font, y, fill):
+    draw.text(((_W - draw.textlength(text, font=font)) / 2, y), text, font=font, fill=fill)
+
+
+# Homepage share card copy, per language.
+_HOME = {
+    "is": ("Verum Sameferða", "um Ísland", "Finndu ódýrar ferðir á milli íslenskra bæja."),
+    "en": ("Share the journey", "across Iceland", "Find affordable rides between Iceland's towns."),
+}
+
+
+def render_home_og(lang: str = "is") -> bytes:
+    """Branded homepage share card (1200×630) — pale sky, sun, mountains, the
+    SameFare wordmark and the hero tagline. Used as the site-wide og:image."""
+    l1, l2, sub = _HOME.get(lang, _HOME["is"])
+    img  = Image.new("RGB", (_W, _H), "#FFFFFF")
+    draw = ImageDraw.Draw(img)
+
+    # Sky gradient
+    top, bot = (222, 239, 246), (255, 255, 255)
+    for y in range(_H):
+        t = y / _H
+        draw.line([(0, y), (_W, y)],
+                  fill=tuple(int(top[i] + (bot[i] - top[i]) * t) for i in range(3)))
+
+    draw.ellipse([978, 63, 1122, 207], fill="#FCE096")                       # sun
+    draw.polygon([(0, _H), (0, 520), (250, 478), (600, 524), (950, 482),
+                  (_W, 520), (_W, _H)], fill="#AFC8BD")                       # back range
+    draw.polygon([(0, _H), (0, 556), (300, 528), (600, 560), (900, 530),
+                  (_W, 556), (_W, _H)], fill="#8CB0A2")                       # front range
+
+    # Two-tone wordmark, centered
+    wf = _font(54, 900)
+    ws = draw.textlength("Same", font=wf)
+    wx = (_W - (ws + draw.textlength("Fare", font=wf))) / 2
+    draw.text((wx, 60), "Same", font=wf, fill="#004D41")
+    draw.text((wx + ws, 60), "Fare", font=wf, fill="#006C5B")
+
+    # Tagline (two lines, shrink to fit the wider of the two)
+    tf = _fit_font(draw, max(l1, l2, key=len), _W - 160, 86, 800, min_size=56)
+    _center(draw, l1, tf, 196, "#0F2A24")
+    _center(draw, l2, tf, 296, "#2E9D77")
+    _center(draw, sub, _font(34, 600), 416, "#5A6E67")
+
+    buf = BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
 def _arrow(draw, x, cy, length, color, thickness=10):
     """Draw a right-pointing arrow (Nunito has no → glyph). Returns its width."""
     head = 22

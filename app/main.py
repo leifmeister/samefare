@@ -949,6 +949,18 @@ def robots():
     return FileResponse("static/robots.txt", media_type="text/plain")
 
 
+@app.get("/og/home.png", include_in_schema=False)
+def home_og(request: Request):
+    """Branded site-wide social share card (1200×630). Localised by host —
+    Icelandic on samefare.is, English on .com — via the same detection used
+    for the page language."""
+    from app.og_image import render_home_og
+    lang = detect_lang(request)
+    png = render_home_og("is" if lang == "is" else "en")
+    return Response(content=png, media_type="image/png",
+                    headers={"Cache-Control": "public, max-age=86400"})
+
+
 @app.get("/sitemap.xml", include_in_schema=False)
 def sitemap():
     base = get_settings().base_url.rstrip("/")
