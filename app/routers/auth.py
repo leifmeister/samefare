@@ -278,8 +278,13 @@ def verify_email(
     user = db.query(models.User).filter(models.User.email_verify_token == token).first() if token else None
     if not user:
         return templates.TemplateResponse("auth/verify_email_invalid.html", {**ctx})
-    user.email_verified     = True
-    user.email_verify_token = None
+    # Do NOT clear the token here. Email security scanners / link prefetchers
+    # (Outlook SafeLinks, Apple Mail, Gmail, antivirus & corporate mail proxies)
+    # issue a GET on every link in an email BEFORE the human clicks. If this were
+    # single-use, that prefetch would consume the token and lock the real user
+    # out with "Link invalid or expired." Keeping the token makes the click
+    # idempotent — both the scanner's prefetch and the human's click succeed.
+    user.email_verified = True
     db.commit()
     return RedirectResponse("/?verified=1", status_code=303)
 

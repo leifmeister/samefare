@@ -992,7 +992,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "driver_cta_sub": "Settu inn ferðina þína og láttu farþega greiða hluta af bensínkostnaðinum. Vegir Íslands eru langir — þeir þurfa ekki að vera dýrir.",
         "driver_cta_btn": "Bjóða upp á ferð",
         "popular_routes_title": "Vinsælar leiðir",
-        "popular_routes_sub": "Mest ferðaðu vegurnar á Íslandi",
+        "popular_routes_sub": "Fjölförnustu leiðirnar á Íslandi",
         "upcoming_rides_title": "Fareðir framundan",
         "upcoming_rides_sub": "Nýlega birtar ferðir með pláss fyrir Fareþega",
         "upcoming_rides_see_all": "Sjá allar ferðir",
