@@ -12,6 +12,7 @@ import os
 import urllib.error
 import uuid
 from datetime import datetime, timedelta, date
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
@@ -22,7 +23,7 @@ from sqlalchemy.orm import Session, joinedload
 from app import models, didit as didit_client, email as mailer
 from app.config import get_settings
 from app.database import get_db
-from app.dependencies import get_current_user, get_template_context
+from app.dependencies import get_current_user, get_current_user_optional, get_template_context
 
 log = logging.getLogger(__name__)
 
@@ -202,11 +203,18 @@ def beta_skip_verification(
 @router.get("/verify/didit/callback", response_class=HTMLResponse)
 def didit_callback(
     request:      Request,
-    ctx:          dict        = Depends(get_template_context),
-    current_user: models.User = Depends(get_current_user),
+    ctx:          dict                  = Depends(get_template_context),
+    current_user: Optional[models.User] = Depends(get_current_user_optional),
 ):
     """
     Landing page after the user completes the Didit hosted flow.
+
+    Auth is OPTIONAL here on purpose: the user returns from an external site
+    (verify.didit.me), and on that cross-site navigation the auth cookie often
+    isn't sent (SameSite, or an apex/www host mismatch with base_url). Requiring
+    auth made the return dump a raw {"detail":"Not authenticated"} JSON page.
+    This page only shows a generic reassurance message — the real verification
+    result arrives via webhook — so it never needs the user object.
     Didit sends the actual result via webhook — this page just reassures the user.
     """
     s = get_settings()
