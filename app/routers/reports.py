@@ -310,8 +310,10 @@ def admin_payouts(
         .order_by(models.PayoutItem.updated_at.asc())
         .all()
     )
+    from app.config import get_settings
     return templates.TemplateResponse("admin/payouts.html", {
         **ctx,
+        "payout_enabled": get_settings().payout_enabled,
         "ready":          ready,
         "ready_total":    sum(b.amount for b in ready),
         "awaiting":       awaiting,
