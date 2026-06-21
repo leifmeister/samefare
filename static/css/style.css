@@ -5170,6 +5170,17 @@ button, input, select, textarea { font: inherit; }
   font-weight: 400;
 }
 .pax-item__status { margin-left: auto; }
+
+/* On narrow phones the name + badge + Approve/Decline don't fit on one row
+   and the buttons overlap the badge. Let the row wrap so the actions drop to
+   their own full-width line below the passenger. */
+@media (max-width: 480px) {
+  .pax-item { flex-wrap: wrap; }
+  .pax-item__info { flex-wrap: wrap; gap: .25rem .5rem; }
+  .pax-item__actions { margin-left: 0; width: 100%; }
+  .pax-item__actions form { flex: 1 1 0; display: flex; }
+  .pax-item__actions .btn { width: 100%; }
+}
 .pax-badge {
   font-size: .72rem;
   font-weight: 600;
