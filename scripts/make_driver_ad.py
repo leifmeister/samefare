@@ -153,5 +153,6 @@ def render(W, H, out):
 
 
 if __name__ == "__main__":
-    render(1080, 1080, os.path.join(DESK, "samefare_driver_ad_square.png"))
-    render(1080, 1350, os.path.join(DESK, "samefare_driver_ad_vertical.png"))
+    render(1080, 1080, os.path.join(DESK, "samefare_driver_ad_square.png"))    # feed
+    render(1080, 1350, os.path.join(DESK, "samefare_driver_ad_vertical.png"))  # 4:5
+    render(1080, 1920, os.path.join(DESK, "samefare_driver_ad_story.png"))     # 9:16 stories/reels
