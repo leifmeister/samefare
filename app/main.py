@@ -12,6 +12,8 @@ import secrets
 from fastapi import Depends, FastAPI, Request
 from jose import JWTError, jwt
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from urllib.parse import quote
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -1207,3 +1209,52 @@ async def unauthorized_handler(request: Request, exc):
         {"detail": getattr(exc, "detail", "Not authenticated")},
         status_code=401,
     )
+
+
+def _wants_html(request: Request) -> bool:
+    """A real browser navigation — not a fetch/HTMX/API call."""
+    return (
+        "text/html" in request.headers.get("accept", "")
+        and request.headers.get("hx-request") != "true"
+    )
+
+
+@app.exception_handler(403)
+async def forbidden_handler(request: Request, exc):
+    # Non-admin hitting an admin page, a stale-CSRF form POST, or a beta-only
+    # action in prod. Browsers get a friendly page; API/HTMX keep the JSON 403.
+    if _wants_html(request):
+        return templates.TemplateResponse(
+            "errors/403.html",
+            {**_lc(request), "request": request, "current_user": None},
+            status_code=403,
+        )
+    return JSONResponse({"detail": getattr(exc, "detail", "Forbidden")}, status_code=403)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_handler(request: Request, exc):
+    # A malformed query/path param on a browser navigation should look like a
+    # missing page, not a raw validation-error JSON dump.
+    if request.method == "GET" and _wants_html(request):
+        return templates.TemplateResponse(
+            "errors/404.html",
+            {**_lc(request), "request": request, "current_user": None},
+            status_code=404,
+        )
+    return JSONResponse({"detail": exc.errors()}, status_code=422)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def generic_http_handler(request: Request, exc):
+    # Safety net for any status WITHOUT a specific handler above (e.g. 400, 405,
+    # 406). Status-code handlers take precedence in Starlette, so this never
+    # overrides the 401/403/404/429/500 handlers — it only catches stragglers.
+    if _wants_html(request):
+        tmpl = "errors/500.html" if exc.status_code >= 500 else "errors/404.html"
+        return templates.TemplateResponse(
+            tmpl,
+            {**_lc(request), "request": request, "current_user": None},
+            status_code=exc.status_code,
+        )
+    return JSONResponse({"detail": getattr(exc, "detail", "Error")}, status_code=exc.status_code)

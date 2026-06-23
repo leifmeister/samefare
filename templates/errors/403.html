@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block title %}Access denied — SameFare{% endblock %}
+{% block content %}
+<div class="error-page">
+  <div class="error-page__code">403</div>
+  <h1 class="error-page__title">You don't have access to this page</h1>
+  <p class="error-page__body">You may not have permission to view it — or, if you were submitting a form, your session may have expired. Go back and try again, or head home.</p>
+  <div class="error-page__actions">
+    <a href="/" class="btn btn-primary">Back to home</a>
+    <a href="/login" class="btn btn-outline">Log in</a>
+  </div>
+</div>
+{% endblock %}
