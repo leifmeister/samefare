@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from app import models, email as mailer, sms as texter
 from app.config import get_settings
 from app.database import get_db
-from app.dependencies import get_current_user, get_template_context
+from app.dependencies import get_current_user, get_current_user_optional, get_template_context
 from app.routers.alerts import notify_matching_alerts
 from app.routers.payments import _issue_rapyd_refund
 from app.estimator import estimate_trip_cost, route_lookup
@@ -569,13 +569,17 @@ def trip_og_image(trip_id: int, db: Session = Depends(get_db)):
 def new_trip_page(
     request:   Request,
     ctx:       dict         = Depends(get_template_context),
-    current_user: models.User = Depends(get_current_user),
+    current_user: Optional[models.User] = Depends(get_current_user_optional),
     db:        Session      = Depends(get_db),
     return_of: Optional[int] = Query(None),
     origin:      Optional[str] = Query(None),   # prefill from a ride request
     destination: Optional[str] = Query(None),
     req_date:    Optional[str] = Query(None),
 ):
+    # Logged-out visitors land here from footer/mobile/bookmarked links. Send them
+    # to the public driver landing instead of dumping a raw 401 "Not authenticated".
+    if current_user is None:
+        return RedirectResponse("/offer-ride", status_code=303)
     if current_user.license_verification != models.VerificationStatus.approved:
         return RedirectResponse("/verify?next=driver", status_code=303)
 

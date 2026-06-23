@@ -325,7 +325,7 @@
           <p class="footer__col-title">{{ _t('footer_explore') }}</p>
           <nav class="footer__links" aria-label="Explore SameFare">
             <a href="/trips">{{ _t('footer_find_ride') }}</a>
-            <a href="/trips/new">{{ _t('footer_offer_ride') }}</a>
+            <a href="{% if current_user %}/trips/new{% else %}/offer-ride{% endif %}">{{ _t('footer_offer_ride') }}</a>
             {% if not current_user %}
               <a href="/register">{{ _t('footer_create_account') }}</a>
             {% endif %}
