@@ -1958,14 +1958,6 @@ button, input, select, textarea { font: inherit; }
 .offer-perk svg { color: var(--c-primary); flex-shrink: 0; }
 
 /* ── Driver landing page (/offer-ride) ─────────────────────────── */
-.offer-value {
-  display: inline-flex; align-items: center; gap: .5rem;
-  margin: var(--space-4) auto 0; max-width: 560px;
-  background: #F1FAF7; border: 1px solid #BFE3D6; border-radius: 99px;
-  padding: .55rem 1.1rem; color: #0E5C4C; font-weight: 700; font-size: 1rem;
-  line-height: 1.35; text-align: left;
-}
-.offer-value svg { color: var(--c-primary); flex-shrink: 0; }
 .offer-hero-cta {
   display: flex; gap: .75rem; justify-content: center;
   flex-wrap: wrap; margin-top: var(--space-5);

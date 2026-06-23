@@ -14,7 +14,6 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         # ── Driver landing page (/offer-ride) ────────────────────────────────
         "offer_hero_title": "You're already making the drive",
         "offer_hero_sub": "List your trip on SameFare and let passengers share the fuel cost with you. You set the price, the seats, and who rides.",
-        "offer_value": "On longer routes, each passenger can chip in up to ~6,000 ISK toward your costs.",
         "offer_cta_create": "Create a free account",
         "offer_cta_login": "Log in",
         "offer_how_title": "How it works",
@@ -866,7 +865,6 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         # ── Driver landing page (/offer-ride) ────────────────────────────────
         "offer_hero_title": "Þú ert hvort sem er að keyra",
         "offer_hero_sub": "Skráðu ferðina þína á SameFare og leyfðu farþegum að deila bensínkostnaðinum með þér. Þú ræður verði, sætum og hverjir fá far.",
-        "offer_value": "Á lengri leiðum getur hver farþegi greitt allt að ~6.000 kr. í ferðakostnað.",
         "offer_cta_create": "Stofna ókeypis aðgang",
         "offer_cta_login": "Innskráning",
         "offer_how_title": "Svona virkar það",
