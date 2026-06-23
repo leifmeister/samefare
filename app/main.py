@@ -11,7 +11,8 @@ import secrets
 
 from fastapi import Depends, FastAPI, Request
 from jose import JWTError, jwt
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
+from urllib.parse import quote
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import text
@@ -1177,4 +1178,32 @@ async def rate_limit_handler(request: Request, exc):
     return Response(
         content=getattr(exc, "detail", "Too many requests."),
         status_code=429,
+    )
+
+
+@app.exception_handler(401)
+async def unauthorized_handler(request: Request, exc):
+    """
+    A browser navigation to an auth-gated page should land on the login screen
+    (with a return path), NOT a raw {"detail":"Not authenticated"} JSON blob.
+    This closes the whole class of 401-leak bugs in one place: any GET HTML page
+    behind get_current_user now redirects logged-out visitors to login.
+
+    API / fetch / HTMX calls and non-GET requests keep the JSON 401 so client
+    code and tests still see a real 401.
+    """
+    accept = request.headers.get("accept", "")
+    is_html_nav = (
+        request.method == "GET"
+        and "text/html" in accept
+        and request.headers.get("hx-request") != "true"
+    )
+    if is_html_nav:
+        nxt = request.url.path
+        if request.url.query:
+            nxt += "?" + request.url.query
+        return RedirectResponse(f"/login?next={quote(nxt, safe='')}", status_code=303)
+    return JSONResponse(
+        {"detail": getattr(exc, "detail", "Not authenticated")},
+        status_code=401,
     )
