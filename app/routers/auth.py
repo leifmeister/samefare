@@ -265,7 +265,8 @@ def register(
 
 @router.get("/check-your-email", response_class=HTMLResponse)
 def check_your_email(request: Request, ctx: dict = Depends(get_template_context)):
-    return templates.TemplateResponse("auth/check_your_email.html", {**ctx})
+    return templates.TemplateResponse("auth/check_your_email.html", {
+        **ctx, "fb_track_event": "CompleteRegistration"})
 
 
 @router.get("/verify-email", response_class=HTMLResponse)

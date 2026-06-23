@@ -1448,6 +1448,9 @@ def trip_detail(
 
     return templates.TemplateResponse("trips/detail.html", {
         **ctx,
+        # Fire the Meta Pixel conversion only on the post-success landing
+        # (?posted=1) — the driver campaign's north-star event.
+        "fb_track_event": "RideListed" if request.query_params.get("posted") else None,
         "trip": trip,
         # A suspended/deactivated driver's trip must not look bookable, even via a
         # direct link. The template shows an "unavailable" state instead of the

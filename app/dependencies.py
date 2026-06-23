@@ -199,6 +199,7 @@ def get_template_context(request: Request, db: Session = Depends(get_db)):
         "email_unverified":         email_unverified,
         "is_newsletter_subscriber": is_newsletter_subscriber,
         "lang":                     lang,
+        "meta_pixel_id":            settings.meta_pixel_id,
         "_t":                       get_translations(lang),
         # Locale-aware date formatter: fdate(dt, "%-d %b %Y") → Icelandic month/
         # weekday names when lang is 'is', English otherwise.

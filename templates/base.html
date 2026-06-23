@@ -564,6 +564,7 @@
       accept() {
         localStorage.setItem('cookie_consent', 'all');
         this.visible = false;
+        if (window.initMetaPixel) window.initMetaPixel();
       },
       essential() {
         localStorage.setItem('cookie_consent', 'essential');
@@ -572,6 +573,28 @@
     };
   }
   </script>
+
+  {% if meta_pixel_id %}
+  <!-- Meta (Facebook) Pixel — loads ONLY after the visitor accepts analytics
+       cookies ('all'). Defined as a function so the consent banner's accept()
+       can fire it immediately on opt-in; also auto-runs if consent was given
+       on a previous visit. Never loads on 'essential' consent. -->
+  <script>
+  window.initMetaPixel = function () {
+    if (window._metaPixelLoaded) return;
+    window._metaPixelLoaded = true;
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+      n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+      n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+      t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}
+      (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '{{ meta_pixel_id }}');
+    fbq('track', 'PageView');
+    {% if fb_track_event %}fbq('track', '{{ fb_track_event }}');{% endif %}
+  };
+  if (localStorage.getItem('cookie_consent') === 'all') window.initMetaPixel();
+  </script>
+  {% endif %}
 
   <!-- Branded confirmation dialog — replaces the native confirm() box for any
        form (or link) carrying a data-confirm message. -->

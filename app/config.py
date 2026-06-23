@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     email_from:     str = Field(default="SameFare <samefare@samefare.com>", alias="EMAIL_FROM")
     base_url:       str = Field(default="https://samefare.com", alias="BASE_URL")
 
+    # Meta (Facebook) Pixel — empty by default so nothing tracks until set.
+    # Loaded only after the visitor accepts analytics cookies (see base.html).
+    meta_pixel_id:  str = Field(default="", alias="META_PIXEL_ID")
+
     # SMS via Twilio (https://twilio.com)
     # TWILIO_SENDER_ID — alphanumeric sender name shown to recipient (max 11 chars,
     # letters/digits, must start with a letter).  Falls back to TWILIO_FROM_NUMBER
