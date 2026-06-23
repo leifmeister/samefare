@@ -150,6 +150,16 @@ def migrate() -> None:
     steps.append(("users.license_verification_locked",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS license_verification_locked BOOLEAN NOT NULL DEFAULT FALSE"))
 
+    # ── 9. public ride-request board (demand visible to drivers) ───────────────
+    steps.append(("ride_alerts.is_public",
+        "ALTER TABLE ride_alerts ADD COLUMN IF NOT EXISTS is_public    BOOLEAN NOT NULL DEFAULT FALSE"))
+    steps.append(("ride_alerts.note",
+        "ALTER TABLE ride_alerts ADD COLUMN IF NOT EXISTS note         VARCHAR(120)"))
+    steps.append(("ride_alerts.fulfilled_at",
+        "ALTER TABLE ride_alerts ADD COLUMN IF NOT EXISTS fulfilled_at TIMESTAMP"))
+    steps.append(("ix_ride_alerts_public",
+        "CREATE INDEX IF NOT EXISTS ix_ride_alerts_public ON ride_alerts(is_public)"))
+
     # ── Run ────────────────────────────────────────────────────────────────────
     for label, sql in steps:
         cur.execute(sql)

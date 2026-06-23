@@ -142,6 +142,13 @@
           <input type="hidden" name="travel_date" value="{{ travel_date }}">
           <input type="hidden" name="seats"       value="{{ seats }}">
 
+          <label class="alert-public-toggle">
+            <input type="checkbox" name="make_public" value="1" checked>
+            <span>{{ _t('alert_public_label') }}</span>
+          </label>
+          <input type="text" name="note" maxlength="120" class="input alert-note-input"
+                 placeholder="{{ _t('alert_note_placeholder') }}">
+
           {% if not current_user %}
             <div class="alert-signup-card__email-row">
               <input type="email" name="email" class="input"

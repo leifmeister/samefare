@@ -32,7 +32,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/css/style.css?v=58" />
+  <link rel="stylesheet" href="/static/css/style.css?v=59" />
   <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml" />
 
   <!-- HTMX -->
@@ -115,6 +115,7 @@
           <div class="navbar__nav">
             <a href="/">{{ _t('nav_home') }}</a>
             <a href="/trips">{{ _t('nav_find_ride') }}</a>
+            <a href="/requests">{{ _t('nav_requests') }}</a>
             <a href="{% if current_user %}/trips/new{% else %}/offer-ride{% endif %}" class="nav-highlight">{{ _t('nav_offer_ride') }}</a>
             {% if current_user %}
               <a href="/my-trips{% if pending_request_count %}?tab=rides{% elif accepted_booking_count %}?tab=bookings{% endif %}" class="nav-messages-link">

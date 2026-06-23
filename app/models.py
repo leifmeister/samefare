@@ -731,12 +731,23 @@ class RideAlert(Base):
     last_notified_at = Column(DateTime, nullable=True)
     created_at       = Column(DateTime, nullable=False, default=datetime.utcnow)
 
+    # ── Public "ride request" board (demand visible to drivers) ───────────────
+    # is_public: the passenger opted to show this as an open request so drivers
+    #   can see the demand and post a matching ride. Default False keeps a plain
+    #   private alert private.
+    # note: optional short free-text ("sveigjanlegur tími", "2 töskur").
+    # fulfilled_at: set when a matching trip is posted — removes it from the board.
+    is_public        = Column(Boolean, nullable=False, default=False, server_default="false")
+    note             = Column(String(120), nullable=True)
+    fulfilled_at     = Column(DateTime, nullable=True)
+
     user = relationship("User", backref="ride_alerts", foreign_keys=[user_id])
 
     __table_args__ = (
         Index("ix_ride_alerts_email",   "email"),
         Index("ix_ride_alerts_user_id", "user_id"),
         Index("ix_ride_alerts_active",  "is_active"),
+        Index("ix_ride_alerts_public",  "is_public"),
     )
 
     def __repr__(self) -> str:

@@ -572,6 +572,9 @@ def new_trip_page(
     current_user: models.User = Depends(get_current_user),
     db:        Session      = Depends(get_db),
     return_of: Optional[int] = Query(None),
+    origin:      Optional[str] = Query(None),   # prefill from a ride request
+    destination: Optional[str] = Query(None),
+    req_date:    Optional[str] = Query(None),
 ):
     if current_user.license_verification != models.VerificationStatus.approved:
         return RedirectResponse("/verify?next=driver", status_code=303)
@@ -630,6 +633,19 @@ def new_trip_page(
             }
             return_banner = f"{source.origin} → {source.destination}"
 
+    # Prefill from a public ride request ("Bjóða þessa ferð" on /requests)
+    if not return_of:
+        if origin:
+            vals["origin"] = canonical_city(origin.strip())
+        if destination:
+            vals["destination"] = canonical_city(destination.strip())
+        if req_date:
+            vals["departure_date"] = req_date.strip()
+
+    # Open demand for the supply hook ("3 people want this route — post it")
+    from app.routers.alerts import open_ride_requests
+    open_requests = open_ride_requests(db, limit=6)
+
     pricing = _pricing_ctx(
         db,
         origin      = vals.get("origin", ""),
@@ -665,6 +681,7 @@ def new_trip_page(
         "payout_warning": payout_warning,
         "defaults":      defaults,
         "vals":          vals,
+        "open_requests": open_requests,
         "return_banner": return_banner,
         **pricing,
     })

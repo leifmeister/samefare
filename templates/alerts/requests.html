@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ _t('requests_title') }} — SameFare{% endblock %}
+{% block meta_description %}{{ _t('requests_sub') }}{% endblock %}
+
+{% block content %}
+<section class="req-board-head">
+  <div class="container">
+    <h1 class="req-board-head__title">{{ _t('requests_title') }}</h1>
+    <p class="req-board-head__sub">{{ _t('requests_sub') }}</p>
+  </div>
+</section>
+
+<section style="padding: 2rem 0 3.5rem;">
+  <div class="container" style="max-width: 820px;">
+    {% if not requests %}
+      <div class="empty-state" style="text-align:center; padding:3rem 1rem;">
+        <h2 class="empty-state__title">{{ _t('requests_empty_title') }}</h2>
+        <p class="empty-state__body">{{ _t('requests_empty_sub') }}</p>
+        <a href="{% if current_user %}/trips/new{% else %}/offer-ride{% endif %}" class="btn btn-primary" style="margin-top:1rem;">{{ _t('nav_offer_ride') }}</a>
+      </div>
+    {% else %}
+      <div class="req-list">
+        {% for req, first in requests %}
+        <div class="req-card">
+          <div class="req-card__body">
+            <p class="req-card__who">
+              <strong>{{ first or _t('requests_passenger') }}</strong> {{ _t('requests_wants') }}
+            </p>
+            <p class="req-card__route">
+              <span>{{ req.origin }}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              <span>{{ req.destination }}</span>
+            </p>
+            <p class="req-card__meta">
+              {% if req.travel_date %}{{ fdate(req.travel_date, "%-d. %b") }}{% else %}{{ _t('requests_anydate') }}{% endif %}
+              · {{ req.seats }} {{ _t('requests_seat_one') if req.seats == 1 else _t('requests_seat_many') }}
+            </p>
+            {% if req.note %}<p class="req-card__note">“{{ req.note }}”</p>{% endif %}
+          </div>
+          <div class="req-card__action">
+            {% if current_user %}
+            <a href="/trips/new?origin={{ req.origin|urlencode }}&destination={{ req.destination|urlencode }}{% if req.travel_date %}&req_date={{ req.travel_date }}{% endif %}" class="btn btn-primary btn-sm">{{ _t('requests_offer_btn') }}</a>
+            {% else %}
+            <a href="/offer-ride" class="btn btn-primary btn-sm">{{ _t('requests_offer_btn') }}</a>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -10,7 +10,8 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
+from sqlalchemy import or_
+from sqlalchemy.orm import Session, joinedload
 
 from app import models, email as mailer
 from app.database import get_db
@@ -102,6 +103,9 @@ def notify_matching_alerts(db: Session, trip: models.Trip) -> None:
 
             mailer.ride_alert_notification(alert, [trip])
             alert.last_notified_at = now
+            # A public request is now answerable — drop it off the demand board.
+            if alert.is_public and not alert.fulfilled_at:
+                alert.fulfilled_at = now
             notified += 1
 
         if notified or any(not a.is_active for a in alerts):
@@ -124,6 +128,57 @@ def _parse_travel_date(value: str) -> date | None:
         return None
 
 
+# ── Public ride-request board ─────────────────────────────────────────────────
+
+REQUEST_TTL_DAYS = 14   # undated requests drop off the board after this long
+
+
+def open_ride_requests(db: Session, limit: int = 60) -> list[tuple]:
+    """
+    Active, public, unfulfilled, non-expired ride requests — newest first.
+    Returns a list of (alert, first_name_or_None). Never exposes email.
+    """
+    now    = datetime.utcnow()
+    cutoff = now - timedelta(days=REQUEST_TTL_DAYS)
+    today  = now.date()
+    rows = (
+        db.query(models.RideAlert)
+        .options(joinedload(models.RideAlert.user))
+        .filter(
+            models.RideAlert.is_public   == True,   # noqa: E712
+            models.RideAlert.is_active   == True,    # noqa: E712
+            models.RideAlert.fulfilled_at.is_(None),
+            # not past-dated
+            or_(models.RideAlert.travel_date >= today,
+                models.RideAlert.travel_date.is_(None)),
+            # undated requests also expire by age
+            or_(models.RideAlert.travel_date.isnot(None),
+                models.RideAlert.created_at >= cutoff),
+        )
+        .order_by(models.RideAlert.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    out = []
+    for a in rows:
+        first = a.user.full_name.split()[0] if (a.user and a.user.full_name) else None
+        out.append((a, first))
+    return out
+
+
+@router.get("/requests", response_class=HTMLResponse)
+def ride_requests_board(
+    request: Request,
+    ctx:     dict    = Depends(get_template_context),
+    db:      Session = Depends(get_db),
+):
+    return templates.TemplateResponse("alerts/requests.html", {
+        **ctx,
+        "requests": open_ride_requests(db),
+        "now":      datetime.utcnow(),
+    })
+
+
 # ── Public: create alert ──────────────────────────────────────────────────────
 
 @router.post("/alerts")
@@ -134,6 +189,8 @@ def create_alert(
     travel_date: str = Form(""),
     seats:       int = Form(1),
     email:       str = Form(""),       # required only for guests
+    make_public: str = Form(""),       # checkbox: also show as an open request
+    note:        str = Form(""),       # optional short note shown on the board
     db:          Session = Depends(get_db),
     current_user = Depends(get_current_user_optional),
     _rl=rate_limit(10, 3600),
@@ -172,6 +229,8 @@ def create_alert(
             )
 
     parsed_date = _parse_travel_date(travel_date)
+    is_public   = bool(make_public)
+    note_clean  = (note or "").strip()[:120] or None
 
     # Upsert: always update criteria on an existing alert (active or not) so that
     # re-saving with a new date/seat count is never silently discarded.
@@ -193,9 +252,13 @@ def create_alert(
     needs_confirm = current_user is None
 
     if existing:
-        existing.travel_date = parsed_date
-        existing.seats       = max(1, seats)
-        existing.is_active   = not needs_confirm
+        existing.travel_date  = parsed_date
+        existing.seats        = max(1, seats)
+        existing.is_active    = not needs_confirm
+        existing.is_public    = is_public
+        existing.note         = note_clean
+        # Re-saving revives a previously fulfilled request as fresh demand.
+        existing.fulfilled_at = None
         alert = existing
         db.commit()
     else:
@@ -208,6 +271,8 @@ def create_alert(
             seats       = max(1, seats),
             token       = secrets.token_urlsafe(32),
             is_active   = not needs_confirm,
+            is_public   = is_public,
+            note        = note_clean,
         )
         db.add(alert)
         db.commit()

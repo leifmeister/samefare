@@ -25,6 +25,22 @@
       <div class="alert alert--error" role="alert">{{ error }}</div>
     {% endif %}
 
+    {% if open_requests %}
+      <div class="create-demand">
+        <p class="create-demand__title">📣 {{ _t('create_demand_title') }}</p>
+        <p class="create-demand__sub">{{ _t('create_demand_sub') }}</p>
+        <div class="create-demand__list">
+          {% for req, first in open_requests %}
+          <a class="create-demand__chip"
+             href="/trips/new?origin={{ req.origin|urlencode }}&destination={{ req.destination|urlencode }}{% if req.travel_date %}&req_date={{ req.travel_date }}{% endif %}">
+            <span class="create-demand__chip-route">{{ req.origin }} → {{ req.destination }}</span>
+            <span class="create-demand__chip-meta">{% if req.travel_date %}{{ fdate(req.travel_date, "%-d. %b") }}{% else %}{{ _t('requests_anydate') }}{% endif %} · {{ req.seats }} {{ _t('requests_seat_one') if req.seats == 1 else _t('requests_seat_many') }}</span>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
     <script>
       var _routes    = {{ routes_js | safe }};
       var _policy    = {{ policy_js | safe }};
