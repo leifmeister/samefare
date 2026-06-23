@@ -11,7 +11,7 @@ DESK = os.path.expanduser("~/Desktop")
 
 HEAD1 = "Deildu akstrinum."
 HEAD2 = "Deildu kostnaðinum."
-SUB   = "Þú ert hvort sem er að keyra — leyfðu farþegum að deila bensínkostnaðinum með þér."
+SUB   = "Á lengri leiðum getur hver farþegi greitt allt að ~6.000 kr. í ferðakostnað."
 FOOT  = "Skráðu ferð á samefare.is"
 
 
@@ -130,13 +130,13 @@ def render(W, H, out):
     y2 = y + h1 + int(H*0.050)
     h2 = _center_grad(base, HEAD2, hf, y2, _hex("#006C5B"), _hex("#00A886"), W)
 
-    # subline (wrapped)
+    # value line (wrapped) — bolder/darker so the per-seat figure pops
     draw = ImageDraw.Draw(base)
-    sf = _font(int(W*0.038), 600)
-    sy = y2 + h2 + int(H*0.055)
-    for line in _wrap(SUB, sf, int(W*0.82)):
-        hh = _center(draw, line, sf, sy, _hex("#3D5C5E"), W)
-        sy += hh + int(H*0.018)
+    sf = _font(int(W*0.047), 700)
+    sy = y2 + h2 + int(H*0.06)
+    for line in _wrap(SUB, sf, int(W*0.84)):
+        hh = _center(draw, line, sf, sy, _hex("#103A36"), W)
+        sy += hh + int(H*0.022)
 
     # footer pill
     pf = _font(int(W*0.040), 800)
