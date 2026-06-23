@@ -1,43 +1,71 @@
 {% extends "base.html" %}
-{% block title %}Offer a ride — SameFare{% endblock %}
+{% block title %}{{ _t('nav_offer_ride') }} — SameFare{% endblock %}
+{% block meta_description %}{{ _t('offer_hero_sub') }}{% endblock %}
 
 {% block content %}
-<div class="auth-page">
-  <div class="auth-card" style="max-width:480px;">
+<section class="hero">
+  <div class="hero__aurora"></div>
 
-    <div class="auth-card__header">
-      <a href="/" class="auth-card__logo">SameFare</a>
-      <h1 class="auth-card__title">Ready to offer a ride?</h1>
-      <p class="auth-card__sub">Post your trip in minutes and let passengers share your fuel costs across Iceland.</p>
-    </div>
-
-    <div style="display:flex; flex-direction:column; gap:var(--space-3); margin-top:var(--space-2);">
-      <a href="/register" class="btn btn-primary btn-block btn-lg">Create a free account</a>
-      <a href="/login" class="btn btn-outline btn-block btn-lg">Log in</a>
-    </div>
-
-    <div class="offer-perks">
-      <div class="offer-perk">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-        Free to post — no subscription needed
-      </div>
-      <div class="offer-perk">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-        You choose who rides with you
-      </div>
-      <div class="offer-perk">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-        Passengers share your fuel costs
-      </div>
-      <div class="offer-perk">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-        Secure payments handled by SameFare
-      </div>
-    </div>
-
-    <p class="auth-card__footer">
-      <a href="/" class="link">← Back to home</a>
-    </p>
+  <!-- Same daytime scene as the homepage hero -->
+  <div class="hero__scene" aria-hidden="true">
+    <span class="hero__sun"></span>
+    <span class="hero__cloud hero__cloud--1">
+      <svg viewBox="0 0 140 56" width="140" height="56" aria-hidden="true"><g fill="#ffffff">
+        <ellipse cx="42" cy="36" rx="32" ry="17"/><ellipse cx="74" cy="28" rx="30" ry="22"/>
+        <ellipse cx="104" cy="37" rx="26" ry="16"/><rect x="24" y="38" width="92" height="15" rx="7.5"/>
+      </g></svg>
+    </span>
+    <span class="hero__cloud hero__cloud--3">
+      <svg viewBox="0 0 140 56" width="140" height="56" aria-hidden="true"><g fill="#ffffff">
+        <ellipse cx="42" cy="36" rx="32" ry="17"/><ellipse cx="74" cy="28" rx="30" ry="22"/>
+        <ellipse cx="104" cy="37" rx="26" ry="16"/><rect x="24" y="38" width="92" height="15" rx="7.5"/>
+      </g></svg>
+    </span>
+    <svg class="hero__mountains" viewBox="0 0 1440 220" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0,220 L0,150 L140,90 L300,150 L440,70 L620,150 L780,60 L980,150 L1140,90 L1320,150 L1440,110 L1440,220 Z" fill="#AAC9C0"/>
+      <path d="M0,220 L0,185 L180,130 L360,185 L520,120 L700,185 L900,115 L1100,185 L1280,135 L1440,185 L1440,220 Z" fill="#7BA294"/>
+    </svg>
   </div>
-</div>
+
+  <div class="container hero__inner">
+    <div class="hero__text">
+      <h1 class="hero__title">{{ _t('offer_hero_title') }}</h1>
+      <p class="hero__subtitle">{{ _t('offer_hero_sub') }}</p>
+      <div class="offer-hero-cta">
+        <a href="/register" class="btn btn-primary btn-lg">{{ _t('offer_cta_create') }}</a>
+        <a href="/login" class="btn btn-outline btn-lg">{{ _t('offer_cta_login') }}</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding: 3.5rem 0 4rem;">
+  <div class="container" style="max-width: 920px;">
+    <h2 style="text-align:center; font-size:1.6rem; color:#103A36; margin-bottom:2rem;">{{ _t('offer_how_title') }}</h2>
+
+    <div class="offer-steps">
+      {% for n in [1, 2, 3] %}
+      <div class="offer-step">
+        <span class="offer-step__num">{{ n }}</span>
+        <h3 class="offer-step__title">{{ _t('offer_step' ~ n ~ '_title') }}</h3>
+        <p class="offer-step__body">{{ _t('offer_step' ~ n ~ '_body') }}</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="offer-perks offer-perks--cols" style="margin-top:2.5rem;">
+      {% for perk in ['offer_perk_free', 'offer_perk_choose', 'offer_perk_price', 'offer_perk_verified'] %}
+      <div class="offer-perk">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+        {{ _t(perk) }}
+      </div>
+      {% endfor %}
+    </div>
+
+    <div style="text-align:center; margin-top:2.5rem;">
+      <a href="/register" class="btn btn-primary btn-lg">{{ _t('offer_cta_create') }}</a>
+      <p style="margin-top:1rem;"><a href="/" class="link">{{ _t('offer_back') }}</a></p>
+    </div>
+  </div>
+</section>
 {% endblock %}

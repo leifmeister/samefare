@@ -1956,6 +1956,35 @@ button, input, select, textarea { font: inherit; }
   color: var(--c-text-muted);
 }
 .offer-perk svg { color: var(--c-primary); flex-shrink: 0; }
+
+/* ── Driver landing page (/offer-ride) ─────────────────────────── */
+.offer-hero-cta {
+  display: flex; gap: .75rem; justify-content: center;
+  flex-wrap: wrap; margin-top: var(--space-5);
+}
+.offer-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+.offer-step {
+  background: #fff;
+  border: 1px solid var(--c-border-light);
+  border-radius: var(--radius, 16px);
+  padding: 1.5rem; text-align: center;
+}
+.offer-step__num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: linear-gradient(90deg, #006C5B, #00A886);
+  color: #fff; font-weight: 800; font-size: 1.1rem; margin-bottom: .75rem;
+}
+.offer-step__title { font-size: 1.05rem; color: #103A36; margin: 0 0 .35rem; }
+.offer-step__body { font-size: .9rem; color: var(--c-text-muted); line-height: 1.55; margin: 0; }
+.offer-perks--cols { max-width: 560px; margin-left: auto; margin-right: auto; }
+@media (min-width: 640px) {
+  .offer-perks--cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3) var(--space-5); }
+}
 .auth-terms { font-size: .8125rem; color: var(--c-text-muted); line-height: 1.5; }
 .link { color: var(--c-primary); font-weight: 600; }
 .link:hover { text-decoration: underline; }

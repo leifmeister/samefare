@@ -1018,6 +1018,9 @@ def _lc(request: Request) -> dict:
     return {
         "lang": lang,
         "_t": get_translations(lang),
+        # So the consent-gated Meta Pixel renders on _lc-based pages too
+        # (terms, privacy, contact, /offer-ride — the ad landing page).
+        "meta_pixel_id": _settings.meta_pixel_id,
         # Shared search-bar city pickers (base.html) need this on every page.
         "canonical_cities": list(_CANONICAL_CITIES),
     }
