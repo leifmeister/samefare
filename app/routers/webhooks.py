@@ -792,10 +792,17 @@ async def didit_webhook(request: Request):
         # would overturn a newer decision (e.g. a delayed "Abandoned" for session
         # A knocking out the "Approved" the user earned in session B). Only act on
         # the user's CURRENT session for this verification type.
+        # Only let a stale session block a DOWNGRADE (abandoned/expired →
+        # unverified). An Approved/Rejected/Pending must always be honored:
+        # Didit's webhook session_id does NOT reliably equal the id we stored at
+        # session creation, so matching on it here was silently dropping real
+        # approvals. Downgrade protection is preserved (a late abandon for an old
+        # session still can't reset a newer decision).
         current_sid = (user.didit_licence_session_id if vtype == "licence"
                        else user.didit_identity_session_id)
-        if session_id and current_sid and session_id != current_sid:
-            log.info("Didit webhook: ignoring stale session %s (current=%s) for user %s/%s",
+        if (new_status == unverified
+                and session_id and current_sid and session_id != current_sid):
+            log.info("Didit webhook: ignoring stale-session downgrade %s (current=%s) for user %s/%s",
                      session_id, current_sid, user_id, vtype)
             return JSONResponse({"status": "ignored_stale_session"})
 
