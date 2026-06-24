@@ -807,48 +807,65 @@ async def didit_webhook(request: Request):
                 rejection_reason = id_checks[0].get("status") or None
 
         # ── 7. Apply to the correct verification field(s) ─────────────────────
+        granted_licence = False
         if vtype == "licence":
-            user.license_verification = new_status
-            # Only touch the reason on a decision; don't wipe it on a later
-            # In Review / reset event.
-            if new_status == rejected:
-                user.license_rejection_reason = rejection_reason
-            elif new_status == approved:
-                user.license_rejection_reason = None
-            if new_status == unverified:
-                user.didit_licence_session_id = None
-            # Licence covers identity — propagate approval
             if new_status == approved:
-                user.id_verification      = approved
-                user.id_rejection_reason  = None
-                # ── Extract document expiry date from Didit payload ────────────
-                # Didit returns document fields inside payload["decision"]["document"].
-                # Field name varies by document type; try all known variants.
-                try:
-                    decision = payload.get("decision") or {}
-                    doc      = decision.get("document") or {}
-                    expiry_raw = (
-                        doc.get("expiry_date")
-                        or doc.get("date_of_expiry")
-                        or doc.get("expiration_date")
-                        or doc.get("expires")
-                    )
-                    if expiry_raw:
-                        from datetime import date as _date
-                        expiry_str = str(expiry_raw).split("T")[0]   # handle ISO datetime
-                        user.licence_expiry          = _date.fromisoformat(expiry_str)
-                        user.licence_expiry_warned_at = None          # reset warning on re-verify
-                        log.info(
-                            "Didit: extracted licence expiry %s for user %s",
-                            user.licence_expiry, user_id,
-                        )
-                    else:
-                        log.info(
-                            "Didit: no expiry date in payload for user %s — "
-                            "decision keys: %s", user_id, list(doc.keys()),
-                        )
-                except Exception as exc:
-                    log.warning("Didit: failed to extract expiry date for user %s: %s", user_id, exc)
+                # Didit lets the user pick ANY government document inside the
+                # licence flow (driver's licence, passport, national ID…). Only a
+                # real driver's licence may grant DRIVING; anything else grants
+                # identity only. Determine what was actually verified.
+                decision = payload.get("decision") or {}
+                doc = didit_client.primary_document(decision)
+                if not doc.get("document_type") and not doc.get("document_subtype"):
+                    # Lean webhook payload — fetch the authoritative decision.
+                    try:
+                        full = didit_client.retrieve_decision(
+                            api_key=s.didit_api_key, session_id=session_id)
+                        doc = didit_client.primary_document(full)
+                    except Exception as exc:
+                        log.warning("Didit: could not fetch decision for %s: %s", session_id, exc)
+                is_dl = didit_client.is_drivers_license(doc)
+
+                # Any verified government document satisfies identity.
+                user.id_verification     = approved
+                user.id_rejection_reason = None
+
+                if is_dl:
+                    granted_licence = True
+                    user.license_verification     = approved
+                    user.license_rejection_reason = None
+                    user.id_doc_type              = "license"
+                    # Licence expiry lives on the id_verification record.
+                    try:
+                        expiry_raw = (doc.get("expiration_date")
+                                      or doc.get("date_of_expiry")
+                                      or doc.get("expiry_date"))
+                        if expiry_raw:
+                            from datetime import date as _date
+                            user.licence_expiry           = _date.fromisoformat(str(expiry_raw).split("T")[0])
+                            user.licence_expiry_warned_at = None
+                            log.info("Didit: licence expiry %s for user %s", user.licence_expiry, user_id)
+                    except Exception as exc:
+                        log.warning("Didit: failed to parse licence expiry for user %s: %s", user_id, exc)
+                    log.info("Didit: user %s licence APPROVED (document_type=%r)",
+                             user_id, doc.get("document_type"))
+                else:
+                    # A non-licence document verified via the licence flow → identity
+                    # only. Leave driving unverified so they can add a licence.
+                    user.license_verification     = unverified
+                    user.license_rejection_reason = None
+                    user.didit_licence_session_id = None
+                    log.info("Didit: user %s verified a NON-licence document (%r) via "
+                             "licence flow — granting identity only",
+                             user_id, doc.get("document_type"))
+            elif new_status == rejected:
+                user.license_verification     = rejected
+                user.license_rejection_reason = rejection_reason
+            elif new_status == pending:
+                user.license_verification = pending
+            elif new_status == unverified:
+                user.license_verification     = unverified
+                user.didit_licence_session_id = None
             # On decline/unverified: only reset licence; identity keeps its state
         else:
             user.id_verification = new_status
@@ -864,7 +881,10 @@ async def didit_webhook(request: Request):
 
         # ── 8. Send notification email (non-blocking) ─────────────────────────
         if new_status == approved:
-            mailer.verification_approved(user, vtype)
+            # A licence flow that only verified identity (non-licence document)
+            # should tell the user their identity is verified, not their licence.
+            email_vtype = "identity" if (vtype == "licence" and not granted_licence) else vtype
+            mailer.verification_approved(user, email_vtype)
         elif new_status == rejected:
             mailer.verification_rejected(user, vtype, rejection_reason)
 

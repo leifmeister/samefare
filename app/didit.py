@@ -79,6 +79,44 @@ def create_session(
         return json.loads(resp.read())
 
 
+def retrieve_decision(*, api_key: str, session_id: str) -> dict:
+    """
+    Fetch the full decision object for a session (read-only).
+
+    Used as an authoritative fallback when a webhook payload doesn't carry the
+    verified document details — so we can confirm what document was actually
+    checked (e.g. driver's licence vs passport).
+    """
+    req = urllib.request.Request(
+        f"{BASE_URL}/session/{session_id}/decision/",
+        headers={
+            "x-api-key":  api_key,
+            "Accept":     "application/json",
+            "User-Agent": "SameFare/1.0",
+        },
+        method="GET",
+    )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read())
+
+
+def primary_document(decision: dict) -> dict:
+    """The first verified ID document in a Didit decision (webhook or API shape)."""
+    checks = (decision or {}).get("id_verifications") or []
+    return (checks[0] or {}) if checks else {}
+
+
+def is_drivers_license(doc: dict) -> bool:
+    """
+    True when Didit actually verified a driver's licence (not a passport / national
+    ID / etc.). Real values seen: document_type "Driver's License",
+    document_subtype "DRIVER_LICENSE_GENERIC".
+    """
+    subtype = (doc.get("document_subtype") or "").upper()
+    dtype   = (doc.get("document_type")    or "").upper()
+    return subtype.startswith("DRIVER") or "DRIVER" in dtype or "DRIVING" in dtype
+
+
 def verify_webhook_signature(
     *,
     payload_bytes: bytes,
