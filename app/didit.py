@@ -109,12 +109,16 @@ def verify_webhook_signature(
                 f"Webhook timestamp out of acceptable range (age={age}s)"
             )
 
-    # Didit signs over the raw request body bytes (not re-serialised JSON).
-    # .strip() the secret/signature defensively: env values pasted into Railway
-    # frequently carry a trailing newline, which silently breaks every HMAC.
+    # Didit's X-Signature-V2 is HMAC-SHA256 over the JSON payload RE-SERIALISED
+    # with keys sorted alphabetically, compact separators, and Unicode preserved
+    # — NOT the raw request body. (Confirmed in prod via diagnostic: raw=False,
+    # sorted=True.) .strip() guards a trailing newline in the Railway-pasted secret.
+    canonical = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
     expected = hmac.new(
         secret.strip().encode("utf-8"),
-        payload_bytes,
+        canonical,
         hashlib.sha256,
     ).hexdigest()
 
