@@ -703,6 +703,26 @@ async def didit_webhook(request: Request):
         )
     except ValueError as exc:
         log.warning("Didit webhook signature/timestamp invalid: %s", exc)
+        # ── TEMP DIAGNOSTIC ───────────────────────────────────────────────────
+        # Determine whether this is a WRONG SECRET or a DIFFERENT SIGNING INPUT.
+        # Logs booleans only — never the secret. Remove once resolved.
+        try:
+            import hmac as _h, hashlib as _hl, json as _j
+            sk  = (s.didit_webhook_secret or "").strip().encode()
+            sig = signature.strip()
+            _pl = _j.loads(body_bytes.decode("utf-8"))
+            raw_m    = _h.new(sk, body_bytes, _hl.sha256).hexdigest() == sig
+            sorted_b = _j.dumps(_pl, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+            sorted_m = _h.new(sk, sorted_b, _hl.sha256).hexdigest() == sig
+            ts = str(_pl.get("timestamp") or _pl.get("created_at") or "")
+            tsbody_m = _h.new(sk, (ts + ".").encode() + body_bytes, _hl.sha256).hexdigest() == sig
+            b64 = _h.new(sk, body_bytes, _hl.sha256)
+            import base64 as _b64
+            b64_m = _b64.b64encode(b64.digest()).decode() == sig
+            log.warning("DIDIT SIG DEBUG raw=%s sorted=%s tsbody=%s b64=%s siglen=%d recv8=%s",
+                        raw_m, sorted_m, tsbody_m, b64_m, len(sig), sig[:8])
+        except Exception as _e:
+            log.warning("DIDIT SIG DEBUG failed: %s", _e)
         return JSONResponse({"error": "invalid signature"}, status_code=401)
 
     # ── 2. Filter to relevant event type ──────────────────────────────────────

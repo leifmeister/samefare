@@ -109,14 +109,16 @@ def verify_webhook_signature(
                 f"Webhook timestamp out of acceptable range (age={age}s)"
             )
 
-    # Didit signs over the raw request body bytes (not re-serialised JSON)
+    # Didit signs over the raw request body bytes (not re-serialised JSON).
+    # .strip() the secret/signature defensively: env values pasted into Railway
+    # frequently carry a trailing newline, which silently breaks every HMAC.
     expected = hmac.new(
-        secret.encode("utf-8"),
+        secret.strip().encode("utf-8"),
         payload_bytes,
         hashlib.sha256,
     ).hexdigest()
 
-    if not hmac.compare_digest(expected, signature):
+    if not hmac.compare_digest(expected, signature.strip()):
         raise ValueError("Webhook signature mismatch")
 
     return payload
