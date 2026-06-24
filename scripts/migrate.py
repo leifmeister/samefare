@@ -160,6 +160,10 @@ def migrate() -> None:
     steps.append(("ix_ride_alerts_public",
         "CREATE INDEX IF NOT EXISTS ix_ride_alerts_public ON ride_alerts(is_public)"))
 
+    # ── 10. early-adopter service-fee-free rides grant ─────────────────────────
+    steps.append(("users.free_fee_rides",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS free_fee_rides INTEGER NOT NULL DEFAULT 0"))
+
     # ── Run ────────────────────────────────────────────────────────────────────
     for label, sql in steps:
         cur.execute(sql)

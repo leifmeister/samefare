@@ -44,6 +44,39 @@ def _refresh_seats(trip: "models.Trip", db: "Session") -> None:
     )
 
 
+# Booking states that count as a "trip the user has committed to" for the
+# early-adopter fee-free grant. Abandoned/cancelled bookings are excluded, so an
+# unfinished checkout never burns a free ride.
+_FEE_FREE_COMMITTED = (
+    models.BookingStatus.card_saved,
+    models.BookingStatus.confirmed,
+    models.BookingStatus.completed,
+)
+
+
+def _free_fee_rides_left(db: Session, user: models.User) -> int:
+    """
+    How many service-fee-free rides this user still has — their early-adopter
+    grant (User.free_fee_rides) minus the trips they've already committed to.
+
+    Stateless on purpose: no counter to decrement across the payment flow's many
+    success paths, and abandoned/cancelled bookings don't count, so the grant
+    can't be silently burned.
+    """
+    granted = int(getattr(user, "free_fee_rides", 0) or 0)
+    if granted <= 0:
+        return 0
+    used = (
+        db.query(models.Booking)
+        .filter(
+            models.Booking.passenger_id == user.id,
+            models.Booking.status.in_(_FEE_FREE_COMMITTED),
+        )
+        .count()
+    )
+    return max(0, granted - used)
+
+
 def _newsletter_discount(db: Session, user: models.User):
     """
     Return the NewsletterSubscriber row if this user is eligible for their unused
@@ -157,7 +190,8 @@ def book_trip_page(
         if booking_available_seats < 1:
             return RedirectResponse(f"/trips/{trip_id}", status_code=303)
 
-    has_discount   = _newsletter_discount(db, current_user) is not None
+    has_discount   = (_newsletter_discount(db, current_user) is not None
+                      or _free_fee_rides_left(db, current_user) > 0)
     # Subscribed with an unused discount but not yet eligible (incomplete profile
     # or unverified ID) → show how to unlock it instead of silently charging full.
     discount_locked = (not has_discount) and (
@@ -246,7 +280,8 @@ def create_booking(
     if trip.departure_datetime <= datetime.utcnow() + timedelta(hours=1):
         return RedirectResponse(f"/trips/{trip_id}?booking_closed=1", status_code=303)
 
-    has_discount = _newsletter_discount(db, current_user) is not None
+    has_discount = (_newsletter_discount(db, current_user) is not None
+                    or _free_fee_rides_left(db, current_user) > 0)
     err_ctx = {**ctx, "trip": trip, "has_discount": has_discount,
                "blikk_payments": settings.blikk_payments}
 
@@ -335,7 +370,9 @@ def create_booking(
 
     contribution = price_per_seat * seats_booked
     subscriber   = _newsletter_discount(db, current_user)
-    if subscriber:
+    # Waive the service fee for a newsletter first-ride discount OR an unused
+    # early-adopter free-fee ride.
+    if subscriber or _free_fee_rides_left(db, current_user) > 0:
         service_fee = 0
         total       = contribution
     else:

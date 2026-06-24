@@ -226,6 +226,12 @@ class User(Base):
     id_verification_locked      = Column(Boolean, nullable=False, default=False, server_default="false")
     license_verification_locked = Column(Boolean, nullable=False, default=False, server_default="false")
 
+    # Early-adopter perk: number of rides on which the SameFare service fee is
+    # waived for this user. Eligibility is stateless — compared against the count
+    # of trips the user has already committed to (see _free_fee_rides_left), so
+    # abandoned/cancelled bookings never burn the grant. 0 = no free rides.
+    free_fee_rides              = Column(Integer, nullable=False, default=0, server_default="0")
+
     # Didit KYC session IDs — set when a Didit session is created, cleared on retry.
     # ⚠️  AML RETENTION — DO NOT NULL THESE OUT ON ACCOUNT DELETION.
     # Act no. 140/2018 Art. 24 requires retention of KYC session references for 5 years
