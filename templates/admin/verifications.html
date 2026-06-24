@@ -42,6 +42,8 @@
           </div>
         </div>
 
+        {% set is_elec = user.id in electronic_ids %}
+        {% if not is_elec %}
         <!-- ID -->
         {% if user.id_verification == 'pending' %}
         <div class="admin-card__section">
@@ -129,6 +131,46 @@
               <div id="reject-lic-{{ user.id }}" x-show="open" style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center;">
                 <label for="reject-lic-reason-{{ user.id }}" class="sr-only">Rejection reason</label>
                 <input id="reject-lic-reason-{{ user.id }}" name="reason" type="text" class="input"
+                       style="flex:1; padding:.4rem .6rem; font-size:.875rem;"
+                       placeholder="Reason (optional)" />
+                <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">Send</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        {% endif %}
+        {% endif %}{# /not is_elec #}
+
+        <!-- Electronic (Ísland.is digital) licence -->
+        {% if is_elec %}
+        <div class="admin-card__section">
+          <div class="admin-card__section-header">
+            <strong>Electronic licence (Ísland.is)</strong>
+            <span class="verify-status verify-status--pending">⏳ Awaiting manual review</span>
+          </div>
+          <p class="admin-card__meta" style="margin:.1rem 0 .75rem;">
+            Scan the licence barcode to confirm it's valid, then check the selfie shows
+            <strong>{{ user.electronic_id_fingers }} finger{% if user.electronic_id_fingers != 1 %}s{% endif %}</strong> raised and the face matches the licence photo.
+          </p>
+          <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.75rem;">
+            <a href="/admin/verifications/{{ user.id }}/doc/electronic_licence"
+               target="_blank" class="btn btn-ghost btn-sm">View licence ↗</a>
+            <a href="/admin/verifications/{{ user.id }}/doc/electronic_selfie"
+               target="_blank" class="btn btn-ghost btn-sm">View selfie ({{ user.electronic_id_fingers }} finger{% if user.electronic_id_fingers != 1 %}s{% endif %}) ↗</a>
+          </div>
+          <div class="admin-card__actions">
+            <form method="post" action="/admin/verifications/{{ user.id }}/approve-electronic" style="display:inline">
+              <button class="btn btn-primary btn-sm">✓ Approve (ID + licence)</button>
+            </form>
+            <form method="post" action="/admin/verifications/{{ user.id }}/reject-electronic"
+                  style="display:inline" x-data="{ open: false }">
+              <button type="button" class="btn btn-outline btn-sm btn-danger-outline"
+                      @click="open = !open"
+                      :aria-expanded="open.toString()"
+                      aria-controls="reject-elec-{{ user.id }}">✗ Reject</button>
+              <div id="reject-elec-{{ user.id }}" x-show="open" style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center;">
+                <label for="reject-elec-reason-{{ user.id }}" class="sr-only">Rejection reason</label>
+                <input id="reject-elec-reason-{{ user.id }}" name="reason" type="text" class="input"
                        style="flex:1; padding:.4rem .6rem; font-size:.875rem;"
                        placeholder="Reason (optional)" />
                 <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">Send</button>

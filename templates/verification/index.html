@@ -142,8 +142,7 @@
 
     {# ── ③ Identity not yet submitted / rejected ──────────────────────────── #}
     {% elif id_bad %}
-    <div class="verify-card {% if current_user.id_verification == 'rejected' %}verify-card--rejected{% endif %}"
-         x-data='{ docType: {{ (current_user.id_doc_type or "license") | tojson }} }'>
+    <div class="verify-card {% if current_user.id_verification == 'rejected' %}verify-card--rejected{% endif %}">
 
       {% if current_user.id_verification == 'rejected' %}
       <div class="verify-card__header" style="margin-bottom:.75rem;">
@@ -163,95 +162,43 @@
         </div>
         <div>
           <h2 class="verify-card__title">{{ _t('verify_identity_title') }}</h2>
-          <p class="verify-card__sub">{{ _t('verify_identity_choose') }}</p>
+          <p class="verify-card__sub">{{ _t('verify_choose_method') }}</p>
         </div>
       </div>
       {% endif %}
 
-      {# ── Document type picker ─────────────────────────────────────────── #}
-      <div class="doc-type-picker">
-
-        <label class="doc-type-card" :class="{ 'doc-type-card--selected': docType === 'license' }">
-          <input type="radio" name="_doctype" value="license" x-model="docType" class="sr-only">
-          <div class="doc-type-card__icon">🪪</div>
-          <div class="doc-type-card__body">
-            <p class="doc-type-card__title">{{ _t('verify_doc_license_title') }}</p>
-            <p class="doc-type-card__desc">{{ _t('verify_doc_license_desc') }}</p>
-          </div>
-          <div class="doc-type-card__badge doc-type-card__badge--recommended">{{ _t('verify_doc_recommended') }}</div>
-        </label>
-
-        <label class="doc-type-card" :class="{ 'doc-type-card--selected': docType === 'passport' }">
-          <input type="radio" name="_doctype" value="passport" x-model="docType" class="sr-only">
-          <div class="doc-type-card__icon">🛂</div>
-          <div class="doc-type-card__body">
-            <p class="doc-type-card__title">{{ _t('verify_doc_passport_title') }}</p>
-            <p class="doc-type-card__desc">{{ _t('verify_doc_passport_desc') }}</p>
-          </div>
-        </label>
-
-        <label class="doc-type-card" :class="{ 'doc-type-card--selected': docType === 'national_id' }">
-          <input type="radio" name="_doctype" value="national_id" x-model="docType" class="sr-only">
-          <div class="doc-type-card__icon">🪪</div>
-          <div class="doc-type-card__body">
-            <p class="doc-type-card__title">{{ _t('verify_doc_national_title') }}</p>
-            <p class="doc-type-card__desc">{{ _t('verify_doc_national_desc') }}</p>
-          </div>
-        </label>
-
-      </div>
-
-      {# ── Submit — Didit hosted flow or direct upload (beta/dev) ─────── #}
+      {# ── Path 1: physical ID card → automatic (Didit). The actual document
+         (licence, passport, national ID…) is chosen inside Didit. ──────── #}
       {% if didit_enabled %}
       <form method="post" action="/verify/didit/start" class="verify-card__form">
-        <input type="hidden" name="doc_type" :value="docType">
-        <p class="field-hint" style="margin-bottom:1rem;">
-          {{ _t('verify_didit_hint') }}
-        </p>
-        <button type="submit" class="btn btn-primary">
-          <span x-show="docType === 'license'">{{ _t('verify_didit_license_btn') }}</span>
-          <span x-show="docType === 'passport'">{{ _t('verify_didit_passport_btn') }}</span>
-          <span x-show="docType === 'national_id'">{{ _t('verify_didit_national_btn') }}</span>
-        </button>
+        <input type="hidden" name="doc_type" value="license">
+        <p class="field-hint" style="margin-bottom:1rem;">{{ _t('verify_physical_hint') }}</p>
+        <button type="submit" class="btn btn-primary">{{ _t('verify_physical_btn') }}</button>
       </form>
-
-      {# Electronic / digital licence the automatic scanner can't read → manual
-         review. Only offered for the licence doc type (Didit reads passports /
-         national IDs fine). #}
-      <div x-show="docType === 'license'">
-        <div style="text-align:center; color:var(--c-text-muted); font-size:.85rem; margin:1.1rem 0;">{{ _t('verify_or') }}</div>
-        <form method="post" action="/verify/identity" enctype="multipart/form-data" class="verify-card__form">
-          <input type="hidden" name="doc_type" value="license">
-          <p class="field-hint" style="margin-bottom:.75rem;">{{ _t('verify_electronic_lic_hint') }}</p>
-          <div class="form-group">
-            <label class="label">{{ _t('verify_electronic_lic_label') }} <span class="required">*</span></label>
-            <input type="file" name="document" class="input input--file"
-                   accept=".jpg,.jpeg,.png,.pdf,.heic" required>
-          </div>
-          <button type="submit" class="btn btn-outline">{{ _t('verify_electronic_lic_btn') }}</button>
-        </form>
-      </div>
       {% else %}
       <form method="post" action="/verify/identity" enctype="multipart/form-data" class="verify-card__form">
-        <input type="hidden" name="doc_type" :value="docType">
+        <input type="hidden" name="doc_type" value="license">
         <div class="form-group">
-          <label class="label">
-            {{ _t('verify_upload_label') }} <span class="required">*</span>
-          </label>
+          <label class="label">{{ _t('verify_upload_label') }} <span class="required">*</span></label>
           <input type="file" name="document" class="input input--file"
                  accept=".jpg,.jpeg,.png,.pdf,.heic" required>
-          <p class="field-hint">
-            <span x-show="docType === 'license'">{{ _t('verify_upload_hint_lic') }}</span>
-            <span x-show="docType !== 'license'">{{ _t('verify_upload_hint_other') }}</span>
-          </p>
+          <p class="field-hint">{{ _t('verify_physical_hint') }}</p>
         </div>
-        <button type="submit" class="btn btn-primary">
-          <span x-show="docType === 'license'">{{ _t('verify_submit_license_btn') }}</span>
-          <span x-show="docType === 'passport'">{{ _t('verify_submit_passport_btn') }}</span>
-          <span x-show="docType === 'national_id'">{{ _t('verify_submit_national_btn') }}</span>
-        </button>
+        <button type="submit" class="btn btn-primary">{{ _t('verify_physical_btn') }}</button>
       </form>
       {% endif %}
+
+      <div style="text-align:center; color:var(--c-text-muted); font-size:.85rem; margin:1.25rem 0;">{{ _t('verify_or') }}</div>
+
+      {# ── Path 2: electronic / digital licence (Ísland.is) → manual review ─ #}
+      <a href="/verify/electronic" class="doc-type-card" style="text-decoration:none;">
+        <div class="doc-type-card__icon">📱</div>
+        <div class="doc-type-card__body">
+          <p class="doc-type-card__title">{{ _t('verify_electronic_card_title') }}</p>
+          <p class="doc-type-card__desc">{{ _t('verify_electronic_card_desc') }}</p>
+        </div>
+        <div class="doc-type-card__badge">{{ _t('verify_electronic_card_badge') }}</div>
+      </a>
     </div>
 
     {# ── ④ Identity approved via non-licence; driver needs licence ────────── #}
@@ -307,17 +254,6 @@
           <button type="submit" class="btn btn-primary">{{ _t('verify_didit_license_btn') }}</button>
         </form>
 
-        {# Electronic / digital licence the scanner can't read → manual review. #}
-        <div style="text-align:center; color:var(--c-text-muted); font-size:.85rem; margin:1.1rem 0;">{{ _t('verify_or') }}</div>
-        <form method="post" action="/verify/license" enctype="multipart/form-data" class="verify-card__form">
-          <p class="field-hint" style="margin-bottom:.75rem;">{{ _t('verify_electronic_lic_hint') }}</p>
-          <div class="form-group">
-            <label class="label">{{ _t('verify_electronic_lic_label') }} <span class="required">*</span></label>
-            <input type="file" name="document" class="input input--file"
-                   accept=".jpg,.jpeg,.png,.pdf,.heic" required>
-          </div>
-          <button type="submit" class="btn btn-outline">{{ _t('verify_electronic_lic_btn') }}</button>
-        </form>
         {% else %}
         <form method="post" action="/verify/license" enctype="multipart/form-data" class="verify-card__form">
           <div class="form-group">
@@ -329,6 +265,17 @@
           <button type="submit" class="btn btn-primary">{{ _t('verify_lic_submit_btn') }}</button>
         </form>
         {% endif %}
+
+        <div style="text-align:center; color:var(--c-text-muted); font-size:.85rem; margin:1.25rem 0;">{{ _t('verify_or') }}</div>
+        {# Iceland's digital licence (Ísland.is app) → dedicated manual-review page. #}
+        <a href="/verify/electronic" class="doc-type-card" style="text-decoration:none;">
+          <div class="doc-type-card__icon">📱</div>
+          <div class="doc-type-card__body">
+            <p class="doc-type-card__title">{{ _t('verify_electronic_card_title') }}</p>
+            <p class="doc-type-card__desc">{{ _t('verify_electronic_card_desc') }}</p>
+          </div>
+          <div class="doc-type-card__badge">{{ _t('verify_electronic_card_badge') }}</div>
+        </a>
       {% endif %}
     </div>
     {% endif %}

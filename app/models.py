@@ -225,6 +225,11 @@ class User(Base):
     # human decision. Cleared by "reset for testing".
     id_verification_locked      = Column(Boolean, nullable=False, default=False, server_default="false")
     license_verification_locked = Column(Boolean, nullable=False, default=False, server_default="false")
+    # Liveness challenge for the electronic (Ísland.is digital) licence flow:
+    # the number of fingers (1–5) the member was asked to hold up in their selfie.
+    # The admin checks the submitted selfie matches this number. Null = no pending
+    # electronic submission.
+    electronic_id_fingers       = Column(SmallInteger, nullable=True)
 
     # Early-adopter perk: number of rides on which the SameFare service fee is
     # waived for this user. Eligibility is stateless — compared against the count

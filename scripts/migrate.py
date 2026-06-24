@@ -172,13 +172,20 @@ def migrate() -> None:
         CREATE TABLE IF NOT EXISTS verification_docs (
             id           SERIAL PRIMARY KEY,
             user_id      INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            kind         VARCHAR(16) NOT NULL,
+            kind         VARCHAR(32) NOT NULL,
             data         BYTEA       NOT NULL,
             content_type VARCHAR(64) NOT NULL,
             created_at   TIMESTAMP   NOT NULL DEFAULT now(),
             UNIQUE (user_id, kind)
         )
     """))
+    # Widen kind for the electronic-licence flow ('electronic_licence' / 'electronic_selfie').
+    steps.append(("verification_docs.kind width",
+        "ALTER TABLE verification_docs ALTER COLUMN kind TYPE VARCHAR(32)"))
+
+    # ── 12. electronic (Ísland.is digital) licence — liveness selfie challenge ──
+    steps.append(("users.electronic_id_fingers",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS electronic_id_fingers SMALLINT"))
 
     # ── Run ────────────────────────────────────────────────────────────────────
     for label, sql in steps:

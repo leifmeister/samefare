@@ -9,6 +9,7 @@ Admin routes (is_admin=True) let staff review and approve / reject documents.
 
 import logging
 import os
+import random
 import urllib.error
 import uuid
 from datetime import datetime, timedelta, date
@@ -372,6 +373,85 @@ def upload_license(
         current_user.license_verification = models.VerificationStatus.pending
         success_msg = "Driver's licence submitted — we'll review it shortly."
     db.commit()
+    return templates.TemplateResponse("verification/index.html", {
+        **ctx, "error": None, "success": success_msg,
+        "didit_enabled": bool(settings.didit_api_key),
+        "beta_mode":     settings.beta_mode,
+    })
+
+
+# ── Electronic (Ísland.is digital) licence — manual review ─────────────────────
+# Iceland's digital driver's licence (the "stafrænt ökuskírteini" in the Ísland.is
+# app) can't be OCR'd by Didit. The member uploads a screenshot of it plus a
+# liveness selfie holding up a randomly-requested number of fingers (1–5); an admin
+# scans the licence's barcode and checks the selfie before approving. A digital
+# licence covers BOTH identity and driving, like a physical one.
+
+ELECTRONIC_KINDS = ("electronic_licence", "electronic_selfie")
+
+
+@router.get("/verify/electronic", response_class=HTMLResponse)
+def electronic_page(
+    request: Request,
+    ctx: dict = Depends(get_template_context),
+    current_user: models.User = Depends(get_current_user),
+):
+    # Already fully verified — nothing to do here.
+    if (current_user.id_verification == models.VerificationStatus.approved
+            and current_user.license_verification == models.VerificationStatus.approved):
+        return RedirectResponse("/verify", status_code=303)
+    fingers = random.randint(1, 5)
+    return templates.TemplateResponse("verification/electronic.html", {
+        **ctx, "error": None, "fingers": fingers,
+    })
+
+
+@router.post("/verify/electronic", response_class=HTMLResponse)
+def upload_electronic(
+    request: Request,
+    ctx: dict = Depends(get_template_context),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    fingers: int = Form(...),
+    licence_doc: UploadFile = File(...),
+    selfie: UploadFile = File(...),
+):
+    """Store the digital-licence screenshot + liveness selfie for manual review.
+    Always goes to 'pending' (there is no automatic path), even in beta mode."""
+    def _err(msg: str, code: int = 400):
+        return templates.TemplateResponse("verification/electronic.html", {
+            **ctx, "error": msg, "fingers": fingers if 1 <= fingers <= 5 else random.randint(1, 5),
+        }, status_code=code)
+
+    if not (1 <= fingers <= 5):
+        return _err("Something went wrong with the selfie challenge — please try again.")
+
+    try:
+        _store_verification_doc(db, current_user.id, "electronic_licence", licence_doc)
+        _store_verification_doc(db, current_user.id, "electronic_selfie", selfie)
+    except ValueError as e:
+        # Don't leave a half-submission behind.
+        _purge_verification_doc(db, current_user.id, "electronic_licence")
+        _purge_verification_doc(db, current_user.id, "electronic_selfie")
+        return _err(str(e))
+
+    pending  = models.VerificationStatus.pending
+    approved = models.VerificationStatus.approved
+    current_user.electronic_id_fingers     = fingers
+    # A digital licence covers identity too — but don't downgrade an identity that's
+    # already approved (e.g. via passport); just move the licence into review.
+    if current_user.id_verification != approved:
+        current_user.id_doc_type         = "license"
+        current_user.id_rejection_reason = None
+        current_user.id_verification     = pending
+    current_user.license_rejection_reason  = None
+    current_user.license_verification      = pending
+    # No disk/marker docs — the electronic submission is detected by its blobs.
+    current_user.id_doc_filename           = None
+    current_user.license_doc_filename      = None
+    db.commit()
+
+    success_msg = ctx["_t"]("verify_electronic_submitted")
     return templates.TemplateResponse("verification/index.html", {
         **ctx, "error": None, "success": success_msg,
         "didit_enabled": bool(settings.didit_api_key),
@@ -834,8 +914,16 @@ def admin_verifications(
         )
         .all()
     )
+    # Which of these submitted via the electronic (digital-licence) flow? Those
+    # render a dedicated review block (two images + finger challenge) instead of
+    # the normal ID/licence sections.
+    electronic_ids = {
+        r[0] for r in db.execute(
+            text("SELECT DISTINCT user_id FROM verification_docs WHERE kind = 'electronic_licence'")
+        ).fetchall()
+    }
     return templates.TemplateResponse("admin/verifications.html", {
-        **ctx, "pending_users": pending,
+        **ctx, "pending_users": pending, "electronic_ids": electronic_ids,
     })
 
 
@@ -851,7 +939,7 @@ def serve_doc(
     Postgres. A licence submitted via the identity flow is stored under 'id', so
     a 'license' request falls back to 'id' (same physical document).
     """
-    if kind not in ("id", "license"):
+    if kind not in ("id", "license", *ELECTRONIC_KINDS):
         raise HTTPException(status_code=404)
     row = db.execute(
         text("SELECT data, content_type FROM verification_docs WHERE user_id=:uid AND kind=:kind"),
@@ -952,6 +1040,56 @@ def reject_license(
         user.license_doc_filename        = None
         user.license_verification_locked = True   # manual decision — Didit can't overturn it
         _purge_verification_doc(db, user.id, "license")
+        db.commit()
+    return RedirectResponse("/admin/verifications", status_code=303)
+
+
+def _purge_electronic(db: Session, user_id: int) -> None:
+    for kind in ELECTRONIC_KINDS:
+        _purge_verification_doc(db, user_id, kind)
+
+
+@router.post("/admin/verifications/{user_id}/approve-electronic")
+def approve_electronic(
+    user_id: int,
+    admin: models.User = Depends(_require_admin),
+    db: Session = Depends(get_db),
+):
+    """A digital (Ísland.is) licence covers identity AND driving — approve both."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user:
+        approved = models.VerificationStatus.approved
+        user.id_verification             = approved
+        user.id_rejection_reason         = None
+        user.id_verification_locked      = True
+        user.license_verification        = approved
+        user.license_rejection_reason    = None
+        user.license_verification_locked = True
+        user.electronic_id_fingers       = None
+        _purge_electronic(db, user.id)   # keep only the outcome
+        db.commit()
+    return RedirectResponse("/admin/verifications", status_code=303)
+
+
+@router.post("/admin/verifications/{user_id}/reject-electronic")
+def reject_electronic(
+    user_id: int,
+    reason: str = Form(""),
+    admin: models.User = Depends(_require_admin),
+    db: Session = Depends(get_db),
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user:
+        rejected = models.VerificationStatus.rejected
+        msg = reason or "Electronic licence could not be verified."
+        user.id_verification             = rejected
+        user.id_rejection_reason         = msg
+        user.id_verification_locked      = True
+        user.license_verification        = rejected
+        user.license_rejection_reason    = msg
+        user.license_verification_locked = True
+        user.electronic_id_fingers       = None
+        _purge_electronic(db, user.id)
         db.commit()
     return RedirectResponse("/admin/verifications", status_code=303)
 
