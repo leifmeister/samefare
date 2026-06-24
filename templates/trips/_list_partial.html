@@ -232,12 +232,12 @@
 {% else %}
   {# No filters active — encourage searching or browsing popular routes #}
   <div class="empty-state empty-state--browse">
-    <h3 class="empty-state__title">Where are you headed?</h3>
-    <p class="empty-state__body">Search by origin and destination above, or pick a popular route to browse available rides.</p>
+    <h3 class="empty-state__title">{{ _t('browse_empty_title') }}</h3>
+    <p class="empty-state__body">{{ _t('browse_empty_body') }}</p>
 
     {% if popular_routes %}
     <div class="empty-state__popular">
-      <p class="empty-state__popular-label">Popular routes</p>
+      <p class="empty-state__popular-label">{{ _t('browse_popular_routes') }}</p>
       <div class="empty-state__popular-list">
         {% for from_city, to_city in popular_routes %}
         <a href="/trips?origin={{ from_city | urlencode }}&destination={{ to_city | urlencode }}"
@@ -250,7 +250,7 @@
     {% endif %}
 
     <p class="empty-state__driver-nudge">
-      Driving somewhere? <a href="/trips/new" class="link">Offer a ride</a> and share the fuel cost.
+      {{ _t('browse_driver_nudge_pre') }}<a href="/trips/new" class="link">{{ _t('browse_driver_nudge_link') }}</a>{{ _t('browse_driver_nudge_post') }}
     </p>
   </div>
 {% endif %}
