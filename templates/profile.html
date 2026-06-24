@@ -378,7 +378,12 @@ function phoneOtp() {
         const j = await r.json();
         if (j.ok) {
           this.success = true;
-          setTimeout(() => location.reload(), 1200);
+          // Reload to the TOP without the #phone anchor — a plain reload keeps
+          // the #phone fragment, and the anchor-scroll script then jumps the page
+          // to the bottom. Navigating to a fresh, hash-free URL avoids that.
+          setTimeout(() => {
+            window.location.href = window.location.pathname + '?phone_verified=1';
+          }, 1200);
         } else {
           this.error = j.error || 'Verification failed.';
         }
