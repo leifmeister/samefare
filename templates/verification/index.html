@@ -214,6 +214,23 @@
           <span x-show="docType === 'national_id'">{{ _t('verify_didit_national_btn') }}</span>
         </button>
       </form>
+
+      {# Electronic / digital licence the automatic scanner can't read → manual
+         review. Only offered for the licence doc type (Didit reads passports /
+         national IDs fine). #}
+      <div x-show="docType === 'license'">
+        <div style="text-align:center; color:var(--c-text-muted); font-size:.85rem; margin:1.1rem 0;">{{ _t('verify_or') }}</div>
+        <form method="post" action="/verify/identity" enctype="multipart/form-data" class="verify-card__form">
+          <input type="hidden" name="doc_type" value="license">
+          <p class="field-hint" style="margin-bottom:.75rem;">{{ _t('verify_electronic_lic_hint') }}</p>
+          <div class="form-group">
+            <label class="label">{{ _t('verify_electronic_lic_label') }} <span class="required">*</span></label>
+            <input type="file" name="document" class="input input--file"
+                   accept=".jpg,.jpeg,.png,.pdf,.heic" required>
+          </div>
+          <button type="submit" class="btn btn-outline">{{ _t('verify_electronic_lic_btn') }}</button>
+        </form>
+      </div>
       {% else %}
       <form method="post" action="/verify/identity" enctype="multipart/form-data" class="verify-card__form">
         <input type="hidden" name="doc_type" :value="docType">
@@ -288,6 +305,18 @@
             {{ _t('verify_lic_didit_hint') }}
           </p>
           <button type="submit" class="btn btn-primary">{{ _t('verify_didit_license_btn') }}</button>
+        </form>
+
+        {# Electronic / digital licence the scanner can't read → manual review. #}
+        <div style="text-align:center; color:var(--c-text-muted); font-size:.85rem; margin:1.1rem 0;">{{ _t('verify_or') }}</div>
+        <form method="post" action="/verify/license" enctype="multipart/form-data" class="verify-card__form">
+          <p class="field-hint" style="margin-bottom:.75rem;">{{ _t('verify_electronic_lic_hint') }}</p>
+          <div class="form-group">
+            <label class="label">{{ _t('verify_electronic_lic_label') }} <span class="required">*</span></label>
+            <input type="file" name="document" class="input input--file"
+                   accept=".jpg,.jpeg,.png,.pdf,.heic" required>
+          </div>
+          <button type="submit" class="btn btn-outline">{{ _t('verify_electronic_lic_btn') }}</button>
         </form>
         {% else %}
         <form method="post" action="/verify/license" enctype="multipart/form-data" class="verify-card__form">
