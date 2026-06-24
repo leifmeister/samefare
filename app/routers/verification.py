@@ -218,13 +218,23 @@ def didit_callback(
     Didit sends the actual result via webhook — this page just reassures the user.
     """
     s = get_settings()
+    # The webhook is now fast, so by the time the user lands here they're often
+    # already approved. Don't show the "submitted — we'll email you" pending
+    # banner in that case: it contradicts the "fully verified" state shown below
+    # and buries the good news. Only show it while something is still pending.
+    approved = models.VerificationStatus.approved
+    already_verified = current_user is not None and (
+        current_user.id_verification == approved
+        or current_user.license_verification == approved
+    )
+    success_msg = None if already_verified else (
+        "Your documents have been submitted. "
+        "Verification usually completes within a few minutes — "
+        "we'll send you an email as soon as it's done."
+    )
     return templates.TemplateResponse("verification/index.html", {
         **ctx,
-        "success": (
-            "Your documents have been submitted. "
-            "Verification usually completes within a few minutes — "
-            "we'll send you an email as soon as it's done."
-        ),
+        "success":       success_msg,
         "error":         None,
         "didit_enabled": bool(s.didit_api_key),
         "beta_mode":     s.beta_mode,
