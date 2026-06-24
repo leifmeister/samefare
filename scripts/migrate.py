@@ -164,6 +164,22 @@ def migrate() -> None:
     steps.append(("users.free_fee_rides",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS free_fee_rides INTEGER NOT NULL DEFAULT 0"))
 
+    # ── 11. manual verification docs stored in Postgres (NOT ephemeral disk) ───
+    # Manually-submitted documents (e.g. Iceland's digital licence the automatic
+    # scanner can't read) are held here only until an admin makes a decision,
+    # then purged. Survives deploys (the container disk is wiped each redeploy).
+    steps.append(("table: verification_docs", """
+        CREATE TABLE IF NOT EXISTS verification_docs (
+            id           SERIAL PRIMARY KEY,
+            user_id      INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            kind         VARCHAR(16) NOT NULL,
+            data         BYTEA       NOT NULL,
+            content_type VARCHAR(64) NOT NULL,
+            created_at   TIMESTAMP   NOT NULL DEFAULT now(),
+            UNIQUE (user_id, kind)
+        )
+    """))
+
     # ── Run ────────────────────────────────────────────────────────────────────
     for label, sql in steps:
         cur.execute(sql)

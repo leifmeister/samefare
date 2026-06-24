@@ -14,9 +14,9 @@ import uuid
 from datetime import datetime, timedelta, date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
-from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
-from sqlalchemy import or_, func
+from fastapi import APIRouter, Depends, Form, Request, UploadFile, File, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, Response
+from sqlalchemy import or_, func, text
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 
@@ -32,25 +32,56 @@ settings = get_settings()
 templates  = Jinja2Templates(directory="templates")
 router     = APIRouter(tags=["verification"])
 
-UPLOAD_DIR = "uploads/verifications"
-ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf", ".heic"}
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+UPLOAD_DIR = "uploads/verifications"   # legacy; new docs go to Postgres
+MAX_FILE_SIZE = 12 * 1024 * 1024  # 12 MB
+
+# Marker stored in users.id_doc_filename / license_doc_filename so the existing
+# "has a document?" template checks keep working — the bytes live in Postgres
+# (verification_docs), served by user_id + kind, not by filename.
+_DOC_MARKER = "db"
 
 
-def _save_upload(file: UploadFile) -> str:
-    """Save an uploaded file and return the stored filename."""
-    ext = os.path.splitext(file.filename or "")[-1].lower()
-    if ext not in ALLOWED_EXTENSIONS:
-        raise ValueError(f"File type {ext} not allowed.")
-    stored = f"{uuid.uuid4().hex}{ext}"
-    path   = os.path.join(UPLOAD_DIR, stored)
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
+def _detect_doc_type(b: bytes) -> str | None:
+    """Sniff a manually-uploaded verification doc by magic bytes (don't trust the
+    extension). Returns a content type, or None if unsupported."""
+    if b[:3] == b"\xff\xd8\xff":                       return "image/jpeg"
+    if b[:8] == b"\x89PNG\r\n\x1a\n":                  return "image/png"
+    if b[:4] == b"%PDF":                               return "application/pdf"
+    if b[:4] == b"RIFF" and b[8:12] == b"WEBP":        return "image/webp"
+    if b[4:12] in (b"ftypheic", b"ftypheix", b"ftyphevc",
+                   b"ftypmif1", b"ftypmsf1"):          return "image/heic"
+    return None
+
+
+def _store_verification_doc(db: Session, user_id: int, kind: str, file: UploadFile) -> None:
+    """
+    Store a manually-submitted verification document in Postgres (NOT the
+    container disk, which Railway wipes on every redeploy). Held only until an
+    admin makes a decision, then purged (see _purge_verification_doc).
+    """
     content = file.file.read()
+    if not content:
+        raise ValueError("The file looks empty — please choose a clear photo or PDF.")
     if len(content) > MAX_FILE_SIZE:
-        raise ValueError("File too large (max 10 MB).")
-    with open(path, "wb") as f:
-        f.write(content)
-    return stored
+        raise ValueError("File too large (max 12 MB).")
+    ct = _detect_doc_type(content)
+    if ct is None:
+        raise ValueError("Unsupported file — please upload a JPG, PNG, HEIC, or PDF.")
+    db.execute(text("""
+        INSERT INTO verification_docs (user_id, kind, data, content_type, created_at)
+        VALUES (:uid, :kind, :data, :ct, now())
+        ON CONFLICT (user_id, kind) DO UPDATE
+          SET data = EXCLUDED.data, content_type = EXCLUDED.content_type, created_at = now()
+    """), {"uid": user_id, "kind": kind, "data": content, "ct": ct})
+
+
+def _purge_verification_doc(db: Session, user_id: int, kind: str) -> None:
+    """Delete a stored verification doc once it's no longer needed (after an
+    admin decision). We keep only the outcome, never the document long-term."""
+    db.execute(
+        text("DELETE FROM verification_docs WHERE user_id = :uid AND kind = :kind"),
+        {"uid": user_id, "kind": kind},
+    )
 
 
 # ── User-facing ───────────────────────────────────────────────────────────────
@@ -263,7 +294,7 @@ def upload_identity(
             return RedirectResponse("/verify", status_code=303)
 
     try:
-        filename = _save_upload(document)
+        _store_verification_doc(db, current_user.id, "id", document)
     except ValueError as e:
         _s = get_settings()
         return templates.TemplateResponse("verification/index.html", {
@@ -277,14 +308,14 @@ def upload_identity(
     pending    = models.VerificationStatus.pending
 
     # ── Identity side ────────────────────────────────────────────────────────
-    current_user.id_doc_filename     = filename
+    current_user.id_doc_filename     = _DOC_MARKER   # doc bytes live in Postgres
     current_user.id_doc_type         = doc_type
     current_user.id_rejection_reason = None
     current_user.id_verification     = approved if settings.beta_mode else pending
 
     # ── Driving side — only when a licence is submitted ───────────────────
     if is_licence:
-        current_user.license_doc_filename     = filename   # same physical file
+        current_user.license_doc_filename     = _DOC_MARKER   # same physical file (served via id→license fallback)
         current_user.license_rejection_reason = None
         current_user.license_verification     = approved if settings.beta_mode else pending
 
@@ -324,7 +355,7 @@ def upload_license(
         return RedirectResponse("/verify", status_code=303)
 
     try:
-        filename = _save_upload(document)
+        _store_verification_doc(db, current_user.id, "license", document)
     except ValueError as e:
         return templates.TemplateResponse("verification/index.html", {
             **ctx, "error": str(e), "success": None,
@@ -332,7 +363,7 @@ def upload_license(
             "beta_mode":     settings.beta_mode,
         }, status_code=400)
 
-    current_user.license_doc_filename     = filename
+    current_user.license_doc_filename     = _DOC_MARKER   # doc bytes live in Postgres
     current_user.license_rejection_reason = None
     if settings.beta_mode:
         current_user.license_verification = models.VerificationStatus.approved
@@ -808,16 +839,36 @@ def admin_verifications(
     })
 
 
-@router.get("/admin/verifications/doc/{filename}")
+@router.get("/admin/verifications/{user_id}/doc/{kind}")
 def serve_doc(
-    filename: str,
+    user_id: int,
+    kind: str,
     admin: models.User = Depends(_require_admin),
+    db: Session = Depends(get_db),
 ):
-    """Serve uploaded documents only to admins."""
-    path = os.path.join(UPLOAD_DIR, filename)
-    if not os.path.exists(path) or ".." in filename:
-        raise __import__("fastapi").HTTPException(status_code=404)
-    return FileResponse(path)
+    """
+    Serve a manually-submitted verification document to admins, straight from
+    Postgres. A licence submitted via the identity flow is stored under 'id', so
+    a 'license' request falls back to 'id' (same physical document).
+    """
+    if kind not in ("id", "license"):
+        raise HTTPException(status_code=404)
+    row = db.execute(
+        text("SELECT data, content_type FROM verification_docs WHERE user_id=:uid AND kind=:kind"),
+        {"uid": user_id, "kind": kind},
+    ).first()
+    if not row and kind == "license":
+        row = db.execute(
+            text("SELECT data, content_type FROM verification_docs WHERE user_id=:uid AND kind='id'"),
+            {"uid": user_id},
+        ).first()
+    if not row:
+        raise HTTPException(status_code=404)
+    return Response(
+        content=bytes(row[0]),
+        media_type=row[1] or "application/octet-stream",
+        headers={"Cache-Control": "private, no-store"},   # sensitive — never cache
+    )
 
 
 @router.post("/admin/verifications/{user_id}/approve-id")
@@ -831,11 +882,16 @@ def approve_id(
         user.id_verification        = models.VerificationStatus.approved
         user.id_rejection_reason    = None
         user.id_verification_locked = True   # manual decision — Didit can't overturn it
+        user.id_doc_filename        = None   # decision made → drop the doc reference
         # If a driver's licence was used for identity, it also covers driving
         if user.id_doc_type == "license":
             user.license_verification        = models.VerificationStatus.approved
             user.license_rejection_reason    = None
             user.license_verification_locked = True
+            user.license_doc_filename        = None
+            _purge_verification_doc(db, user.id, "license")
+        # Keep only the outcome — never retain the document after a decision.
+        _purge_verification_doc(db, user.id, "id")
         db.commit()
     return RedirectResponse("/admin/verifications", status_code=303)
 
@@ -853,12 +909,14 @@ def reject_id(
         user.id_rejection_reason    = reason or "Document could not be verified."
         user.id_doc_filename        = None
         user.id_verification_locked = True   # manual decision — Didit can't overturn it
+        _purge_verification_doc(db, user.id, "id")
         # If this was a dual-use licence, reset the driving status too
         if user.id_doc_type == "license":
             user.license_verification        = models.VerificationStatus.rejected
             user.license_rejection_reason    = reason or "Document could not be verified."
             user.license_doc_filename        = None
             user.license_verification_locked = True
+            _purge_verification_doc(db, user.id, "license")
         db.commit()
     return RedirectResponse("/admin/verifications", status_code=303)
 
@@ -874,6 +932,8 @@ def approve_license(
         user.license_verification        = models.VerificationStatus.approved
         user.license_rejection_reason    = None
         user.license_verification_locked = True   # manual decision — Didit can't overturn it
+        user.license_doc_filename        = None
+        _purge_verification_doc(db, user.id, "license")
         db.commit()
     return RedirectResponse("/admin/verifications", status_code=303)
 
@@ -891,6 +951,7 @@ def reject_license(
         user.license_rejection_reason    = reason or "Document could not be verified."
         user.license_doc_filename        = None
         user.license_verification_locked = True   # manual decision — Didit can't overturn it
+        _purge_verification_doc(db, user.id, "license")
         db.commit()
     return RedirectResponse("/admin/verifications", status_code=303)
 
