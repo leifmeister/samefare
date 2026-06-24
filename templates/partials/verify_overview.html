@@ -25,7 +25,7 @@
     {% if email_ok and phone_ok %}
       <span class="verify-goal__status verify-goal__status--ok">✓ {{ _t('verify_ov_ready') }}</span>
     {% else %}
-      <a href="/verify" class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_email') if not email_ok else _t('verify_ov_need_phone') }}</a>
+      <a href="/verify#verify-action" class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_email') if not email_ok else _t('verify_ov_need_phone') }}</a>
     {% endif %}
   </div>
 
@@ -41,11 +41,11 @@
     {% elif lic_pending %}
       <span class="verify-goal__status verify-goal__status--pending">{{ _t('verify_ov_pending') }}</span>
     {% elif lic_ok and not phone_ok %}
-      <a href="/verify" class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_phone') }}</a>
+      <a href="/verify#verify-action" class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_phone') }}</a>
     {% elif phone_ok and not lic_ok %}
-      <a href="/verify" class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_licence') }}</a>
+      <a href="/verify#verify-action" class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_licence') }}</a>
     {% else %}
-      <a href="/verify" class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_licence_phone') }}</a>
+      <a href="/verify#verify-action" class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_licence_phone') }}</a>
     {% endif %}
   </div>
 
@@ -61,7 +61,7 @@
     {% elif id_pending %}
       <span class="verify-goal__status verify-goal__status--pending">{{ _t('verify_ov_pending') }}</span>
     {% else %}
-      <a href="/verify" class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_id') }}</a>
+      <a href="/verify#verify-action" class="verify-goal__status verify-goal__status--todo">{{ _t('verify_ov_need_id') }}</a>
     {% endif %}
   </div>
 </div>

@@ -81,6 +81,11 @@
                         else ('ride' if request.query_params.get('next') == 'book' else '') %}
     {{ verify_overview(highlight=_verify_hl) }}
 
+    {# Scroll target for the overview's "Add licence / Add ID / phone" buttons —
+       on mobile those used to do nothing visible; now they jump to the action
+       area (phone prompt + verification forms) below. #}
+    <div id="verify-action" style="scroll-margin-top:80px;"></div>
+
     {# Phone is the cross-cutting requirement and is handled on the profile /
        inline at booking — surface it here if still missing. #}
     {% if not phone_ok %}
