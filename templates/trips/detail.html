@@ -37,18 +37,10 @@
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
       {{ _t('detail_back') }}
     </a>
-    <div class="share-actions">
-      <button type="button" class="share-btn" id="share-btn" onclick="doShare(this)">
-        <svg id="share-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path d="M13 4.5a2.5 2.5 0 11.702 1.737L6.97 9.604a2.518 2.518 0 010 .792l6.733 3.367a2.5 2.5 0 11-.671 1.341l-6.733-3.367a2.5 2.5 0 110-3.475l6.733-3.366A2.52 2.52 0 0113 4.5z"/></svg>
-        <svg id="check-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
-        <span id="share-label">{{ _t('detail_share') }}</span>
-      </button>
-      <button type="button" class="share-btn share-btn--ghost" id="save-img-btn"
-              onclick="shareStory(this)" title="{{ _t('detail_story_title') }}">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-2.69l-2.22-2.219a.75.75 0 00-1.06 0l-1.91 1.909.47.47a.75.75 0 11-1.06 1.06L6.53 8.091a.75.75 0 00-1.06 0l-2.97 2.97zM12 7a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd"/></svg>
-        <span id="save-label">{{ _t('detail_save_image') }}</span>
-      </button>
-    </div>
+    <button type="button" class="share-btn" id="share-btn" onclick="openShareModal()">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path d="M13 4.5a2.5 2.5 0 11.702 1.737L6.97 9.604a2.518 2.518 0 010 .792l6.733 3.367a2.5 2.5 0 11-.671 1.341l-6.733-3.367a2.5 2.5 0 110-3.475l6.733-3.366A2.52 2.52 0 0113 4.5z"/></svg>
+      <span>{{ _t('detail_share') }}</span>
+    </button>
   </div>
 
   {% if request.query_params.get('no_show') %}
@@ -782,118 +774,100 @@
 }());
 </script>
 <script>
-// "Share" = share the ride LINK (it unfurls into the branded card preview).
-function doShare(btn) {
-  const url   = window.location.href;
-  const label = document.getElementById('share-label');
-  const shareIcon = document.getElementById('share-icon');
-  const checkIcon = document.getElementById('check-icon');
-  const copiedText = {{ _t('detail_link_copied') | tojson }};
-  const shareText  = {{ _t('detail_share') | tojson }};
-  function markCopied() {
-    btn.classList.add('share-btn--copied');
-    shareIcon.style.display = 'none';
-    checkIcon.style.display = '';
-    label.textContent = copiedText;
-    setTimeout(() => {
-      btn.classList.remove('share-btn--copied');
-      shareIcon.style.display = '';
-      checkIcon.style.display = 'none';
-      label.textContent = shareText;
-    }, 2500);
-  }
-  if (navigator.share) {
-    navigator.share({ title: document.title, url }).catch(() => {});
-    return;
-  }
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(url).then(markCopied).catch(fallback);
-    return;
-  }
-  fallback();
-  function fallback() {
-    const el = document.createElement('textarea');
-    el.value = url;
-    el.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
-    document.body.appendChild(el);
-    el.focus(); el.select();
-    try { document.execCommand('copy'); markCopied(); } catch(e) {}
-    document.body.removeChild(el);
-  }
-}
-
-// URL of this trip's 9:16 Story image (matches the page language).
-function tripStoryUrl() {
+// Trip share-card image URL for a given format ('og' = landscape, 'story' = 9:16).
+function tripCardUrl(kind) {
   var lang = document.documentElement.lang || 'is';
-  return window.location.origin + window.location.pathname.replace(/\/+$/, '') + '/story.png?lang=' + lang;
+  var base = window.location.pathname.replace(/\/+$/, '');
+  return window.location.origin + base + '/' + (kind === 'story' ? 'story' : 'og') + '.png?lang=' + lang;
 }
 
-// "Story image": open a preview of the 9:16 card with Download + Share actions.
-async function shareStory(btn) {
-  const label = document.getElementById('save-label');
-  const original = label ? label.textContent : '';
-  if (label) label.textContent = '…';
-  let blob;
-  try {
-    const resp = await fetch(tripStoryUrl());
-    if (!resp.ok) throw 0;
-    blob = await resp.blob();
-  } catch (e) {
-    window.open(tripStoryUrl(), '_blank');   // last resort: open the image
-    if (label) label.textContent = original;
-    return;
-  }
-  if (label) label.textContent = original;
-  openStoryPreview(blob);
-}
+// One share entry point: a modal with a Post/Story format toggle, live preview,
+// Copy link, a themed Download, and (on touch devices) native image share.
+function openShareModal() {
+  var T = {
+    title:     {{ _t('detail_story_preview_title') | tojson }},
+    post:      {{ _t('detail_fmt_post') | tojson }},
+    story:     {{ _t('detail_fmt_story') | tojson }},
+    postHint:  {{ _t('detail_fmt_post_hint') | tojson }},
+    storyHint: {{ _t('detail_fmt_story_hint') | tojson }},
+    copy:      {{ _t('detail_copy_link') | tojson }},
+    copied:    {{ _t('detail_link_copied') | tojson }},
+    download:  {{ _t('detail_download') | tojson }},
+    share:     {{ _t('detail_share') | tojson }}
+  };
+  var pageUrl = window.location.href;
+  var slug = window.location.pathname.split('/').pop();
+  var touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
 
-function openStoryPreview(blob) {
-  const url  = URL.createObjectURL(blob);
-  const file = new File([blob], 'samefare-story.png', { type: 'image/png' });
-  // Only offer native share where it's actually useful (touch devices reach
-  // Instagram/Stories); on desktop the OS sheet only has Mail/Messages.
-  const touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-  const canShareFile = touch && navigator.canShare && navigator.canShare({ files: [file] });
-  const fname = 'samefare-story-' + window.location.pathname.split('/').pop() + '.png';
-
-  const ov = document.createElement('div');
-  ov.className = 'story-modal';
+  var ov = document.createElement('div');
+  ov.className = 'share-modal';
   ov.innerHTML =
-    '<div class="story-modal__card" role="dialog" aria-modal="true" aria-label="' +
-        {{ _t('detail_story_preview_title') | tojson }} + '">' +
-      '<button class="story-modal__close" type="button" aria-label="Close">&times;</button>' +
-      '<p class="story-modal__title">' + {{ _t('detail_story_preview_title') | tojson }} + '</p>' +
-      '<p class="story-modal__hint">'  + {{ _t('detail_story_preview_hint')  | tojson }} + '</p>' +
-      '<img class="story-modal__img" alt="" src="' + url + '">' +
-      '<div class="story-modal__actions"></div>' +
+    '<div class="share-modal__card" role="dialog" aria-modal="true" aria-label="' + T.title + '">' +
+      '<button class="share-modal__close" type="button" aria-label="Close">&times;</button>' +
+      '<p class="share-modal__title">' + T.title + '</p>' +
+      '<div class="share-seg" role="tablist">' +
+        '<button type="button" class="share-seg__btn is-active" data-fmt="og">' + T.post + '</button>' +
+        '<button type="button" class="share-seg__btn" data-fmt="story">' + T.story + '</button>' +
+      '</div>' +
+      '<div class="share-modal__preview"><img class="share-modal__img" alt="" src="' + tripCardUrl('og') + '"></div>' +
+      '<p class="share-modal__hint">' + T.postHint + '</p>' +
+      '<div class="share-modal__actions">' +
+        '<button type="button" class="btn btn-outline" data-copy>' + T.copy + '</button>' +
+        '<a class="btn btn-primary" data-download download="samefare-' + slug + '.png" href="' + tripCardUrl('og') + '">' + T.download + '</a>' +
+      '</div>' +
     '</div>';
 
-  const actions = ov.querySelector('.story-modal__actions');
-  const dl = document.createElement('a');
-  dl.className = 'btn btn-primary';
-  dl.href = url; dl.download = fname;
-  dl.textContent = {{ _t('detail_download') | tojson }};
-  actions.appendChild(dl);
+  var img  = ov.querySelector('.share-modal__img');
+  var hint = ov.querySelector('.share-modal__hint');
+  var dl   = ov.querySelector('[data-download]');
+  var cur  = 'og';
 
-  if (canShareFile) {
-    const sh = document.createElement('button');
-    sh.type = 'button';
-    sh.className = 'btn btn-outline';
-    sh.textContent = {{ _t('detail_share') | tojson }};
-    sh.addEventListener('click', async () => {
-      try { await navigator.share({ files: [file], title: document.title }); } catch (e) {}
+  function setFmt(fmt) {
+    cur = fmt;
+    var url = tripCardUrl(fmt);
+    img.src = url;
+    dl.href = url;
+    dl.download = 'samefare-' + (fmt === 'story' ? 'story-' : '') + slug + '.png';
+    hint.textContent = fmt === 'story' ? T.storyHint : T.postHint;
+    ov.querySelector('.share-modal__preview').classList.toggle('share-modal__preview--story', fmt === 'story');
+    ov.querySelectorAll('.share-seg__btn').forEach(function (b) {
+      b.classList.toggle('is-active', b.dataset.fmt === fmt);
     });
-    actions.appendChild(sh);
+  }
+  ov.querySelectorAll('.share-seg__btn').forEach(function (b) {
+    b.addEventListener('click', function () { setFmt(b.dataset.fmt); });
+  });
+
+  ov.querySelector('[data-copy]').addEventListener('click', function () {
+    var b = this, orig = b.textContent;
+    function done() { b.textContent = T.copied; setTimeout(function () { b.textContent = orig; }, 2000); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(pageUrl).then(done).catch(function () {});
+    } else {
+      var t = document.createElement('textarea'); t.value = pageUrl;
+      t.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(t); t.select();
+      try { document.execCommand('copy'); done(); } catch (e) {} t.remove();
+    }
+  });
+
+  // On touch devices, add a native image share (reaches Instagram / Stories).
+  if (touch && navigator.canShare) {
+    var sh = document.createElement('button');
+    sh.type = 'button'; sh.className = 'btn btn-outline'; sh.textContent = T.share;
+    sh.addEventListener('click', async function () {
+      try {
+        var r = await fetch(tripCardUrl(cur)); var bl = await r.blob();
+        var f = new File([bl], 'samefare-' + cur + '.png', { type: 'image/png' });
+        if (navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: document.title });
+      } catch (e) {}
+    });
+    ov.querySelector('.share-modal__actions').appendChild(sh);
   }
 
-  function close() {
-    ov.remove();
-    document.removeEventListener('keydown', onKey);
-    setTimeout(() => URL.revokeObjectURL(url), 800);
-  }
+  function close() { ov.remove(); document.removeEventListener('keydown', onKey); }
   function onKey(e) { if (e.key === 'Escape') close(); }
-  ov.querySelector('.story-modal__close').addEventListener('click', close);
-  ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+  ov.querySelector('.share-modal__close').addEventListener('click', close);
+  ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
   document.addEventListener('keydown', onKey);
   document.body.appendChild(ov);
 }

@@ -1399,8 +1399,9 @@ button, input, select, textarea { font: inherit; }
   background: transparent;
 }
 
-/* Story-image preview modal: shows the generated 9:16 card with download/share. */
-.story-modal {
+/* Share modal: one entry point with a Post/Story format toggle, live preview,
+   copy-link and a themed download. */
+.share-modal {
   position: fixed;
   inset: 0;
   z-index: 1100;
@@ -1409,20 +1410,20 @@ button, input, select, textarea { font: inherit; }
   justify-content: center;
   padding: 1.25rem;
   background: rgba(15, 42, 36, .55);
-  animation: story-modal-in .15s ease-out;
+  animation: share-modal-in .15s ease-out;
 }
-.story-modal__card {
+.share-modal__card {
   position: relative;
   background: #fff;
   border-radius: 1rem;
-  padding: 1rem 1rem 1.1rem;
-  width: min(92vw, 360px);
+  padding: 1.1rem 1.1rem 1.2rem;
+  width: min(94vw, 380px);
   display: flex;
   flex-direction: column;
-  gap: .85rem;
+  gap: .8rem;
   box-shadow: 0 24px 70px rgba(0, 0, 0, .32);
 }
-.story-modal__close {
+.share-modal__close {
   position: absolute;
   top: .35rem;
   right: .5rem;
@@ -1434,18 +1435,43 @@ button, input, select, textarea { font: inherit; }
   cursor: pointer;
   padding: .1rem .35rem;
 }
-.story-modal__title { font-weight: 800; font-size: 1.05rem; margin: .1rem 0 0; }
-.story-modal__hint  { font-size: .82rem; color: var(--c-text-muted); margin: -.45rem 0 .1rem; }
-.story-modal__img {
-  width: 100%;
-  max-height: 56vh;
-  object-fit: contain;
-  border-radius: .65rem;
+.share-modal__title { font-weight: 800; font-size: 1.1rem; margin: .1rem 0 0; }
+.share-seg {
+  display: flex;
+  gap: .25rem;
   background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: 99px;
+  padding: .25rem;
 }
-.story-modal__actions { display: flex; gap: .6rem; }
-.story-modal__actions .btn { flex: 1; justify-content: center; text-align: center; }
-@keyframes story-modal-in { from { opacity: 0; } to { opacity: 1; } }
+.share-seg__btn {
+  flex: 1;
+  border: none;
+  background: none;
+  border-radius: 99px;
+  padding: .45rem .5rem;
+  font-size: .875rem;
+  font-weight: 700;
+  color: var(--c-text-muted);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.share-seg__btn.is-active { background: var(--c-primary); color: #fff; }
+.share-modal__preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--c-bg);
+  border-radius: .65rem;
+  padding: .5rem;
+  min-height: 130px;
+}
+.share-modal__preview--story { padding: .5rem 2.5rem; }
+.share-modal__img { max-width: 100%; max-height: 46vh; object-fit: contain; border-radius: .4rem; display: block; }
+.share-modal__hint { font-size: .8rem; color: var(--c-text-muted); text-align: center; margin: -.3rem 0 0; }
+.share-modal__actions { display: flex; gap: .6rem; }
+.share-modal__actions .btn { flex: 1; justify-content: center; text-align: center; }
+@keyframes share-modal-in { from { opacity: 0; } to { opacity: 1; } }
 
 .return-trip-banner {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
