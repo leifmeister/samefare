@@ -1,0 +1,11 @@
+{# Floating toast for transient confirmations. Overlays content (position:fixed)
+   so it never pushes the page down. Auto-dismisses + has a close button (JS in
+   base.html). `message` is already-translated text; `type` ∈ success|info|warning|error. #}
+{% macro toast(message, type='success') -%}
+<div class="flash-toast" role="status" aria-live="polite" data-flash-toast>
+  <div class="alert alert--{{ type }} flash-toast__alert">
+    <span>{{ message }}</span>
+    <button type="button" class="flash-toast__close" aria-label="Close" data-flash-close>&times;</button>
+  </div>
+</div>
+{%- endmacro %}

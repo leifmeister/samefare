@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/toast.html" import toast %}
 {% block title %}{{ _t('alerts_title') }} — SameFare{% endblock %}
 
 {% block content %}
@@ -13,16 +14,8 @@
 
 <div class="container" style="max-width:680px; margin-top:2rem; margin-bottom:3rem;">
 
-  {% if request.query_params.get('deleted') %}
-  <div class="banner banner--success" style="margin-bottom:1.5rem;" role="status">
-    {{ _t('alerts_deleted') }}
-  </div>
-  {% endif %}
-  {% if request.query_params.get('updated') %}
-  <div class="banner banner--success" style="margin-bottom:1.5rem;" role="status">
-    {{ _t('alerts_updated') }}
-  </div>
-  {% endif %}
+  {% if request.query_params.get('deleted') %}{{ toast(_t('alerts_deleted')) }}{% endif %}
+  {% if request.query_params.get('updated') %}{{ toast(_t('alerts_updated')) }}{% endif %}
 
   {% if active_alerts %}
     <div class="card-stack">

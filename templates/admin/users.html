@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "partials/avatar.html" import avatar %}
+{% from "partials/toast.html" import toast %}
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
 {% block title %}Users — Admin{% endblock %}
 
@@ -26,12 +27,7 @@
   </div>
 
   <!-- SMTP test -->
-  {% if request.query_params.get('flash') %}
-    <div class="alert alert--{{ 'success' if 'sent' in request.query_params.get('flash','') else 'error' }}"
-         style="margin-bottom:1rem;">
-      {{ request.query_params.get('flash') }}
-    </div>
-  {% endif %}
+  {% if request.query_params.get('flash') %}{{ toast(request.query_params.get('flash'), 'success' if 'sent' in request.query_params.get('flash','') else 'error') }}{% endif %}
   <div style="margin-bottom:1.25rem;">
     <form method="post" action="/admin/test-email" style="display:inline;">
       <button type="submit" class="btn btn-outline btn-sm">📧 Send test email</button>

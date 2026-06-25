@@ -312,6 +312,48 @@ button, input, select, textarea { font: inherit; }
    above it — inline <a> margins collapse, leaving it crammed against the text. */
 .alert .btn { display: inline-block; }
 
+/* Floating toast for transient confirmations (partials/toast.html). Fixed
+   position so it overlays the page instead of pushing the hero/content down. */
+.flash-toast {
+  position: fixed;
+  top: 72px;                 /* clears the 64px sticky navbar */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 95;
+  width: min(92vw, 560px);
+  pointer-events: none;      /* clicks pass through the gutter, not the alert */
+  animation: flash-toast-in .25s ease-out;
+}
+.flash-toast__alert {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  pointer-events: auto;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .14);
+}
+.flash-toast__alert > span { flex: 1; min-width: 0; }
+.flash-toast__close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: inherit;
+  opacity: .55;
+  padding: 0 .1rem;
+}
+.flash-toast__close:hover { opacity: 1; }
+.flash-toast--hiding { animation: flash-toast-out .25s ease-in forwards; }
+@keyframes flash-toast-in  { from { opacity: 0; transform: translate(-50%, -14px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes flash-toast-out { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -14px); } }
+@media (max-width: 640px) { .flash-toast { width: 94vw; } }
+@media (prefers-reduced-motion: reduce) {
+  .flash-toast { animation: none; }
+  .flash-toast--hiding { animation: none; opacity: 0; }
+}
+
 /* Checkout payment-timing banner (icon + title/sub) — was unstyled, so the card
    icon and text floated out of alignment. */
 .checkout-case-banner {

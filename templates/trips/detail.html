@@ -2,6 +2,7 @@
 {% from "partials/avatar.html" import avatar %}
 {% from "partials/verified.html" import verified_badge %}
 {% from "partials/trust_block.html" import trust_badges %}
+{% from "partials/toast.html" import toast %}
 {% block title %}{{ trip.origin }} → {{ trip.destination }} — SameFare{% endblock %}
 {% block meta_description %}Rideshare from {{ trip.origin }} to {{ trip.destination }} on {{ fdate(trip.departure_datetime, "%-d %b %Y") }}. {{ trip.seats_available }} seat{{ 's' if trip.seats_available != 1 else '' }} available at {{ "{:,}".format(trip.price_per_seat) }} ISK. Book your seat on SameFare.{% endblock %}
 {% block og_type %}event{% endblock %}
@@ -50,19 +51,10 @@
   {% if request.query_params.get('blikk_fare_requested') %}
   <div class="alert alert--success" style="margin-bottom:1rem;">Payment request sent — the passenger will be notified in their Blikk app.</div>
   {% endif %}
-  {% if request.query_params.get('blikk_fare_done') %}
-  <div class="alert alert--success" style="margin-bottom:1rem;">Blikk payment completed.</div>
-  {% endif %}
-  {% if request.query_params.get('blikk_fare_error') %}
-  <div class="alert alert--warning" style="margin-bottom:1rem;">Could not send Blikk payment request. Please ensure the passenger has a registered Blikk phone number, or contact support.</div>
-  {% endif %}
-  {% if request.query_params.get('blikk_fare_pending') %}
-  <div class="alert alert--info" style="margin-bottom:1rem;">Payment not yet approved — the passenger still needs to confirm in their Blikk app.</div>
-  {% endif %}
-
-  {% if request.query_params.get('booking_closed') %}
-  <div class="alert alert--warning" style="margin-bottom:1rem;">{{ _t('detail_booking_closed') }}</div>
-  {% endif %}
+  {% if request.query_params.get('blikk_fare_done') %}{{ toast('Blikk payment completed.') }}{% endif %}
+  {% if request.query_params.get('blikk_fare_error') %}{{ toast('Could not send Blikk payment request. Please ensure the passenger has a registered Blikk phone number, or contact support.', 'warning') }}{% endif %}
+  {% if request.query_params.get('blikk_fare_pending') %}{{ toast('Payment not yet approved — the passenger still needs to confirm in their Blikk app.', 'info') }}{% endif %}
+  {% if request.query_params.get('booking_closed') %}{{ toast(_t('detail_booking_closed'), 'warning') }}{% endif %}
 
   {% if request.query_params.get('first') and _is_driver %}
   <div class="first-ride-banner">
