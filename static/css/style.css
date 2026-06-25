@@ -1399,6 +1399,54 @@ button, input, select, textarea { font: inherit; }
   background: transparent;
 }
 
+/* Story-image preview modal: shows the generated 9:16 card with download/share. */
+.story-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(15, 42, 36, .55);
+  animation: story-modal-in .15s ease-out;
+}
+.story-modal__card {
+  position: relative;
+  background: #fff;
+  border-radius: 1rem;
+  padding: 1rem 1rem 1.1rem;
+  width: min(92vw, 360px);
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .32);
+}
+.story-modal__close {
+  position: absolute;
+  top: .35rem;
+  right: .5rem;
+  background: none;
+  border: none;
+  font-size: 1.7rem;
+  line-height: 1;
+  color: var(--c-text-muted);
+  cursor: pointer;
+  padding: .1rem .35rem;
+}
+.story-modal__title { font-weight: 800; font-size: 1.05rem; margin: .1rem 0 0; }
+.story-modal__hint  { font-size: .82rem; color: var(--c-text-muted); margin: -.45rem 0 .1rem; }
+.story-modal__img {
+  width: 100%;
+  max-height: 56vh;
+  object-fit: contain;
+  border-radius: .65rem;
+  background: var(--c-bg);
+}
+.story-modal__actions { display: flex; gap: .6rem; }
+.story-modal__actions .btn { flex: 1; justify-content: center; text-align: center; }
+@keyframes story-modal-in { from { opacity: 0; } to { opacity: 1; } }
+
 .return-trip-banner {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
   background: #F0FDF4; border: 1px solid #86EFAC; border-radius: var(--r-lg);

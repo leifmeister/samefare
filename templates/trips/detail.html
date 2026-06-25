@@ -828,36 +828,74 @@ function tripStoryUrl() {
   return window.location.origin + window.location.pathname.replace(/\/+$/, '') + '/story.png?lang=' + lang;
 }
 
-// "Story image": share the 9:16 card straight to a Story (native share sheet,
-// which previews the image), or download it if file-sharing isn't supported.
+// "Story image": open a preview of the 9:16 card with Download + Share actions.
 async function shareStory(btn) {
   const label = document.getElementById('save-label');
   const original = label ? label.textContent : '';
+  if (label) label.textContent = '…';
   let blob;
   try {
     const resp = await fetch(tripStoryUrl());
     if (!resp.ok) throw 0;
     blob = await resp.blob();
   } catch (e) {
-    window.open(tripStoryUrl(), '_blank');   // let the user long-press / save
+    window.open(tripStoryUrl(), '_blank');   // last resort: open the image
+    if (label) label.textContent = original;
     return;
   }
+  if (label) label.textContent = original;
+  openStoryPreview(blob);
+}
+
+function openStoryPreview(blob) {
+  const url  = URL.createObjectURL(blob);
   const file = new File([blob], 'samefare-story.png', { type: 'image/png' });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: document.title }); return; }
-    catch (e) { if (e && e.name === 'AbortError') return; }
+  // Only offer native share where it's actually useful (touch devices reach
+  // Instagram/Stories); on desktop the OS sheet only has Mail/Messages.
+  const touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  const canShareFile = touch && navigator.canShare && navigator.canShare({ files: [file] });
+  const fname = 'samefare-story-' + window.location.pathname.split('/').pop() + '.png';
+
+  const ov = document.createElement('div');
+  ov.className = 'story-modal';
+  ov.innerHTML =
+    '<div class="story-modal__card" role="dialog" aria-modal="true" aria-label="' +
+        {{ _t('detail_story_preview_title') | tojson }} + '">' +
+      '<button class="story-modal__close" type="button" aria-label="Close">&times;</button>' +
+      '<p class="story-modal__title">' + {{ _t('detail_story_preview_title') | tojson }} + '</p>' +
+      '<p class="story-modal__hint">'  + {{ _t('detail_story_preview_hint')  | tojson }} + '</p>' +
+      '<img class="story-modal__img" alt="" src="' + url + '">' +
+      '<div class="story-modal__actions"></div>' +
+    '</div>';
+
+  const actions = ov.querySelector('.story-modal__actions');
+  const dl = document.createElement('a');
+  dl.className = 'btn btn-primary';
+  dl.href = url; dl.download = fname;
+  dl.textContent = {{ _t('detail_download') | tojson }};
+  actions.appendChild(dl);
+
+  if (canShareFile) {
+    const sh = document.createElement('button');
+    sh.type = 'button';
+    sh.className = 'btn btn-outline';
+    sh.textContent = {{ _t('detail_share') | tojson }};
+    sh.addEventListener('click', async () => {
+      try { await navigator.share({ files: [file], title: document.title }); } catch (e) {}
+    });
+    actions.appendChild(sh);
   }
-  // Fallback: download the image.
-  const href = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = href;
-  a.download = 'samefare-story-' + window.location.pathname.split('/').pop() + '.png';
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(href), 1500);
-  if (label) {
-    label.textContent = {{ _t('detail_image_saved') | tojson }};
-    setTimeout(() => { label.textContent = original; }, 2500);
+
+  function close() {
+    ov.remove();
+    document.removeEventListener('keydown', onKey);
+    setTimeout(() => URL.revokeObjectURL(url), 800);
   }
+  function onKey(e) { if (e.key === 'Escape') close(); }
+  ov.querySelector('.story-modal__close').addEventListener('click', close);
+  ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(ov);
 }
 </script>
 {% endblock %}
