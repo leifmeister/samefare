@@ -232,6 +232,32 @@ def beta_skip_verification(
     return RedirectResponse("/verify", status_code=303)
 
 
+@router.post("/verify/dismiss-rejection")
+def dismiss_rejection(
+    doc:          str          = Form(...),   # "id" or "license"
+    current_user: models.User  = Depends(get_current_user),
+    db:           Session       = Depends(get_db),
+):
+    """
+    Dismiss a rejection notice so the card returns to its normal
+    "choose a verification method" state.  Only flips a *rejected* doc back
+    to unverified (and clears the reason); other states are left untouched.
+    """
+    rejected   = models.VerificationStatus.rejected
+    unverified = models.VerificationStatus.unverified
+
+    if doc == "id" and current_user.id_verification == rejected:
+        current_user.id_verification     = unverified
+        current_user.id_rejection_reason = None
+        db.commit()
+    elif doc == "license" and current_user.license_verification == rejected:
+        current_user.license_verification     = unverified
+        current_user.license_rejection_reason = None
+        db.commit()
+
+    return RedirectResponse("/verify", status_code=303)
+
+
 @router.get("/verify/didit/callback", response_class=HTMLResponse)
 def didit_callback(
     request:      Request,

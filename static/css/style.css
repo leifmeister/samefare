@@ -2734,6 +2734,17 @@ button, input, select, textarea { font: inherit; }
   justify-content: center;
   flex-shrink: 0;
 }
+.verify-card__icon--dismiss {
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: background .15s, color .15s;
+}
+.verify-card__icon--dismiss:hover {
+  background: #FEE2E2;
+  color: #991B1B;
+}
 .verify-card__title { font-weight: 700; font-size: 1rem; margin-bottom: .125rem; }
 .verify-card__sub   { font-size: .8125rem; color: var(--c-text-muted); }
 .verify-card__form  { margin-top: var(--space-3); }

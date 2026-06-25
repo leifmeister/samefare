@@ -146,7 +146,12 @@
 
       {% if current_user.id_verification == 'rejected' %}
       <div class="verify-card__header" style="margin-bottom:.75rem;">
-        <div class="verify-card__icon">✗</div>
+        <form method="post" action="/verify/dismiss-rejection" style="margin:0;">
+          <input type="hidden" name="doc" value="id">
+          <button type="submit" class="verify-card__icon verify-card__icon--dismiss"
+                  aria-label="{{ _t('verify_dismiss_rejection') }}"
+                  title="{{ _t('verify_dismiss_rejection') }}">✗</button>
+        </form>
         <div>
           <h2 class="verify-card__title">{{ _t('verify_rejected_title') }}</h2>
           {% if current_user.id_rejection_reason %}
