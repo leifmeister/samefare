@@ -255,7 +255,8 @@ def dismiss_rejection(
         current_user.license_rejection_reason = None
         db.commit()
 
-    return RedirectResponse("/verify", status_code=303)
+    # Land back on the verification action area, not the top of the page.
+    return RedirectResponse("/verify#verify-action", status_code=303)
 
 
 @router.get("/verify/didit/callback", response_class=HTMLResponse)
