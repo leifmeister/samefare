@@ -541,24 +541,16 @@ def trips_list(
     return templates.TemplateResponse("trips/list.html", {**ctx, **ctx_extra})
 
 
-@router.get("/{trip_id}/og.png")
-def trip_og_image(trip_id: int, lang: str = "is", db: Session = Depends(get_db)):
-    """Branded 1200×630 share card for a trip (used as the og:image on the detail
-    page) so shared ride links preview as a polished card. Public — social
-    crawlers fetch it unauthenticated. `lang` matches the page that linked it."""
+def _trip_card_data(trip, lang: str, db: Session) -> dict:
+    """Shared, pre-localised fields for the trip share cards (og + story)."""
     from sqlalchemy import text
-    from app.og_image import render_trip_og
     from app.routers.payments import calc_fees
     from app.dates import make_date_formatter
-
-    lang = "en" if lang == "en" else "is"
-    trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
-    if not trip:
-        raise HTTPException(status_code=404)
 
     _, total, _ = calc_fees(trip.price_per_seat)
     fdate = make_date_formatter(lang)
     date_label = fdate(trip.departure_datetime, "%a %-d. %b" if lang == "is" else "%a %-d %b")
+    date_label = date_label[:1].upper() + date_label[1:]   # "sun" → "Sun"
     time_label = trip.departure_datetime.strftime("%H:%M")
 
     if lang == "is":
@@ -577,10 +569,6 @@ def trip_og_image(trip_id: int, lang: str = "is", db: Session = Depends(get_db))
         seats_label = f"{seats} seat" + ("" if seats == 1 else "s") + " left"
 
     driver = trip.driver
-    driver_name   = (driver.full_name or "").strip() if driver else ""
-    id_verified   = bool(driver and driver.id_verification == models.VerificationStatus.approved)
-    phone_verified = bool(driver and driver.phone_verified)
-
     avatar_png = None
     if driver:
         row = db.execute(
@@ -590,13 +578,49 @@ def trip_og_image(trip_id: int, lang: str = "is", db: Session = Depends(get_db))
         if row:
             avatar_png = bytes(row[0])
 
-    png = render_trip_og(
-        trip.origin, trip.destination, date_label, time_label,
-        price_label, per_label, seats_label,
-        driver_name=driver_name, id_verified=id_verified,
-        phone_verified=phone_verified, instant_book=bool(trip.instant_book),
+    return dict(
+        origin=trip.origin, destination=trip.destination,
+        date_label=date_label, time_label=time_label,
+        price_label=price_label, per_label=per_label, seats_label=seats_label,
+        driver_name=(driver.full_name or "").strip() if driver else "",
+        id_verified=bool(driver and driver.id_verification == models.VerificationStatus.approved),
+        license_verified=bool(driver and driver.license_verification == models.VerificationStatus.approved),
+        phone_verified=bool(driver and driver.phone_verified),
+        instant_book=bool(trip.instant_book),
         avatar_png=avatar_png, lang=lang,
     )
+
+
+@router.get("/{trip_id}/og.png")
+def trip_og_image(trip_id: int, lang: str = "is", db: Session = Depends(get_db)):
+    """Branded 1200×630 share card for a trip (used as the og:image on the detail
+    page) so shared ride links preview as a polished card. Public — social
+    crawlers fetch it unauthenticated. `lang` matches the page that linked it."""
+    from app.og_image import render_trip_og
+
+    lang = "en" if lang == "en" else "is"
+    trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
+    if not trip:
+        raise HTTPException(status_code=404)
+
+    png = render_trip_og(**_trip_card_data(trip, lang, db))
+    return Response(content=png, media_type="image/png",
+                    headers={"Cache-Control": "public, max-age=86400"})
+
+
+@router.get("/{trip_id}/story.png")
+def trip_story_image(trip_id: int, lang: str = "is", db: Session = Depends(get_db)):
+    """Branded 1080×1920 (9:16) card for Instagram / Facebook Stories — the
+    member downloads or shares this to post a ride to their story."""
+    from app.og_image import render_trip_story
+
+    lang = "en" if lang == "en" else "is"
+    trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
+    if not trip:
+        raise HTTPException(status_code=404)
+
+    cta = "Bókaðu sæti á samefare.com" if lang == "is" else "Book a seat at samefare.com"
+    png = render_trip_story(cta=cta, **_trip_card_data(trip, lang, db))
     return Response(content=png, media_type="image/png",
                     headers={"Cache-Control": "public, max-age=86400"})
 

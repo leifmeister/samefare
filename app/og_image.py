@@ -58,8 +58,10 @@ _HOME = {
 
 # Trip-card chrome words, per language (the data itself is passed in pre-localised).
 _TRIP = {
-    "is": {"instant": "Tafarlaus bókun", "id": "Skilríki", "phone": "Sími"},
-    "en": {"instant": "Instant book",    "id": "ID",        "phone": "Phone"},
+    "is": {"instant": "Tafarlaus bókun", "id": "Skilríki", "phone": "Sími",
+           "vdriver": "Staðfestur bílstjóri", "vid": "Staðfest auðkenni"},
+    "en": {"instant": "Instant book",    "id": "ID",        "phone": "Phone",
+           "vdriver": "Verified driver",      "vid": "Verified"},
 }
 
 
@@ -120,18 +122,52 @@ def _check(draw, x, y, s, color):
               fill=color, width=max(3, int(s * 0.16)), joint="curve")
 
 
-def _verified_pill(draw, x, y, label):
+def _verified_pill(draw, x, y, label, scale=1.0):
     """A soft green '✓ label' chip. Returns its total width."""
-    f = _font(26, 700)
+    s = lambda v: int(v * scale)
+    f = _font(s(26), 700)
     tw = draw.textlength(label, font=f)
-    h = 44
-    chk = 26
-    w = 18 + chk + 8 + tw + 18
+    h = s(44)
+    chk = s(26)
+    w = s(18) + chk + s(8) + tw + s(18)
     draw.rounded_rectangle([x, y, x + w, y + h], radius=h // 2,
-                           fill="#E7F6EE", outline="#BfE6CE", width=1)
-    _check(draw, x + 18, y + (h - chk) / 2, chk, _GREEN_OK)
-    draw.text((x + 18 + chk + 8, y + (h - 32) / 2), label, font=f, fill="#15803D")
+                           fill="#E7F6EE", outline="#BfE6CE", width=max(1, s(1)))
+    _check(draw, x + s(18), y + (h - chk) / 2, chk, _GREEN_OK)
+    draw.text((x + s(18) + chk + s(8), y + (h - s(32)) / 2), label, font=f, fill="#15803D")
     return w
+
+
+def _shield(draw, x, y, w, fill, check_color="#FFFFFF"):
+    """A heraldic shield with a check — the app's 'verified' mark. Returns height."""
+    h = w * 1.18
+    draw.polygon([
+        (x, y), (x + w, y),
+        (x + w, y + h * 0.46),
+        (x + w * 0.5, y + h),
+        (x, y + h * 0.46),
+    ], fill=fill)
+    _check(draw, x + w * 0.18, y + h * 0.24, w * 0.64, check_color)
+    return h
+
+
+def _verified_badge(draw, x, y, label, scale=1.0):
+    """Prominent green pill: white shield + label. The driver-trust differentiator.
+    Returns its total width."""
+    s = lambda v: int(v * scale)
+    f = _font(s(28), 800)
+    tw = draw.textlength(label, font=f)
+    sh = s(30)
+    h = s(58)
+    w = s(24) + sh + s(13) + tw + s(28)
+    draw.rounded_rectangle([x, y, x + w, y + h], radius=h // 2, fill=_PRIMARY)
+    _shield(draw, x + s(24), y + (h - sh * 1.18) / 2, sh, "#FFFFFF", _PRIMARY)
+    draw.text((x + s(24) + sh + s(13), y + (h - s(38)) / 2), label, font=f, fill="#FFFFFF")
+    return w
+
+
+def _name_shield(draw, x, cy, size, lang):
+    """Small green shield drawn inline after a verified driver's name."""
+    _shield(draw, x, cy - size * 0.59, size, _GREEN_OK)
 
 
 def _avatar(img, draw, avatar_png, cx, cy, r, initial):
@@ -159,7 +195,8 @@ def render_trip_og(origin: str, destination: str, date_label: str, time_label: s
                    price_label: str, per_label: str, seats_label: str = "",
                    driver_name: str = "", id_verified: bool = False,
                    phone_verified: bool = False, instant_book: bool = False,
-                   avatar_png: bytes | None = None, lang: str = "is") -> bytes:
+                   avatar_png: bytes | None = None, lang: str = "is",
+                   license_verified: bool = False) -> bytes:
     """Return PNG bytes for a trip's share card (1200×630)."""
     L = _TRIP.get(lang, _TRIP["is"])
     img  = Image.new("RGB", (_W, _H), _BG)
@@ -224,19 +261,19 @@ def render_trip_og(origin: str, destination: str, date_label: str, time_label: s
                                fill="#FFFFFF", outline="#D8E6E0", width=1)
         draw.text((sx + 18, my + 4), seats_label, font=sf, fill=_PRIMARY_D)
 
-    # ── Driver row (bottom-left): avatar + name + verified pills ────────────────
-    dy = 524
+    # ── Driver row (bottom-left): avatar + name (+shield) + verified badge ──────
+    dy = 522
     if driver_name:
         _avatar(img, draw, avatar_png, pad + 36, dy, 36, driver_name)
         nx = pad + 36 + 36 + 22
         nf = _font(38, 800)
-        draw.text((nx, dy - 50), driver_name, font=nf, fill=_INK)
-        px = nx
-        py = dy + 4
+        ny = dy - 52
+        draw.text((nx, ny), driver_name, font=nf, fill=_INK)
         if id_verified:
-            px += _verified_pill(draw, px, py, L["id"]) + 12
-        if phone_verified:
-            _verified_pill(draw, px, py, L["phone"])
+            ne = nx + draw.textlength(driver_name, font=nf)
+            _name_shield(draw, ne + 14, ny + nf.getmetrics()[0] * 0.5, 30, lang)
+            # The trust differentiator — a prominent "Verified driver" badge.
+            _verified_badge(draw, nx, dy + 4, L["vdriver"] if license_verified else L["vid"])
 
     # ── Price pill (bottom-right), the eye-catcher ─────────────────────────────
     pf = _font(52, 900)
@@ -255,6 +292,140 @@ def render_trip_og(origin: str, destination: str, date_label: str, time_label: s
     draw.text((x0 + pad_in, ty), price_label, font=pf, fill="#FFFFFF")
     draw.text((x0 + pad_in + pw + 12, ty + (asc2 - sf.getmetrics()[0]) + 6),
               per_label, font=sf, fill="#BFE6DB")
+
+    buf = BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
+# ── 9:16 vertical card for Instagram / Facebook Stories ─────────────────────────
+
+_SW, _SH = 1080, 1920
+
+
+def render_trip_story(origin: str, destination: str, date_label: str, time_label: str,
+                      price_label: str, per_label: str, seats_label: str = "",
+                      driver_name: str = "", id_verified: bool = False,
+                      phone_verified: bool = False, instant_book: bool = False,
+                      avatar_png: bytes | None = None, lang: str = "is",
+                      cta: str = "", license_verified: bool = False) -> bytes:
+    """Return PNG bytes for a 1080×1920 Stories card (Instagram / Facebook)."""
+    L = _TRIP.get(lang, _TRIP["is"])
+    img  = Image.new("RGB", (_SW, _SH), "#FFFFFF")
+    draw = ImageDraw.Draw(img)
+
+    # Sky gradient
+    top, bot = (222, 239, 246), (255, 255, 255)
+    for y in range(_SH):
+        t = y / _SH
+        draw.line([(0, y), (_SW, y)],
+                  fill=tuple(int(top[i] + (bot[i] - top[i]) * t) for i in range(3)))
+    # Sun glow, upper-right
+    glow = Image.new("RGB", (_SW, _SH), (0, 0, 0))
+    ImageDraw.Draw(glow).ellipse([720, 140, 1120, 540], fill="#FCE096")
+    glow = glow.filter(ImageFilter.GaussianBlur(70))
+    img = Image.composite(Image.new("RGB", (_SW, _SH), "#FCE7A0"), img,
+                          glow.convert("L").point(lambda p: int(p * 0.5)))
+    draw = ImageDraw.Draw(img)
+    # Mountains along the bottom
+    draw.polygon([(0, _SH), (0, 1772), (360, 1716), (720, 1778), (1080, 1724),
+                  (1080, _SH)], fill="#C4D8CE")
+    draw.polygon([(0, _SH), (0, 1824), (430, 1782), (820, 1826), (1080, 1788),
+                  (1080, _SH)], fill="#A2C2B4")
+
+    pad = 96
+    # Wordmark, centered near the top
+    wf = _font(76, 900)
+    ws = draw.textlength("Same", font=wf)
+    full = ws + draw.textlength("Fare", font=wf)
+    wx = (_SW - full) / 2
+    draw.text((wx, 150), "Same", font=wf, fill=_PRIMARY_D)
+    draw.text((wx + ws, 150), "Fare", font=wf, fill=_PRIMARY)
+
+    # Instant-book chip, centered under the wordmark
+    if instant_book:
+        f = _font(36, 800)
+        label = L["instant"]
+        tw = draw.textlength(label, font=f)
+        h = 74
+        w = 44 + 28 + 14 + tw + 44
+        x0 = (_SW - w) / 2
+        y0 = 290
+        draw.rounded_rectangle([x0, y0, x0 + w, y0 + h], radius=h // 2, fill=_PRIMARY)
+        lx, ly = x0 + 44, y0 + 16
+        draw.polygon([(lx + 19, ly), (lx, ly + 25), (lx + 12, ly + 25),
+                      (lx + 6, ly + 44), (lx + 27, ly + 16), (lx + 13, ly + 16)],
+                     fill="#FCE096")
+        draw.text((x0 + 44 + 28 + 14, y0 + (h - 48) / 2), label, font=f, fill="#FFFFFF")
+
+    # Route — the hero. Green→amber timeline + big city names.
+    name_x = pad + 74
+    name_w = _SW - name_x - pad
+    rf = _fit_font(draw, max(origin, destination, key=len), name_w, 150, 800, min_size=78)
+    asc = rf.getmetrics()[0]
+    o_top, d_top = 440, 440 + 240
+    o_cy, d_cy = o_top + asc * 0.42, d_top + asc * 0.42
+    dot = 26
+    draw.line([(pad + 26, o_cy), (pad + 26, d_cy)], fill="#9DBDB2", width=9)
+    draw.ellipse([pad + 26 - dot, o_cy - dot, pad + 26 + dot, o_cy + dot], fill=_PRIMARY)
+    draw.ellipse([pad + 26 - dot, d_cy - dot, pad + 26 + dot, d_cy + dot], fill=_AMBER)
+    draw.text((name_x, o_top), origin, font=rf, fill=_INK)
+    draw.text((name_x, d_top), destination, font=rf, fill=_PRIMARY_D)
+
+    # Date · time + seats chip
+    my = d_top + 200
+    mf = _font(54, 700)
+    meta = f"{date_label} · {time_label}"
+    draw.text((pad, my), meta, font=mf, fill=_MUTED)
+    if seats_label:
+        sy = my + 92
+        sf = _font(46, 700)
+        sw = draw.textlength(seats_label, font=sf)
+        draw.rounded_rectangle([pad, sy, pad + sw + 56, sy + 80], radius=40,
+                               fill="#FFFFFF", outline="#D8E6E0", width=2)
+        draw.text((pad + 28, sy + 14), seats_label, font=sf, fill=_PRIMARY_D)
+
+    # Driver block: avatar + name (+shield) + prominent verified badge
+    dy = my + 230
+    if driver_name:
+        r = 66
+        _avatar(img, draw, avatar_png, pad + r, dy + r, r, driver_name)
+        nx = pad + 2 * r + 36
+        nf = _fit_font(draw, driver_name, _SW - nx - pad - 76, 62, 800, min_size=40)
+        ny = dy + 6
+        draw.text((nx, ny), driver_name, font=nf, fill=_INK)
+        if id_verified:
+            ne = nx + draw.textlength(driver_name, font=nf)
+            _name_shield(draw, ne + 18, ny + nf.getmetrics()[0] * 0.5, 42, lang)
+            _verified_badge(draw, nx, dy + 96,
+                            L["vdriver"] if license_verified else L["vid"], scale=1.55)
+
+    # Price pill — big, prominent
+    py = dy + 250
+    pf = _font(88, 900)
+    sf2 = _font(48, 700)
+    pw = draw.textlength(price_label, font=pf)
+    perw = draw.textlength(per_label, font=sf2)
+    inner = pw + 18 + perw
+    padin = 70
+    h = 158
+    x0 = pad
+    x1 = x0 + inner + padin * 2
+    if x1 > _SW - pad:
+        x0 = (_SW - (inner + padin * 2)) / 2
+        x1 = x0 + inner + padin * 2
+    draw.rounded_rectangle([x0, py, x1, py + h], radius=h // 2, fill=_PRIMARY)
+    asc2, desc2 = pf.getmetrics()
+    ty = py + (h - (asc2 + desc2)) / 2
+    draw.text((x0 + padin, ty), price_label, font=pf, fill="#FFFFFF")
+    draw.text((x0 + padin + pw + 18, ty + (asc2 - sf2.getmetrics()[0]) + 10),
+              per_label, font=sf2, fill="#BFE6DB")
+
+    # CTA above the mountains
+    if cta:
+        cf = _font(48, 700)
+        cw = draw.textlength(cta, font=cf)
+        draw.text(((_SW - cw) / 2, 1580), cta, font=cf, fill=_PRIMARY_D)
 
     buf = BytesIO()
     img.save(buf, format="PNG", optimize=True)

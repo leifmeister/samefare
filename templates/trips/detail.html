@@ -43,8 +43,9 @@
         <svg id="check-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
         <span id="share-label">{{ _t('detail_share') }}</span>
       </button>
-      <button type="button" class="share-btn share-btn--ghost" id="save-img-btn" onclick="downloadTripImage(this)">
-        <svg id="save-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z"/><path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z"/></svg>
+      <button type="button" class="share-btn share-btn--ghost" id="save-img-btn"
+              onclick="shareStory(this)" title="{{ _t('detail_story_title') }}">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-2.69l-2.22-2.219a.75.75 0 00-1.06 0l-1.91 1.909.47.47a.75.75 0 11-1.06 1.06L6.53 8.091a.75.75 0 00-1.06 0l-2.97 2.97zM12 7a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd"/></svg>
         <span id="save-label">{{ _t('detail_save_image') }}</span>
       </button>
     </div>
@@ -781,13 +782,8 @@
 }());
 </script>
 <script>
-// URL of this trip's branded share card (matches the page language).
-function tripImageUrl() {
-  var lang = document.documentElement.lang || 'is';
-  return window.location.origin + window.location.pathname.replace(/\/+$/, '') + '/og.png?lang=' + lang;
-}
-
-async function doShare(btn) {
+// "Share" = share the ride LINK (it unfurls into the branded card preview).
+function doShare(btn) {
   const url   = window.location.href;
   const label = document.getElementById('share-label');
   const shareIcon = document.getElementById('share-icon');
@@ -806,22 +802,6 @@ async function doShare(btn) {
       label.textContent = shareText;
     }, 2500);
   }
-
-  // Best path: share the actual card image (Instagram, Stories, WhatsApp, …).
-  try {
-    if (navigator.canShare) {
-      const resp = await fetch(tripImageUrl());
-      if (resp.ok) {
-        const blob = await resp.blob();
-        const file = new File([blob], 'samefare-ferd.png', { type: 'image/png' });
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: document.title, text: url });
-          return;
-        }
-      }
-    }
-  } catch (e) { /* fall through to URL share */ }
-
   if (navigator.share) {
     navigator.share({ title: document.title, url }).catch(() => {});
     return;
@@ -842,26 +822,41 @@ async function doShare(btn) {
   }
 }
 
-// Download the branded card image so it can be posted directly to social media.
-async function downloadTripImage(btn) {
+// URL of this trip's 9:16 Story image (matches the page language).
+function tripStoryUrl() {
+  var lang = document.documentElement.lang || 'is';
+  return window.location.origin + window.location.pathname.replace(/\/+$/, '') + '/story.png?lang=' + lang;
+}
+
+// "Story image": share the 9:16 card straight to a Story (native share sheet,
+// which previews the image), or download it if file-sharing isn't supported.
+async function shareStory(btn) {
   const label = document.getElementById('save-label');
   const original = label ? label.textContent : '';
+  let blob;
   try {
-    const resp = await fetch(tripImageUrl());
-    const blob = await resp.blob();
-    const href = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = href;
-    a.download = 'samefare-' + window.location.pathname.split('/').pop() + '.png';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(href), 1500);
-    if (label) {
-      label.textContent = {{ _t('detail_image_saved') | tojson }};
-      setTimeout(() => { label.textContent = original; }, 2500);
-    }
+    const resp = await fetch(tripStoryUrl());
+    if (!resp.ok) throw 0;
+    blob = await resp.blob();
   } catch (e) {
-    // Last resort: open the image in a new tab so the user can long-press / save.
-    window.open(tripImageUrl(), '_blank');
+    window.open(tripStoryUrl(), '_blank');   // let the user long-press / save
+    return;
+  }
+  const file = new File([blob], 'samefare-story.png', { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: document.title }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  // Fallback: download the image.
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = href;
+  a.download = 'samefare-story-' + window.location.pathname.split('/').pop() + '.png';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(href), 1500);
+  if (label) {
+    label.textContent = {{ _t('detail_image_saved') | tojson }};
+    setTimeout(() => { label.textContent = original; }, 2500);
   }
 }
 </script>
