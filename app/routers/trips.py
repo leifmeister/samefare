@@ -45,7 +45,8 @@ ICELANDIC_CITIES = [
     # price-cap calculator can show a cost breakdown.
     # Excluded: suburban/satellite cities that wouldn't represent a real trip
     # (e.g. Kópavogur, Dalvík, Varmahlíð).
-    "Akureyri", "Blönduós", "Borgarnes", "Egilsstaðir", "Hella",
+    "Akureyri", "Blönduós", "Borgarnes", "Egilsstaðir", "Grundarfjörður",
+    "Gullfoss", "Hella",
     "Höfn", "Húsavík", "Hveragerði", "Ísafjörður", "Keflavík",
     "Kirkjubæjarklaustur", "Landeyjahöfn", "Landmannalaugar", "Mývatn", "Ólafsvík", "Reykjavík",
     "Sauðárkrókur", "Selfoss", "Seyðisfjörður", "Siglufjörður", "Skógarfoss", "Stykkishólmur",

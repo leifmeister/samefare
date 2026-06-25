@@ -585,11 +585,21 @@ _MIGRATIONS = [
          ('Ólafsvík',     'Borgarnes',     122, 105, 'seeded_approximate', TRUE, now()),
          ('Stykkishólmur','Ólafsvík',       20,  20, 'seeded_approximate', TRUE, now()),
          ('Ólafsvík',     'Stykkishólmur',  20,  20, 'seeded_approximate', TRUE, now()),
+         -- Snæfellsnes: Grundarfjörður between Stykkishólmur and Ólafsvík (Route 54)
+         ('Grundarfjörður','Stykkishólmur',  39,  33, 'seeded_approximate', TRUE, now()),
+         ('Stykkishólmur', 'Grundarfjörður', 39,  33, 'seeded_approximate', TRUE, now()),
+         ('Grundarfjörður','Ólafsvík',       24,  22, 'seeded_approximate', TRUE, now()),
+         ('Ólafsvík',      'Grundarfjörður', 24,  22, 'seeded_approximate', TRUE, now()),
          -- Golden Circle: Þingvellir via Route 36 (Þingvallavegur)
          ('Reykjavík',    'Þingvellir',     49,  45, 'seeded_approximate', TRUE, now()),
          ('Þingvellir',   'Reykjavík',      49,  45, 'seeded_approximate', TRUE, now()),
          ('Selfoss',      'Þingvellir',     59,  55, 'seeded_approximate', TRUE, now()),
          ('Þingvellir',   'Selfoss',        59,  55, 'seeded_approximate', TRUE, now()),
+         -- Golden Circle: Gullfoss via Route 35 (Biskupstungnabraut)
+         ('Reykjavík',    'Gullfoss',      116, 100, 'seeded_approximate', TRUE, now()),
+         ('Gullfoss',     'Reykjavík',     116, 100, 'seeded_approximate', TRUE, now()),
+         ('Selfoss',      'Gullfoss',       63,  55, 'seeded_approximate', TRUE, now()),
+         ('Gullfoss',     'Selfoss',        63,  55, 'seeded_approximate', TRUE, now()),
          -- North Iceland: Mývatn ─ Húsavík
          ('Mývatn',       'Húsavík',        60,  55, 'seeded_approximate', TRUE, now()),
          ('Húsavík',      'Mývatn',         60,  55, 'seeded_approximate', TRUE, now())
