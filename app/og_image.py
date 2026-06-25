@@ -6,6 +6,7 @@ polished card on iMessage / WhatsApp / Facebook / X instead of the generic site
 image. Rendered with Pillow + the bundled Nunito variable font; pure in-process,
 no external calls.
 """
+import math
 import os
 from functools import lru_cache
 from io import BytesIO
@@ -58,10 +59,8 @@ _HOME = {
 
 # Trip-card chrome words, per language (the data itself is passed in pre-localised).
 _TRIP = {
-    "is": {"instant": "Tafarlaus bókun", "id": "Skilríki", "phone": "Sími",
-           "vdriver": "Staðfestur bílstjóri", "vid": "Staðfest auðkenni"},
-    "en": {"instant": "Instant book",    "id": "ID",        "phone": "Phone",
-           "vdriver": "Verified driver",      "vid": "Verified"},
+    "is": {"instant": "Tafarlaus bókun", "id": "Skilríki", "lic": "Ökuskírteini", "phone": "Sími"},
+    "en": {"instant": "Instant book",    "id": "ID",        "lic": "Licence",     "phone": "Phone"},
 }
 
 
@@ -122,52 +121,81 @@ def _check(draw, x, y, s, color):
               fill=color, width=max(3, int(s * 0.16)), joint="curve")
 
 
-def _verified_pill(draw, x, y, label, scale=1.0):
-    """A soft green '✓ label' chip. Returns its total width."""
-    s = lambda v: int(v * scale)
-    f = _font(s(26), 700)
+def _bez(p0, p1, p2, p3, n=14):
+    """Sample a cubic Bézier into n points (excluding the start)."""
+    out = []
+    for i in range(1, n + 1):
+        t = i / n; mt = 1 - t
+        out.append((mt**3*p0[0] + 3*mt*mt*t*p1[0] + 3*mt*t*t*p2[0] + t**3*p3[0],
+                    mt**3*p0[1] + 3*mt*mt*t*p1[1] + 3*mt*t*t*p2[1] + t**3*p3[1]))
+    return out
+
+
+def _arc20(x1, y1, x2, y2, r, n=18):
+    """Sample an SVG elliptical arc (rx=ry=r, φ=0, large-arc=0, sweep=0)."""
+    dx, dy = (x1 - x2) / 2, (y1 - y2) / 2
+    rx = ry = r
+    lam = dx*dx/(rx*rx) + dy*dy/(ry*ry)
+    if lam > 1:
+        sc = math.sqrt(lam); rx *= sc; ry *= sc
+    num = rx*rx*ry*ry - rx*rx*dy*dy - ry*ry*dx*dx
+    den = rx*rx*dy*dy + ry*ry*dx*dx
+    coef = -math.sqrt(max(0.0, num / den))      # large-arc == sweep → negative
+    cxp, cyp = coef*rx*dy/ry, -coef*ry*dx/rx
+    cx, cy = cxp + (x1 + x2) / 2, cyp + (y1 + y2) / 2
+
+    def ang(ux, uy, vx, vy):
+        d = (ux*vx + uy*vy) / (math.hypot(ux, uy) * math.hypot(vx, vy))
+        a = math.acos(max(-1.0, min(1.0, d)))
+        return -a if ux*vy - uy*vx < 0 else a
+
+    t1 = ang(1, 0, (dx - cxp) / rx, (dy - cyp) / ry)
+    dt = ang((dx - cxp) / rx, (dy - cyp) / ry, (-dx - cxp) / rx, (-dy - cyp) / ry)
+    if dt > 0:                                   # sweep == 0 → negative sweep
+        dt -= 2 * math.pi
+    return [(cx + rx*math.cos(t1 + dt*i/n), cy + ry*math.sin(t1 + dt*i/n))
+            for i in range(1, n + 1)]
+
+
+@lru_cache(maxsize=1)
+def _shield_poly():
+    """The exact Heroicons solid `shield-check` outline, sampled into a polygon
+    and normalised to a (0,0)-anchored box ~16 wide × 16.37 tall."""
+    p = [(2.166, 4.999)]
+    p += _arc20(2.166, 4.999, 10, 1.944, 11.954)
+    p += _arc20(10, 1.944, 17.834, 5, 11.954)
+    p += _bez((17.834, 5), (17.944, 5.65), (18.0, 6.32), (18.0, 7.001))
+    p += _bez((18.0, 7.001), (18.0, 12.226), (14.66, 16.671), (10.0, 18.318))
+    p += _bez((10.0, 18.318), (5.34, 16.67), (2.0, 12.225), (2.0, 7.0))
+    p += _bez((2.0, 7.0), (2.0, 6.318), (2.057, 5.65), (2.166, 4.999))
+    return tuple((px - 2.0, py - 1.944) for px, py in p)
+
+
+def _shield(draw, x, y, w, fill, check_color=None):
+    """Draw the Heroicons shield-check, width `w`, top-left at (x, y). A check is
+    punched in `check_color` (use the background colour for the 'hole' look)."""
+    sc = w / 16.0
+    draw.polygon([(x + px*sc, y + py*sc) for px, py in _shield_poly()], fill=fill)
+    if check_color:
+        _check(draw, x + 3.9*sc, y + 5.3*sc, 8.2*sc, check_color)
+    return 16.374 * sc
+
+
+def _site_pill(draw, x, y, label, scale=1.0):
+    """Verified chip matching the site's `.trust-badge`: #D1FAE5 pill, #065F46
+    text and a small green shield-check icon. Returns its total width."""
+    s = lambda v: v * scale
+    f = _font(int(s(27)), 700)
     tw = draw.textlength(label, font=f)
-    h = s(44)
-    chk = s(26)
-    w = s(18) + chk + s(8) + tw + s(18)
-    draw.rounded_rectangle([x, y, x + w, y + h], radius=h // 2,
-                           fill="#E7F6EE", outline="#BfE6CE", width=max(1, s(1)))
-    _check(draw, x + s(18), y + (h - chk) / 2, chk, _GREEN_OK)
-    draw.text((x + s(18) + chk + s(8), y + (h - s(32)) / 2), label, font=f, fill="#15803D")
+    sh = s(28)
+    pl, gap, pr = s(20), s(11), s(22)
+    h = s(50)
+    w = pl + sh + gap + tw + pr
+    draw.rounded_rectangle([x, y, x + w, y + h], radius=h / 2, fill="#D1FAE5")
+    _shield(draw, x + pl, y + (h - sh * 1.02) / 2, sh, _PRIMARY, "#D1FAE5")
+    asc = f.getmetrics()[0]
+    draw.text((x + pl + sh + gap, y + (h - asc) / 2 - s(2)), label, font=f, fill="#065F46")
     return w
-
-
-def _shield(draw, x, y, w, fill, check_color="#FFFFFF"):
-    """A heraldic shield with a check — the app's 'verified' mark. Returns height."""
-    h = w * 1.18
-    draw.polygon([
-        (x, y), (x + w, y),
-        (x + w, y + h * 0.46),
-        (x + w * 0.5, y + h),
-        (x, y + h * 0.46),
-    ], fill=fill)
-    _check(draw, x + w * 0.18, y + h * 0.24, w * 0.64, check_color)
-    return h
-
-
-def _verified_badge(draw, x, y, label, scale=1.0):
-    """Prominent green pill: white shield + label. The driver-trust differentiator.
-    Returns its total width."""
-    s = lambda v: int(v * scale)
-    f = _font(s(28), 800)
-    tw = draw.textlength(label, font=f)
-    sh = s(30)
-    h = s(58)
-    w = s(24) + sh + s(13) + tw + s(28)
-    draw.rounded_rectangle([x, y, x + w, y + h], radius=h // 2, fill=_PRIMARY)
-    _shield(draw, x + s(24), y + (h - sh * 1.18) / 2, sh, "#FFFFFF", _PRIMARY)
-    draw.text((x + s(24) + sh + s(13), y + (h - s(38)) / 2), label, font=f, fill="#FFFFFF")
-    return w
-
-
-def _name_shield(draw, x, cy, size, lang):
-    """Small green shield drawn inline after a verified driver's name."""
-    _shield(draw, x, cy - size * 0.59, size, _GREEN_OK)
 
 
 def _avatar(img, draw, avatar_png, cx, cy, r, initial):
@@ -261,19 +289,25 @@ def render_trip_og(origin: str, destination: str, date_label: str, time_label: s
                                fill="#FFFFFF", outline="#D8E6E0", width=1)
         draw.text((sx + 18, my + 4), seats_label, font=sf, fill=_PRIMARY_D)
 
-    # ── Driver row (bottom-left): avatar + name (+shield) + verified badge ──────
-    dy = 522
+    # ── Driver row (bottom-left): avatar + name (+shield) + verified pills ──────
+    dy = 520
     if driver_name:
         _avatar(img, draw, avatar_png, pad + 36, dy, 36, driver_name)
         nx = pad + 36 + 36 + 22
         nf = _font(38, 800)
         ny = dy - 52
         draw.text((nx, ny), driver_name, font=nf, fill=_INK)
+        asc = nf.getmetrics()[0]
         if id_verified:
             ne = nx + draw.textlength(driver_name, font=nf)
-            _name_shield(draw, ne + 14, ny + nf.getmetrics()[0] * 0.5, 30, lang)
-            # The trust differentiator — a prominent "Verified driver" badge.
-            _verified_badge(draw, nx, dy + 4, L["vdriver"] if license_verified else L["vid"])
+            shw = 33
+            _shield(draw, ne + 16, ny + (asc - 16.374 / 16 * shw) / 2, shw, _PRIMARY, "#FFFFFF")
+        labels = [lab for ok, lab in ((id_verified, L["id"]),
+                                      (license_verified, L["lic"]),
+                                      (phone_verified, L["phone"])) if ok]
+        px = nx
+        for lab in labels[:2]:
+            px += _site_pill(draw, px, dy + 6, lab) + 12
 
     # ── Price pill (bottom-right), the eye-catcher ─────────────────────────────
     pf = _font(52, 900)
@@ -385,20 +419,26 @@ def render_trip_story(origin: str, destination: str, date_label: str, time_label
                                fill="#FFFFFF", outline="#D8E6E0", width=2)
         draw.text((pad + 28, sy + 14), seats_label, font=sf, fill=_PRIMARY_D)
 
-    # Driver block: avatar + name (+shield) + prominent verified badge
+    # Driver block: avatar + name (+shield) + verified pills
     dy = my + 230
     if driver_name:
         r = 66
         _avatar(img, draw, avatar_png, pad + r, dy + r, r, driver_name)
         nx = pad + 2 * r + 36
-        nf = _fit_font(draw, driver_name, _SW - nx - pad - 76, 62, 800, min_size=40)
+        nf = _fit_font(draw, driver_name, _SW - nx - pad - 80, 62, 800, min_size=40)
         ny = dy + 6
         draw.text((nx, ny), driver_name, font=nf, fill=_INK)
+        asc = nf.getmetrics()[0]
         if id_verified:
             ne = nx + draw.textlength(driver_name, font=nf)
-            _name_shield(draw, ne + 18, ny + nf.getmetrics()[0] * 0.5, 42, lang)
-            _verified_badge(draw, nx, dy + 96,
-                            L["vdriver"] if license_verified else L["vid"], scale=1.55)
+            shw = 50
+            _shield(draw, ne + 20, ny + (asc - 16.374 / 16 * shw) / 2, shw, _PRIMARY, "#FFFFFF")
+        labels = [lab for ok, lab in ((id_verified, L["id"]),
+                                      (license_verified, L["lic"]),
+                                      (phone_verified, L["phone"])) if ok]
+        px = nx
+        for lab in labels[:2]:
+            px += _site_pill(draw, px, dy + 100, lab, scale=1.5) + 16
 
     # Price pill — big, prominent
     py = dy + 250
