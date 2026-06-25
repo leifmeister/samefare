@@ -387,6 +387,8 @@ class Trip(Base):
     reminder_sent      = Column(Boolean, nullable=False, default=False)  # day-before SMS reminder fired
     status             = Column(Enum(TripStatus), nullable=False, default=TripStatus.active)
     created_at         = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at         = Column(DateTime, nullable=False, default=datetime.utcnow,
+                                onupdate=datetime.utcnow)
 
     # payment_method removed from Trip — passengers choose at booking time.
 

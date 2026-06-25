@@ -187,6 +187,20 @@ def migrate() -> None:
     steps.append(("users.electronic_id_fingers",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS electronic_id_fingers SMALLINT"))
 
+    # ── 13. trips.updated_at — last-modified timestamp ──────────────────────────
+    # Needed by the daily counter-reset task, which detects trips *cancelled*
+    # within the last 90 days (a recent status change, not a recent creation).
+    # Add nullable first, backfill existing rows from created_at so historical
+    # trips are not treated as "just modified", then lock down NOT NULL + default.
+    steps.append(("trips.updated_at add",
+        "ALTER TABLE trips ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP"))
+    steps.append(("trips.updated_at backfill",
+        "UPDATE trips SET updated_at = created_at WHERE updated_at IS NULL"))
+    steps.append(("trips.updated_at default",
+        "ALTER TABLE trips ALTER COLUMN updated_at SET DEFAULT now()"))
+    steps.append(("trips.updated_at not null",
+        "ALTER TABLE trips ALTER COLUMN updated_at SET NOT NULL"))
+
     # ── Run ────────────────────────────────────────────────────────────────────
     for label, sql in steps:
         cur.execute(sql)
