@@ -8,7 +8,7 @@
 {% block og_type %}event{% endblock %}
 {% block og_image %}
 {# Per-trip branded share card (route + date + price), generated at /trips/<id>/og.png #}
-{% set _og = request.url.scheme ~ "://" ~ request.url.netloc ~ "/trips/" ~ trip.id ~ "/og.png" %}
+{% set _og = request.url.scheme ~ "://" ~ request.url.netloc ~ "/trips/" ~ trip.id ~ "/og.png?lang=" ~ lang %}
 <meta property="og:image" content="{{ _og }}" />
 <meta property="og:image:width"  content="1200" />
 <meta property="og:image:height" content="630" />
@@ -37,11 +37,17 @@
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
       {{ _t('detail_back') }}
     </a>
-    <button type="button" class="share-btn" id="share-btn" onclick="doShare(this)">
-      <svg id="share-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path d="M13 4.5a2.5 2.5 0 11.702 1.737L6.97 9.604a2.518 2.518 0 010 .792l6.733 3.367a2.5 2.5 0 11-.671 1.341l-6.733-3.367a2.5 2.5 0 110-3.475l6.733-3.366A2.52 2.52 0 0113 4.5z"/></svg>
-      <svg id="check-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
-      <span id="share-label">{{ _t('detail_share') }}</span>
-    </button>
+    <div class="share-actions">
+      <button type="button" class="share-btn" id="share-btn" onclick="doShare(this)">
+        <svg id="share-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path d="M13 4.5a2.5 2.5 0 11.702 1.737L6.97 9.604a2.518 2.518 0 010 .792l6.733 3.367a2.5 2.5 0 11-.671 1.341l-6.733-3.367a2.5 2.5 0 110-3.475l6.733-3.366A2.52 2.52 0 0113 4.5z"/></svg>
+        <svg id="check-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
+        <span id="share-label">{{ _t('detail_share') }}</span>
+      </button>
+      <button type="button" class="share-btn share-btn--ghost" id="save-img-btn" onclick="downloadTripImage(this)">
+        <svg id="save-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z"/><path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z"/></svg>
+        <span id="save-label">{{ _t('detail_save_image') }}</span>
+      </button>
+    </div>
   </div>
 
   {% if request.query_params.get('no_show') %}
@@ -775,7 +781,13 @@
 }());
 </script>
 <script>
-function doShare(btn) {
+// URL of this trip's branded share card (matches the page language).
+function tripImageUrl() {
+  var lang = document.documentElement.lang || 'is';
+  return window.location.origin + window.location.pathname.replace(/\/+$/, '') + '/og.png?lang=' + lang;
+}
+
+async function doShare(btn) {
   const url   = window.location.href;
   const label = document.getElementById('share-label');
   const shareIcon = document.getElementById('share-icon');
@@ -794,6 +806,22 @@ function doShare(btn) {
       label.textContent = shareText;
     }, 2500);
   }
+
+  // Best path: share the actual card image (Instagram, Stories, WhatsApp, …).
+  try {
+    if (navigator.canShare) {
+      const resp = await fetch(tripImageUrl());
+      if (resp.ok) {
+        const blob = await resp.blob();
+        const file = new File([blob], 'samefare-ferd.png', { type: 'image/png' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: document.title, text: url });
+          return;
+        }
+      }
+    }
+  } catch (e) { /* fall through to URL share */ }
+
   if (navigator.share) {
     navigator.share({ title: document.title, url }).catch(() => {});
     return;
@@ -811,6 +839,29 @@ function doShare(btn) {
     el.focus(); el.select();
     try { document.execCommand('copy'); markCopied(); } catch(e) {}
     document.body.removeChild(el);
+  }
+}
+
+// Download the branded card image so it can be posted directly to social media.
+async function downloadTripImage(btn) {
+  const label = document.getElementById('save-label');
+  const original = label ? label.textContent : '';
+  try {
+    const resp = await fetch(tripImageUrl());
+    const blob = await resp.blob();
+    const href = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = href;
+    a.download = 'samefare-' + window.location.pathname.split('/').pop() + '.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 1500);
+    if (label) {
+      label.textContent = {{ _t('detail_image_saved') | tojson }};
+      setTimeout(() => { label.textContent = original; }, 2500);
+    }
+  } catch (e) {
+    // Last resort: open the image in a new tab so the user can long-press / save.
+    window.open(tripImageUrl(), '_blank');
   }
 }
 </script>

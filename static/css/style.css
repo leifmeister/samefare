@@ -1388,6 +1388,16 @@ button, input, select, textarea { font: inherit; }
   border-color: #86efac;
   background: #f0fdf4;
 }
+.share-actions {
+  display: inline-flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+/* Secondary "Save image" button — same pill, lighter weight than Share. */
+.share-btn--ghost {
+  color: var(--c-text-muted);
+  background: transparent;
+}
 
 .return-trip-banner {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
