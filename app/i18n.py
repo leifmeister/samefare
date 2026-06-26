@@ -11,6 +11,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "nav_home": "Home",
         "nav_find_ride": "Find a ride",
         "nav_offer_ride": "Offer a ride",
+        "trip_payout_reminder": "To get paid for your rides, add your kennitala and Icelandic IBAN under your profile → Payout details. You can post this ride now and add them any time before it's completed.",
         # ── Driver landing page (/offer-ride) ────────────────────────────────
         "offer_hero_title": "You're already making the drive",
         "offer_hero_sub": "List your trip on SameFare and let passengers share the fuel cost with you. You set the price, the seats, and who rides.",
@@ -589,6 +590,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "verify_fully_done_driver": "Identity and driver's licence both approved.",
         "verify_fully_done_passenger": "Your identity has been verified.",
         "verify_in_progress_title": "Verification in progress",
+        "verify_meanwhile_title": "Want to get verified faster?",
+        "verify_meanwhile_sub": "Manual review of your digital licence can take a while. You can also verify instantly with a physical document in the meantime — whichever clears first.",
         "verify_id_doc_being_checked": "Your identity document is being checked.",
         "verify_lic_covers_both": "Your driver's licence covers both identity and driving verification.",
         "verify_takes_minutes": "This usually takes just a few minutes.",
@@ -907,6 +910,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "nav_home": "Heim",
         "nav_find_ride": "Finna ferð",
         "nav_offer_ride": "Bjóða Fare",
+        "trip_payout_reminder": "Til að fá greitt fyrir ferðirnar þarftu að bæta við kennitölu og íslenskum IBAN undir prófíl → Greiðsluupplýsingar. Þú getur birt þessa ferð núna og bætt þeim við hvenær sem er áður en henni lýkur.",
         # ── Driver landing page (/offer-ride) ────────────────────────────────
         "offer_hero_title": "Þú ert hvort sem er að keyra",
         "offer_hero_sub": "Skráðu ferðina þína á SameFare og leyfðu farþegum að deila bensínkostnaðinum með þér. Þú ræður verði, sætum og hverjir fá far.",
@@ -1485,6 +1489,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "verify_fully_done_driver": "Auðkenni og ökuskírteini báðar samþykkt.",
         "verify_fully_done_passenger": "Auðkenni þitt hefur verið staðfest.",
         "verify_in_progress_title": "Staðfesting í gangi",
+        "verify_meanwhile_title": "Viltu klárast hraðar?",
+        "verify_meanwhile_sub": "Handvirk yfirferð á rafræna ökuskírteininu getur tekið smá tíma. Þú getur líka staðfest strax með harðspjaldi á meðan — það sem klárast fyrst gildir.",
         "verify_id_doc_being_checked": "Auðkennisskjalið þitt er til skoðunar.",
         "verify_lic_covers_both": "Ökuskírteini þitt staðfestir bæði auðkenni og aksturshæfni.",
         "verify_takes_minutes": "Þetta tekur venjulega aðeins nokkrar mínútur.",

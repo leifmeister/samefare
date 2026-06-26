@@ -723,21 +723,11 @@ def new_trip_page(
     if pricing["estimate"] and not vals.get("price_per_seat"):
         vals["price_per_seat"] = pricing["estimate"].price_per_seat_cap
 
-    # Warn about missing payout details upfront so the driver doesn't fill
-    # out the whole form only to hit an error on submit.
+    # Non-blocking reminder: a driver can post without payout details, but must
+    # add them to actually get paid for the ride.
     payout_warning = None
-    if not settings.beta_mode:
-        missing = []
-        if not current_user.kennitala:
-            missing.append("kennitala")
-        if not current_user.blikk_account_iban:
-            missing.append("Icelandic IBAN")
-        if missing:
-            fields = " and ".join(missing)
-            payout_warning = (
-                f"You need to add your {fields} before you can post a ride. "
-                "Go to your profile → Payout details."
-            )
+    if not settings.beta_mode and (not current_user.kennitala or not current_user.blikk_account_iban):
+        payout_warning = ctx["_t"]("trip_payout_reminder")
 
     return templates.TemplateResponse("trips/create.html", {
         **ctx,
@@ -891,22 +881,10 @@ def create_trip(
                 "If you think this route should be supported, let us know."
             )}, status_code=400)
 
-    # Require payout details before the driver can post — without these
-    # we cannot send them money after the trip completes.
-    # Skipped in beta mode so testing is unaffected.
-    if not settings.beta_mode:
-        if not current_user.kennitala:
-            return templates.TemplateResponse("trips/create.html",
-                {**err_ctx, "error": (
-                    "You need to add your kennitala before offering rides. "
-                    "Go to your profile → Payout details."
-                )}, status_code=400)
-        if not current_user.blikk_account_iban:
-            return templates.TemplateResponse("trips/create.html",
-                {**err_ctx, "error": (
-                    "You need to add your Icelandic IBAN before offering rides. "
-                    "Go to your profile → Payout details."
-                )}, status_code=400)
+    # Payout details are NOT required to post — drivers can list a ride first
+    # and add their kennitala / IBAN any time before the trip completes. The
+    # create form shows a non-blocking reminder (see payout_warning) so they
+    # know they'll need it to actually get paid.
 
     price_snapshot_json = estimate.to_json()
     if price_per_seat > estimate.price_per_seat_cap:
