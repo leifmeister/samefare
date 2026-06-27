@@ -341,6 +341,28 @@
 </section>
 
 <!-- ═══════════════════════════════════════
+     UPCOMING TRIPS
+═══════════════════════════════════════ -->
+{% if upcoming_trips %}
+<section class="section">
+  <div class="container">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">{{ _t('upcoming_rides_title') }}</h2>
+        <p class="section-sub">{{ _t('upcoming_rides_sub') }}</p>
+      </div>
+      <a href="/trips" class="btn btn-outline">{{ _t('upcoming_rides_see_all') }}</a>
+    </div>
+    <div class="trips-grid">
+      {% for trip in upcoming_trips %}
+        {% include "partials/trip_card.html" %}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ═══════════════════════════════════════
      POPULAR ROUTES
 ═══════════════════════════════════════ -->
 <section class="section section--light">
@@ -417,28 +439,6 @@
     </div>
   </div>
 </section>
-
-<!-- ═══════════════════════════════════════
-     UPCOMING TRIPS
-═══════════════════════════════════════ -->
-{% if upcoming_trips %}
-<section class="section">
-  <div class="container">
-    <div class="section-header">
-      <div>
-        <h2 class="section-title">{{ _t('upcoming_rides_title') }}</h2>
-        <p class="section-sub">{{ _t('upcoming_rides_sub') }}</p>
-      </div>
-      <a href="/trips" class="btn btn-outline">{{ _t('upcoming_rides_see_all') }}</a>
-    </div>
-    <div class="trips-grid">
-      {% for trip in upcoming_trips %}
-        {% include "partials/trip_card.html" %}
-      {% endfor %}
-    </div>
-  </div>
-</section>
-{% endif %}
 
 <!-- ═══════════════════════════════════════
      COVERAGE MAP — all supported destinations
