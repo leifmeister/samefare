@@ -183,18 +183,17 @@ def _shield(draw, x, y, w, fill, check_color=None):
 
 def _site_pill(draw, x, y, label, scale=1.0):
     """Verified chip matching the site's `.trust-badge`: #D1FAE5 pill, #065F46
-    text and a small green shield-check icon. Returns its total width."""
+    text. No icon — the shield by the driver name already signals verified.
+    Returns its total width."""
     s = lambda v: v * scale
     f = _font(int(s(27)), 700)
     tw = draw.textlength(label, font=f)
-    sh = s(28)
-    pl, gap, pr = s(20), s(11), s(22)
+    px = s(24)
     h = s(50)
-    w = pl + sh + gap + tw + pr
+    w = px + tw + px
     draw.rounded_rectangle([x, y, x + w, y + h], radius=h / 2, fill="#D1FAE5")
-    _shield(draw, x + pl, y + (h - sh * 1.02) / 2, sh, _PRIMARY, "#D1FAE5")
     asc = f.getmetrics()[0]
-    draw.text((x + pl + sh + gap, y + (h - asc) / 2 - s(2)), label, font=f, fill="#065F46")
+    draw.text((x + px, y + (h - asc) / 2 - s(2)), label, font=f, fill="#065F46")
     return w
 
 
