@@ -100,6 +100,9 @@ def verify_page(
         "success":       None,
         "didit_enabled": bool(s.didit_api_key),
         "beta_mode":     s.beta_mode,
+        # Pending because a digital (Ísland.is) licence is awaiting manual review —
+        # they can still verify instantly with a physical document in the meantime.
+        "electronic_pending": current_user.electronic_id_fingers is not None,
     })
 
 
@@ -134,19 +137,25 @@ def start_didit_verification(
         return _error("Verification service is not configured. Please contact support.")
 
     is_licence = doc_type == "license"
+    # A digital-licence submission awaiting manual review leaves the status
+    # "pending" but with no Didit session — the member may still verify instantly
+    # via Didit in the meantime, so don't treat that as a Didit flow in progress.
+    electronic_pending = current_user.electronic_id_fingers is not None
 
     if is_licence:
         if not s.didit_workflow_id_licence:
             return _error("Licence verification workflow is not configured.")
-        # Already in a pending/approved state — no need to restart
-        if current_user.license_verification == models.VerificationStatus.pending:
+        # Don't restart a Didit licence flow that's already in review.
+        if (current_user.license_verification == models.VerificationStatus.pending
+                and current_user.didit_licence_session_id and not electronic_pending):
             return RedirectResponse("/verify", status_code=303)
         workflow_id = s.didit_workflow_id_licence
         vtype       = "licence"
     else:
         if not s.didit_workflow_id_identity:
             return _error("Identity verification workflow is not configured.")
-        if current_user.id_verification == models.VerificationStatus.pending:
+        if (current_user.id_verification == models.VerificationStatus.pending
+                and current_user.didit_identity_session_id and not electronic_pending):
             return RedirectResponse("/verify", status_code=303)
         workflow_id = s.didit_workflow_id_identity
         vtype       = "identity"

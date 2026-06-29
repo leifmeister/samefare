@@ -849,6 +849,15 @@ async def didit_webhook(request: Request):
                         log.warning("Didit: failed to parse licence expiry for user %s: %s", user_id, exc)
                     log.info("Didit: user %s licence APPROVED (document_type=%r)",
                              user_id, doc.get("document_type"))
+                    # If a digital-licence review was still pending, it's now moot —
+                    # purge the stored selfie/screenshot and clear the challenge.
+                    if user.electronic_id_fingers is not None:
+                        from sqlalchemy import text as _text
+                        db.execute(_text(
+                            "DELETE FROM verification_docs WHERE user_id = :u "
+                            "AND kind IN ('electronic_licence', 'electronic_selfie')"
+                        ), {"u": user.id})
+                        user.electronic_id_fingers = None
                 else:
                     # A non-licence document verified via the licence flow → identity
                     # only. Leave driving unverified so they can add a licence.

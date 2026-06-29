@@ -140,6 +140,35 @@
       </div>
     </div>
 
+    {# A digital-licence review can take a while — let them verify instantly with
+       a physical document in the meantime (whichever clears first wins). #}
+    {% if electronic_pending %}
+    <div class="verify-card" style="margin-top:1.25rem;">
+      <div class="verify-card__header" style="margin-bottom:.85rem;">
+        <div>
+          <h2 class="verify-card__title">{{ _t('verify_meanwhile_title') }}</h2>
+          <p class="verify-card__sub">{{ _t('verify_meanwhile_sub') }}</p>
+        </div>
+      </div>
+      {% if didit_enabled %}
+      <form method="post" action="/verify/didit/start" class="verify-card__form">
+        <input type="hidden" name="doc_type" value="license">
+        <button type="submit" class="btn btn-primary">{{ _t('verify_physical_btn') }}</button>
+      </form>
+      {% else %}
+      <form method="post" action="/verify/identity" enctype="multipart/form-data" class="verify-card__form">
+        <input type="hidden" name="doc_type" value="license">
+        <div class="form-group">
+          <label class="label">{{ _t('verify_upload_label') }} <span class="required">*</span></label>
+          <input type="file" name="document" class="input input--file"
+                 accept=".jpg,.jpeg,.png,.pdf,.heic" required>
+        </div>
+        <button type="submit" class="btn btn-primary">{{ _t('verify_physical_btn') }}</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+
     {# ── ③ Identity not yet submitted / rejected ──────────────────────────── #}
     {% elif id_bad %}
     <div class="verify-card {% if current_user.id_verification == 'rejected' %}verify-card--rejected{% endif %}">
