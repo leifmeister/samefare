@@ -1164,13 +1164,15 @@ def home(request: Request):
             # Pre-load the stored road polylines for these pairs in one query.
             origins = {o for (o, d, _n) in route_rows}
             dests   = {d for (o, d, _n) in route_rows}
+            # No is_active filter: OSRM geometry cached for trip pairs lives in
+            # is_active=False rows (same rows the trip detail map reads), so the
+            # two maps draw identical lines.
             polys = {
                 (r[0], r[1]): r[2]
                 for r in db.query(models.Route.origin, models.Route.destination,
                                   models.Route.polyline)
                           .filter(models.Route.origin.in_(origins),
                                   models.Route.destination.in_(dests),
-                                  models.Route.is_active == True,  # noqa: E712
                                   models.Route.polyline.isnot(None))
                           .all()
             }
