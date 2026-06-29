@@ -1176,6 +1176,16 @@ def home(request: Request):
                                   models.Route.polyline.isnot(None))
                           .all()
             }
+            def _downsample(coords, max_pts=110):
+                # OSRM lines have thousands of points; at the all-Iceland zoom a
+                # ~110-point version is visually identical and keeps the page light.
+                if not coords or len(coords) <= max_pts:
+                    return coords
+                step = len(coords) / (max_pts - 1)
+                out = [coords[int(i * step)] for i in range(max_pts - 1)]
+                out.append(coords[-1])
+                return out
+
             for (o, d, n) in route_rows:
                 coords = None
                 raw = polys.get((o, d))
@@ -1188,7 +1198,7 @@ def home(request: Request):
                 # polyline — keeps the home page fast (no on-demand OSRM here).
                 if not coords:
                     coords = ring_road_polyline(o, d)
-                trip_routes.append({"o": o, "d": d, "n": n, "coords": coords})
+                trip_routes.append({"o": o, "d": d, "n": n, "coords": _downsample(coords)})
     finally:
         db.close()
 
