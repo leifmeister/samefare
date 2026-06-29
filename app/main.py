@@ -1144,6 +1144,49 @@ def home(request: Request):
                            .count(),
             "drivers":    db.query(models.User).count(),
         }
+
+        # Distinct origin→destination of bookable rides, with road geometry, for
+        # live route lines on the coverage map.
+        from sqlalchemy import func as _func
+        route_rows = (
+            db.query(models.Trip.origin, models.Trip.destination,
+                     _func.count().label("n"))
+            .filter(
+                models.Trip.status == models.TripStatus.active,
+                models.Trip.departure_datetime >= datetime.utcnow(),
+                models.Trip.seats_available > 0,
+            )
+            .group_by(models.Trip.origin, models.Trip.destination)
+            .all()
+        )
+        trip_routes = []
+        if route_rows:
+            # Pre-load the stored road polylines for these pairs in one query.
+            origins = {o for (o, d, _n) in route_rows}
+            dests   = {d for (o, d, _n) in route_rows}
+            polys = {
+                (r[0], r[1]): r[2]
+                for r in db.query(models.Route.origin, models.Route.destination,
+                                  models.Route.polyline)
+                          .filter(models.Route.origin.in_(origins),
+                                  models.Route.destination.in_(dests),
+                                  models.Route.is_active == True,  # noqa: E712
+                                  models.Route.polyline.isnot(None))
+                          .all()
+            }
+            for (o, d, n) in route_rows:
+                coords = None
+                raw = polys.get((o, d))
+                if raw:
+                    try:
+                        coords = json.loads(raw)
+                    except (json.JSONDecodeError, TypeError):
+                        coords = None
+                # Road-following fallback (server-side, no network) when no stored
+                # polyline — keeps the home page fast (no on-demand OSRM here).
+                if not coords:
+                    coords = ring_road_polyline(o, d)
+                trip_routes.append({"o": o, "d": d, "n": n, "coords": coords})
     finally:
         db.close()
 
@@ -1157,6 +1200,7 @@ def home(request: Request):
         "upcoming_trips":    upcoming_trips,
         "stats":            stats,
         "supported_cities": supported_cities,
+        "trip_routes":      trip_routes,
     })
 
 

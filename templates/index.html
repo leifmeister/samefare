@@ -545,6 +545,7 @@
 <script>
 (function () {
   var CITIES = {{ supported_cities | default({}) | tojson }};
+  var ROUTES = {{ trip_routes | default([]) | tojson }};
   var el = document.getElementById('iceland-map');
   if (!window.L || !el || !CITIES) return;
 
@@ -565,6 +566,24 @@
     maxZoom: 11, minZoom: 5,
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   }).addTo(map);
+
+  // Live ride routes — drawn along the actual roads (stored geometry), under the
+  // city pins so the markers stay on top. Straight line only as a last resort.
+  ROUTES.forEach(function (r) {
+    var coords = (r.coords && r.coords.length >= 2) ? r.coords : null;
+    if (!coords) {
+      var a = CITIES[r.o], b = CITIES[r.d];
+      if (!a || !b) return;
+      coords = [a, b];
+    }
+    var label = r.o + ' → ' + r.d + (r.n > 1 ? ' (' + r.n + ')' : '');
+    L.polyline(coords, { color: '#006C5B', weight: 3, opacity: 0.55, lineCap: 'round', lineJoin: 'round' })
+      .bindTooltip(label, { sticky: true })
+      .bindPopup('<strong>' + r.o + ' → ' + r.d + '</strong><br><a href="/trips?origin=' +
+                 encodeURIComponent(r.o) + '&destination=' + encodeURIComponent(r.d) +
+                 '">{{ _t('coverage_see_rides') }} →</a>')
+      .addTo(map);
+  });
 
   var pinIcon = L.divIcon({
     className: '',
