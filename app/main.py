@@ -210,6 +210,25 @@ _MIGRATIONS = [
     "CREATE INDEX IF NOT EXISTS ix_messages_booking_id ON messages(booking_id)",
     "CREATE INDEX IF NOT EXISTS ix_messages_sender_id  ON messages(sender_id)",
 
+    # ── inquiries table (pre-booking question threads) ─────────────────────────
+    # A passenger can message a driver about a trip BEFORE booking. Holds no seat
+    # and never touches the booking state machine. One thread per (trip, passenger).
+    """CREATE TABLE IF NOT EXISTS inquiries (
+        id           SERIAL  PRIMARY KEY,
+        trip_id      INTEGER NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+        passenger_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at   TIMESTAMP NOT NULL DEFAULT now(),
+        updated_at   TIMESTAMP NOT NULL DEFAULT now(),
+        CONSTRAINT uq_inquiry_trip_passenger UNIQUE (trip_id, passenger_id)
+    )""",
+    "CREATE INDEX IF NOT EXISTS ix_inquiries_trip_id      ON inquiries(trip_id)",
+    "CREATE INDEX IF NOT EXISTS ix_inquiries_passenger_id ON inquiries(passenger_id)",
+    # Let a message belong to an inquiry instead of a booking. booking_id becomes
+    # nullable; existing booking queries filter on booking_id so they ignore these.
+    "ALTER TABLE messages ADD COLUMN IF NOT EXISTS inquiry_id INTEGER REFERENCES inquiries(id) ON DELETE CASCADE",
+    "ALTER TABLE messages ALTER COLUMN booking_id DROP NOT NULL",
+    "CREATE INDEX IF NOT EXISTS ix_messages_inquiry_id ON messages(inquiry_id)",
+
     # ── ride_alerts table ─────────────────────────────────────────────────────
     """CREATE TABLE IF NOT EXISTS ride_alerts (
         id               SERIAL  PRIMARY KEY,
@@ -945,6 +964,7 @@ app.include_router(users.router)
 app.include_router(language.router)
 app.include_router(verification.router)
 app.include_router(messages.router)
+app.include_router(messages.inquiries_router)
 app.include_router(reviews.router)
 app.include_router(newsletter.router)
 app.include_router(phone.router)

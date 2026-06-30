@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app import models, email as mailer
@@ -125,19 +126,57 @@ def inbox(
         unread   = sum(1 for m in msgs
                        if m.sender_id != current_user.id and not m.is_read)
         conversations.append({
-            "booking":      b,
+            "kind":         "booking",
+            "url":          f"/messages/{b.id}",
             "partner":      partner,
             "last_message": last_msg,
             "unread_count": unread,
+            "origin":       b.pickup_city or b.trip.origin,
+            "destination":  b.dropoff_city or b.trip.destination,
+            "dep_dt":       b.trip.departure_datetime,
+            "status":       b.status.value,
+            "sort_dt":      last_msg.created_at if last_msg else b.created_at,
         })
 
-    conversations.sort(
-        key=lambda c: (
-            c["last_message"].created_at if c["last_message"]
-            else c["booking"].created_at
-        ),
-        reverse=True,
+    # Pre-booking inquiry threads — only those that actually have a message, so an
+    # opened-but-empty thread doesn't clutter the inbox.
+    inquiries = (
+        db.query(models.Inquiry)
+        .join(models.Trip, models.Inquiry.trip_id == models.Trip.id)
+        .options(
+            joinedload(models.Inquiry.trip).joinedload(models.Trip.driver),
+            joinedload(models.Inquiry.passenger),
+            joinedload(models.Inquiry.messages).joinedload(models.Message.sender),
+        )
+        .filter(
+            models.Inquiry.messages.any(),
+            or_(
+                models.Inquiry.passenger_id == current_user.id,
+                models.Trip.driver_id        == current_user.id,
+            ),
+        )
+        .all()
     )
+    for inq in inquiries:
+        partner  = _inquiry_partner(inq, current_user)
+        msgs     = list(inq.messages)
+        last_msg = msgs[-1] if msgs else None
+        unread   = sum(1 for m in msgs
+                       if m.sender_id != current_user.id and not m.is_read)
+        conversations.append({
+            "kind":         "inquiry",
+            "url":          f"/inquiries/{inq.id}",
+            "partner":      partner,
+            "last_message": last_msg,
+            "unread_count": unread,
+            "origin":       inq.trip.origin,
+            "destination":  inq.trip.destination,
+            "dep_dt":       inq.trip.departure_datetime,
+            "status":       "inquiry",
+            "sort_dt":      last_msg.created_at if last_msg else inq.created_at,
+        })
+
+    conversations.sort(key=lambda c: c["sort_dt"], reverse=True)
 
     return templates.TemplateResponse("messages/inbox.html", {
         **ctx,
@@ -316,3 +355,217 @@ def _load_booking(booking_id: int, db: Session) -> models.Booking | None:
         .filter(models.Booking.id == booking_id)
         .first()
     )
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  Pre-booking inquiry threads
+#  A passenger can message a driver about a trip BEFORE booking. These threads
+#  reserve no seat and never touch the booking state machine — they live in the
+#  separate `inquiries` table and are surfaced in the same inbox.
+# ════════════════════════════════════════════════════════════════════════════
+
+inquiries_router = APIRouter(prefix="/inquiries", tags=["inquiries"])
+
+
+def _load_inquiry(inquiry_id: int, db: Session) -> models.Inquiry | None:
+    return (
+        db.query(models.Inquiry)
+        .options(
+            joinedload(models.Inquiry.trip).joinedload(models.Trip.driver),
+            joinedload(models.Inquiry.passenger),
+            joinedload(models.Inquiry.messages).joinedload(models.Message.sender),
+        )
+        .filter(models.Inquiry.id == inquiry_id)
+        .first()
+    )
+
+
+def _inquiry_partner(inq: models.Inquiry, me: models.User) -> models.User:
+    return inq.trip.driver if inq.passenger_id == me.id else inq.passenger
+
+
+def _inquiry_can_access(inq: models.Inquiry, me: models.User) -> bool:
+    return inq.passenger_id == me.id or inq.trip.driver_id == me.id
+
+
+@inquiries_router.post("/start")
+def start_inquiry(
+    request:      Request,
+    trip_id:      int          = Form(...),
+    current_user: models.User  = Depends(get_current_user),
+    db:           Session      = Depends(get_db),
+    _rl=rate_limit(20, 60),
+):
+    """Open (or create) the pre-booking thread for this rider + trip."""
+    trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
+    if not trip:
+        return RedirectResponse("/trips", status_code=303)
+    # A driver can't inquire about their own ride.
+    if trip.driver_id == current_user.id:
+        return RedirectResponse(f"/trips/{trip_id}", status_code=303)
+
+    inq = (
+        db.query(models.Inquiry)
+        .filter(
+            models.Inquiry.trip_id      == trip_id,
+            models.Inquiry.passenger_id == current_user.id,
+        )
+        .first()
+    )
+    if not inq:
+        inq = models.Inquiry(trip_id=trip_id, passenger_id=current_user.id)
+        db.add(inq)
+        try:
+            db.commit()
+            db.refresh(inq)
+        except IntegrityError:
+            # Lost a race against a concurrent first message — reuse the winner.
+            db.rollback()
+            inq = (
+                db.query(models.Inquiry)
+                .filter(
+                    models.Inquiry.trip_id      == trip_id,
+                    models.Inquiry.passenger_id == current_user.id,
+                )
+                .first()
+            )
+    return RedirectResponse(f"/inquiries/{inq.id}", status_code=303)
+
+
+@inquiries_router.get("/{inquiry_id}", response_class=HTMLResponse)
+def inquiry_conversation(
+    inquiry_id:   int,
+    request:      Request,
+    ctx:          dict        = Depends(get_template_context),
+    current_user: models.User = Depends(get_current_user),
+    db:           Session     = Depends(get_db),
+):
+    inq = _load_inquiry(inquiry_id, db)
+    if not inq or not _inquiry_can_access(inq, current_user):
+        return RedirectResponse("/messages", status_code=303)
+
+    changed = False
+    for m in inq.messages:
+        if m.sender_id != current_user.id and not m.is_read:
+            m.is_read = True
+            changed   = True
+    if changed:
+        db.commit()
+
+    messages = list(inq.messages)
+    partner  = _inquiry_partner(inq, current_user)
+    last_id  = messages[-1].id if messages else 0
+    # The passenger sees a "Book this ride" CTA; the driver does not.
+    can_book = (
+        inq.passenger_id == current_user.id
+        and inq.trip.status == models.TripStatus.active
+        and inq.trip.seats_available > 0
+    )
+
+    return templates.TemplateResponse("messages/inquiry.html", {
+        **ctx,
+        "inquiry":   inq,
+        "trip":      inq.trip,
+        "partner":   partner,
+        "messages":  messages,
+        "last_id":   last_id,
+        "can_book":  can_book,
+        "is_passenger": inq.passenger_id == current_user.id,
+        "today":     date.today(),
+        "yesterday": date.today() - timedelta(days=1),
+    })
+
+
+@inquiries_router.post("/{inquiry_id}", response_class=HTMLResponse)
+def send_inquiry_message(
+    inquiry_id:   int,
+    request:      Request,
+    current_user: models.User = Depends(get_current_user),
+    db:           Session     = Depends(get_db),
+    body:         str         = Form(...),
+    _rl=rate_limit(30, 60),
+):
+    inq = _load_inquiry(inquiry_id, db)
+    if not inq or not _inquiry_can_access(inq, current_user):
+        return HTMLResponse("", status_code=403)
+
+    body = body.strip()[:2000]
+    if not body:
+        return HTMLResponse("", status_code=400)
+
+    # Same debounced-notification logic as booking threads (see send_message).
+    recipient = _inquiry_partner(inq, current_user)
+    recipient_unread = (
+        db.query(models.Message)
+        .filter(
+            models.Message.inquiry_id == inquiry_id,
+            models.Message.sender_id  != recipient.id,
+            models.Message.is_read    == False,  # noqa: E712
+        )
+        .count()
+    )
+    last_at = (
+        db.query(models.Message.created_at)
+        .filter(models.Message.inquiry_id == inquiry_id)
+        .order_by(models.Message.created_at.desc())
+        .first()
+    )
+    should_notify = recipient_unread == 0 and (
+        last_at is None
+        or (datetime.utcnow() - last_at[0]) > timedelta(minutes=NOTIFY_DEBOUNCE_MINUTES)
+    )
+
+    msg = models.Message(inquiry_id=inquiry_id, sender_id=current_user.id, body=body)
+    inq.updated_at = datetime.utcnow()   # bump so the inbox re-sorts this thread up
+    db.add(msg)
+    db.commit()
+    db.refresh(msg)
+
+    if should_notify:
+        mailer.new_inquiry_message(msg, recipient)
+
+    return HTMLResponse("")
+
+
+@inquiries_router.get("/{inquiry_id}/poll", response_class=HTMLResponse)
+def inquiry_poll(
+    inquiry_id:   int,
+    request:      Request,
+    after:        int         = 0,
+    current_user: models.User = Depends(get_current_user),
+    db:           Session     = Depends(get_db),
+):
+    inq = _load_inquiry(inquiry_id, db)
+    if not inq or not _inquiry_can_access(inq, current_user):
+        return HTMLResponse("", status_code=403)
+
+    new_msgs = (
+        db.query(models.Message)
+        .filter(
+            models.Message.inquiry_id == inquiry_id,
+            models.Message.id         >  after,
+        )
+        .order_by(models.Message.created_at)
+        .all()
+    )
+
+    changed = False
+    for m in new_msgs:
+        if m.sender_id != current_user.id and not m.is_read:
+            m.is_read = True
+            changed   = True
+    if changed:
+        db.commit()
+
+    prev_msg = (
+        db.query(models.Message).filter(models.Message.id == after).first()
+    ) if after else None
+
+    return templates.TemplateResponse("messages/_bubbles.html", {
+        "request":      request,
+        "messages":     new_msgs,
+        "current_user": current_user,
+        "prev_date":    prev_msg.created_at.date() if prev_msg else None,
+        "today":        date.today(),
+        "yesterday":    date.today() - timedelta(days=1),
+    })

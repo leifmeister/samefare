@@ -3750,6 +3750,18 @@ button, input, select, textarea { font: inherit; }
 .chat-status--rejected,
 .chat-status--no_show          { background: #F3F4F6; color: #6B7280; }
 .chat-status--completed        { background: #F3F4F6; color: #6B7280; }
+.chat-status--inquiry          { background: #EFF6FF; color: #1E40AF; }
+
+/* Pre-booking inquiry: "Book this ride" CTA + ride-page ask button */
+.chat-book-cta {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin: 0 var(--space-3) var(--space-2);
+  padding: 11px 16px; border-radius: 10px;
+  background: var(--c-primary, #006C5B); color: #fff;
+  font-weight: 700; font-size: .9375rem; text-decoration: none;
+}
+.chat-book-cta:hover { filter: brightness(1.06); }
+.booking-widget__ask { margin-top: var(--space-2); }
 
 /* ── Context strip below header ─────────────────────────────────────────── */
 .chat-strip {
@@ -3823,6 +3835,7 @@ button, input, select, textarea { font: inherit; }
 .msg-conv__status-badge--rejected,
 .msg-conv__status-badge--no_show          { background: #F3F4F6; color: #6B7280; }
 .msg-conv__status-badge--completed        { background: #F3F4F6; color: #6B7280; }
+.msg-conv__status-badge--inquiry          { background: #EFF6FF; color: #1E40AF; }
 
 /* Inbox route line (moved below name row) */
 .msg-conv__route {

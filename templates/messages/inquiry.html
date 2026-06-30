@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% from "partials/avatar.html" import avatar %}
+{% from "partials/verified.html" import verified_badge %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block title %}{{ partner.full_name.split()[0] }} — SameFare{% endblock %}
+{# Drives the full-height chat layout via a body class (see conversation.html). #}
+{% block body_class %} chat-mode{% endblock %}
+
+{% block content %}
+<div class="chat-page">
+
+  <!-- ── Header ──────────────────────────────────────────────────────── -->
+  <div class="chat-header">
+    <a href="/messages" class="chat-header__back" aria-label="{{ _t('inquiry_back') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+           width="20" height="20" aria-hidden="true">
+        <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
+      </svg>
+    </a>
+
+    <a href="/users/{{ partner.id }}" class="chat-header__avatar-link">
+      {{ avatar(partner, cls="avatar--sm") }}
+    </a>
+
+    <div class="chat-header__info">
+      <div class="chat-header__name-row">
+        <span class="chat-header__name">{{ partner.full_name.split()[0] }}</span>
+        {{ verified_badge(partner) }}
+        <span class="chat-status chat-status--inquiry">{{ _t('messages_status_inquiry') }}</span>
+      </div>
+      <a href="/trips/{{ trip.id }}" class="chat-header__trip-link">
+        {{ trip.origin }} → {{ trip.destination }}
+        · {{ fdate(trip.departure_datetime, "%-d %b · %H:%M") }}
+      </a>
+    </div>
+
+    <div class="chat-header__actions">
+      <a href="/report/{{ partner.id }}"
+         class="chat-action-btn chat-action-btn--muted"
+         title="{{ _t('inquiry_report') }} {{ partner.full_name.split()[0] }}"
+         aria-label="{{ _t('inquiry_report') }} {{ partner.full_name.split()[0] }}">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+             width="17" height="17" aria-hidden="true">
+          <path fill-rule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 7l2.55 2.4A1 1 0 0116 11H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clip-rule="evenodd"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Context strip ───────────────────────────────────────────────── -->
+  <div class="chat-strip chat-strip--info">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+    {% if is_passenger %}{{ _t('inquiry_strip_passenger') }}{% else %}{{ _t('inquiry_strip_driver') }}{% endif %}
+  </div>
+
+  <!-- ── Messages ────────────────────────────────────────────────────── -->
+  <div class="chat-body"
+       id="chat-body"
+       hx-get="/inquiries/{{ inquiry.id }}/poll"
+       hx-trigger="every 3s, refresh from:body"
+       hx-vals="js:{after: [...document.querySelectorAll('[data-msg-id]')].pop()?.dataset?.msgId || {{ last_id }}}"
+       hx-swap="beforeend"
+       hx-target="#chat-body"
+       hx-sync="this:replace"
+       hx-on::after-swap="this.scrollTop = this.scrollHeight">
+
+    {% if not messages %}
+      <div class="chat-empty" id="chat-empty">
+        <p>{{ _t('inquiry_empty_title') }}</p>
+        <p>{{ _t('inquiry_empty_sub').format(name=partner.full_name.split()[0]) }}</p>
+      </div>
+    {% endif %}
+
+    {% include "messages/_bubbles.html" %}
+  </div>
+
+  <!-- ── Book CTA (passenger only) ───────────────────────────────────── -->
+  {% if can_book %}
+  <a href="/bookings/trip/{{ trip.id }}" class="chat-book-cta">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
+    {{ _t('inquiry_book_cta') }} · {{ "{:,}".format(trip.price_per_seat) }} ISK
+  </a>
+  {% endif %}
+
+  <!-- ── Quick reply chips (passenger) ───────────────────────────────── -->
+  {% if is_passenger %}
+  <div class="chat-chips" x-data="{ used: false }" x-show="!used" x-cloak>
+    <button type="button" class="chat-chip"
+            @click="fillChat('{{ _t('inquiry_chip_still_on') }}'); used=true">{{ _t('inquiry_chip_still_on_label') }}</button>
+    <button type="button" class="chat-chip"
+            @click="fillChat('{{ _t('inquiry_chip_pickup') }}'); used=true">{{ _t('inquiry_chip_pickup_label') }}</button>
+    <button type="button" class="chat-chip"
+            @click="fillChat('{{ _t('inquiry_chip_luggage') }}'); used=true">{{ _t('inquiry_chip_luggage_label') }}</button>
+  </div>
+  {% endif %}
+
+  <!-- ── Send form ───────────────────────────────────────────────────── -->
+  <div class="chat-footer">
+    <form class="chat-form"
+          hx-post="/inquiries/{{ inquiry.id }}"
+          hx-swap="none"
+          hx-on::after-request="if(event.detail.successful){this.reset(); document.getElementById('chat-empty')?.remove(); htmx.trigger(document.body, 'refresh');}">
+      <label for="chat-input" class="sr-only">{{ _t('inquiry_message_label') }} {{ partner.full_name.split()[0] }}</label>
+      <textarea id="chat-input" name="body" class="chat-form__input" rows="1"
+                placeholder="{{ _t('inquiry_input_placeholder') }}" required
+                onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.closest('form').querySelector('[type=submit]').click();}"></textarea>
+      <button type="submit" class="chat-form__send" aria-label="{{ _t('inquiry_send') }}">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+             width="20" height="20" aria-hidden="true">
+          <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z"/>
+        </svg>
+      </button>
+    </form>
+  </div>
+
+</div>
+
+<script>
+  (function() {
+    var el = document.getElementById('chat-body');
+    if (el) el.scrollTop = el.scrollHeight;
+  })();
+
+  function fillChat(text) {
+    var el = document.getElementById('chat-input');
+    if (!el) return;
+    el.value = text;
+    el.focus();
+    el.setSelectionRange(text.length, text.length);
+  }
+</script>
+{% endblock %}

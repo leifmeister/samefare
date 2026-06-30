@@ -690,14 +690,19 @@ class NewsletterSubscriber(Base):
 
 class Message(Base):
     """
-    One message in a conversation thread attached to a booking.
-    The two participants are always: booking.passenger  ↔  booking.trip.driver
+    One message in a conversation thread. A thread is anchored to EITHER a
+    booking (post-booking coordination) OR an inquiry (a pre-booking question
+    thread, no seat reserved). Exactly one of booking_id / inquiry_id is set.
+    The two participants are always: passenger ↔ trip.driver.
     """
     __tablename__ = "messages"
 
     id         = Column(Integer, primary_key=True)
+    # Nullable because a message can belong to a pre-booking inquiry instead.
     booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="CASCADE"),
-                        nullable=False)
+                        nullable=True)
+    inquiry_id = Column(Integer, ForeignKey("inquiries.id", ondelete="CASCADE"),
+                        nullable=True)
     sender_id  = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"),
                         nullable=False)
     body       = Column(Text, nullable=False)
@@ -705,16 +710,53 @@ class Message(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     booking = relationship("Booking", back_populates="messages")
+    inquiry = relationship("Inquiry", back_populates="messages")
     sender  = relationship("User",    back_populates="messages_sent",
                            foreign_keys=[sender_id])
 
     __table_args__ = (
         Index("ix_messages_booking_id", "booking_id"),
+        Index("ix_messages_inquiry_id", "inquiry_id"),
         Index("ix_messages_sender_id",  "sender_id"),
     )
 
     def __repr__(self) -> str:
-        return f"<Message id={self.id} booking_id={self.booking_id} sender_id={self.sender_id}>"
+        return (f"<Message id={self.id} booking_id={self.booking_id} "
+                f"inquiry_id={self.inquiry_id} sender_id={self.sender_id}>")
+
+
+class Inquiry(Base):
+    """
+    A pre-booking conversation thread: a passenger asking the driver questions
+    about a trip BEFORE committing to a booking. Holds no seat and never touches
+    the booking state machine. One thread per (trip, passenger).
+    """
+    __tablename__ = "inquiries"
+
+    id           = Column(Integer, primary_key=True)
+    trip_id      = Column(Integer, ForeignKey("trips.id",  ondelete="CASCADE"),
+                          nullable=False)
+    passenger_id = Column(Integer, ForeignKey("users.id",  ondelete="CASCADE"),
+                          nullable=False)
+    created_at   = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at   = Column(DateTime, nullable=False, default=datetime.utcnow,
+                          onupdate=datetime.utcnow)
+
+    trip      = relationship("Trip")
+    passenger = relationship("User", foreign_keys=[passenger_id])
+    messages  = relationship("Message", back_populates="inquiry",
+                             cascade="all, delete-orphan",
+                             order_by="Message.created_at")
+
+    __table_args__ = (
+        UniqueConstraint("trip_id", "passenger_id", name="uq_inquiry_trip_passenger"),
+        Index("ix_inquiries_trip_id",      "trip_id"),
+        Index("ix_inquiries_passenger_id", "passenger_id"),
+    )
+
+    def __repr__(self) -> str:
+        return (f"<Inquiry id={self.id} trip_id={self.trip_id} "
+                f"passenger_id={self.passenger_id}>")
 
 
 # ── Ride Alerts ───────────────────────────────────────────────────────────────

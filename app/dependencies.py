@@ -107,7 +107,7 @@ def get_template_context(request: Request, db: Session = Depends(get_db)):
     pending_reviews = []
     if user:
         try:
-            unread_count = (
+            booking_unread = (
                 db.query(func.count(models.Message.id))
                 .join(models.Booking, models.Message.booking_id == models.Booking.id)
                 .join(models.Trip,    models.Booking.trip_id    == models.Trip.id)
@@ -121,6 +121,22 @@ def get_template_context(request: Request, db: Session = Depends(get_db)):
                 )
                 .scalar() or 0
             )
+            # Pre-booking inquiry threads count toward the same nav badge.
+            inquiry_unread = (
+                db.query(func.count(models.Message.id))
+                .join(models.Inquiry, models.Message.inquiry_id == models.Inquiry.id)
+                .join(models.Trip,    models.Inquiry.trip_id    == models.Trip.id)
+                .filter(
+                    models.Message.sender_id != user.id,
+                    models.Message.is_read   == False,  # noqa: E712
+                    or_(
+                        models.Inquiry.passenger_id == user.id,
+                        models.Trip.driver_id        == user.id,
+                    ),
+                )
+                .scalar() or 0
+            )
+            unread_count = booking_unread + inquiry_unread
         except Exception:
             unread_count = 0
         pending_reviews = _pending_reviews(user, db)

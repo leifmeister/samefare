@@ -345,6 +345,25 @@ def new_message_to_recipient(message, recipient) -> None:
     _send(recipient.email, f"New message from {html.escape(sender.full_name.split()[0])} — SameFare", _wrap(body))
 
 
+def new_inquiry_message(message, recipient) -> None:
+    """Notify the recipient of a new message in a pre-booking inquiry thread."""
+    s       = get_settings()
+    inquiry = message.inquiry
+    trip    = inquiry.trip
+    sender  = message.sender
+    first   = html.escape(sender.full_name.split()[0])
+    body = (
+        _h1(f"New question from {first}") +
+        f'<div style="background:#F7FAF9;border-left:3px solid #006C5B;'
+        f'padding:12px 16px;margin:8px 0 16px;border-radius:0 8px 8px 0;">'
+        f'<p style="margin:0;font-size:.9375rem;color:#1A2B3C;">{html.escape(message.body)}</p></div>' +
+        _p(f"About your ride: <strong>{trip.origin} → {trip.destination}</strong>, "
+           f"{trip.departure_datetime.strftime('%-d %B %Y')}") +
+        _btn("Reply", f"{s.base_url}/inquiries/{inquiry.id}")
+    )
+    _send(recipient.email, f"New question from {first} — SameFare", _wrap(body))
+
+
 def email_verification(user, token: str) -> None:
     s   = get_settings()
     url = f"{s.base_url}/verify-email?token={token}"
