@@ -582,7 +582,8 @@ def _trip_card_data(trip, lang: str, db: Session) -> dict:
         origin=trip.origin, destination=trip.destination,
         date_label=date_label, time_label=time_label,
         price_label=price_label, per_label=per_label, seats_label=seats_label,
-        driver_name=(driver.full_name or "").strip() if driver else "",
+        # First name only — full names overflow the card (see share-card layout).
+        driver_name=((driver.full_name or "").split() or [""])[0] if driver else "",
         id_verified=bool(driver and driver.id_verification == models.VerificationStatus.approved),
         license_verified=bool(driver and driver.license_verification == models.VerificationStatus.approved),
         phone_verified=bool(driver and driver.phone_verified),
