@@ -242,7 +242,9 @@
         <div class="verify-card__icon">✓</div>
         <div>
           <h2 class="verify-card__title">{{ _t('verify_id_verified_title') }}</h2>
-          <p class="verify-card__sub">{{ _t('verify_id_verified_sub') }}</p>
+          {# When the licence is already in review, don't tell the driver to "add"
+             it — that contradiction invites a needless resubmission. #}
+          <p class="verify-card__sub">{{ _t('verify_id_verified_sub_pending') if lic_pending else _t('verify_id_verified_sub') }}</p>
         </div>
         <span class="verify-status verify-status--approved">{{ _t('verify_id_verified_badge') }}</span>
       </div>

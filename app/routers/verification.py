@@ -454,6 +454,14 @@ def upload_electronic(
 ):
     """Store the digital-licence screenshot + liveness selfie for manual review.
     Always goes to 'pending' (there is no automatic path), even in beta mode."""
+    # Already fully verified — a stale/re-opened form (back button, second tab)
+    # must NEVER downgrade an approved account back to pending, which would put the
+    # driver back in the review queue and force a redundant second approval. The GET
+    # page redirects these users away; the POST needs the same guard.
+    if (current_user.id_verification == models.VerificationStatus.approved
+            and current_user.license_verification == models.VerificationStatus.approved):
+        return RedirectResponse("/verify", status_code=303)
+
     def _err(msg: str, code: int = 400):
         return templates.TemplateResponse("verification/electronic.html", {
             **ctx, "error": msg, "fingers": fingers if 1 <= fingers <= 5 else random.randint(1, 5),
@@ -480,8 +488,11 @@ def upload_electronic(
         current_user.id_doc_type         = "license"
         current_user.id_rejection_reason = None
         current_user.id_verification     = pending
-    current_user.license_rejection_reason  = None
-    current_user.license_verification      = pending
+    # Same protection for the licence: never knock an already-approved licence back
+    # into review on a resubmission (this is what forced Þorsteinn's second approval).
+    if current_user.license_verification != approved:
+        current_user.license_rejection_reason  = None
+        current_user.license_verification      = pending
     # No disk/marker docs — the electronic submission is detected by its blobs.
     current_user.id_doc_filename           = None
     current_user.license_doc_filename      = None
