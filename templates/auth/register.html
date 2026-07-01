@@ -13,7 +13,10 @@
     </div>
 
     {% if error %}
-      <div class="alert alert--error" role="alert">{{ error }}</div>
+      {# `error` is always a trusted constant or i18n string (see the /register
+         handler) — never user input — so rendering its HTML (e.g. the "email
+         already registered" message's login/reset links) is safe. #}
+      <div class="alert alert--error" role="alert">{{ error | safe }}</div>
     {% endif %}
 
     <form method="post" action="/register" class="auth-form">
