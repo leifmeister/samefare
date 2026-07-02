@@ -100,15 +100,18 @@ def _send(to: str, body: str) -> tuple[bool, str]:
     # value (e.g. '6184321') triggers a 21211 rejection.
     to = normalize_phone(to)
 
-    # Use alphanumeric sender ID only for countries registered in Twilio.
-    # Falls back to the phone number for all others so messages are never
-    # silently dropped by an unregistered alphanumeric sender.
-    # Add country prefixes here as you register more countries in Twilio.
+    # Use the alphanumeric sender ID for countries where it's enabled (Europe);
+    # fall back to the phone number elsewhere. The US from-number can't route SMS
+    # internationally, so alpha is what actually reaches European mobiles. The list
+    # is env-configurable (SMS_ALPHA_COUNTRIES) — add a prefix once the country is
+    # enabled in Twilio Geo Permissions and supports alphanumeric sender IDs.
     _alpha = s.twilio_sender_id.strip()
-    _alpha_prefixes = ("+354",)   # Iceland — registered in Twilio
+    _alpha_prefixes = tuple(
+        p.strip() for p in s.sms_alpha_countries.split(",") if p.strip()
+    )
     sender = (
         _alpha
-        if _alpha and to.startswith(_alpha_prefixes)
+        if _alpha and _alpha_prefixes and to.startswith(_alpha_prefixes)
         else s.twilio_from_number
     )
 
