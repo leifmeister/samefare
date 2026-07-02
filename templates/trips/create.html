@@ -50,11 +50,17 @@
     <form method="post" action="/trips/new" class="form-card"
           x-data="tripPricing(_routes, _policy, _fuelPrice, _cities)">
 
+      <!-- Symbol key -->
+      <p style="display:flex; gap:1.25rem; flex-wrap:wrap; margin:0 0 1.5rem; font-size:.8125rem; color:var(--c-text-muted,#64748B);">
+        <span><span class="required">*</span> Required</span>
+        <span><sup style="color:#B45309;font-weight:700;">†</sup> Affects your suggested price</span>
+      </p>
+
       <fieldset class="form-section">
         <legend class="form-section__title">Route</legend>
         <div class="form-row">
           <div class="form-group">
-            <label for="origin" class="label">Departing from <span class="required">*</span></label>
+            <label for="origin" class="label">Departing from <span class="required">*</span><sup style="color:#B45309;font-weight:700;cursor:help" title="Affects your suggested price">†</sup></label>
             <div class="city-combo" @click.outside="oOpen=false">
               <input id="origin" name="origin" type="text" class="input city-combo__input" required
                      placeholder="e.g. Reykjavík" autocomplete="off"
@@ -79,7 +85,7 @@
             </div>
           </div>
           <div class="form-group">
-            <label for="destination" class="label">Going to <span class="required">*</span></label>
+            <label for="destination" class="label">Going to <span class="required">*</span><sup style="color:#B45309;font-weight:700;cursor:help" title="Affects your suggested price">†</sup></label>
             <div class="city-combo" @click.outside="dOpen=false">
               <input id="destination" name="destination" type="text" class="input city-combo__input" required
                      placeholder="e.g. Akureyri" autocomplete="off"
@@ -139,47 +145,17 @@
       </fieldset>
 
       <fieldset class="form-section">
-        <legend class="form-section__title">Seats &amp; price</legend>
+        <legend class="form-section__title">Seats</legend>
         <div class="form-row">
           <div class="form-group">
-            <label for="seats_total" class="label">Seats available <span class="required">*</span></label>
+            <label for="seats_total" class="label">Seats available <span class="required">*</span><sup style="color:#B45309;font-weight:700;cursor:help" title="Affects your suggested price">†</sup></label>
             <select id="seats_total" name="seats_total" class="input" required
                     x-model.number="seats">
               {% for n in [1,2,3,4,5] %}
               <option value="{{ n }}" {{ 'selected' if vals.seats_total == n }}>{{ n }} seat{{ 's' if n != 1 }}</option>
               {% endfor %}
             </select>
-          </div>
-          <div class="form-group">
-            <label for="price_per_seat" class="label">Price per seat (ISK) <span class="required">*</span></label>
-
-            <!-- Stepper control -->
-            <div class="price-stepper">
-              <button type="button" class="price-stepper__btn" @click="stepPrice(-250)"
-                      aria-label="Decrease price by 250 ISK">−</button>
-              <input id="price_per_seat" name="price_per_seat" type="number"
-                     class="price-stepper__input" required min="1"
-                     x-model.number="priceVal"
-                     :max="capPerSeat || ''" />
-              <button type="button" class="price-stepper__btn" @click="stepPrice(250)"
-                      aria-label="Increase price by 250 ISK">+</button>
-            </div>
-
-            <!-- Suggested range badge — only when route is known -->
-            <div x-show="distanceKm && capPerSeat" x-cloak style="margin-top:.625rem; display:flex; align-items:baseline; gap:.5rem; flex-wrap:wrap;">
-              <span class="price-suggestion__badge">
-                Suggested: <span x-text="fmt(suggestedLow) + '–' + fmt(capPerSeat) + ' ISK'"></span>
-              </span>
-              <span class="input-hint" style="margin:0;">
-                Your fair share of trip costs.
-                <a href="/pricing/how-it-works" target="_blank">How is this calculated?</a>
-              </span>
-            </div>
-
-            <!-- No route selected yet -->
-            <p class="input-hint" x-show="!distanceKm">
-              Cover your fuel costs — not a profit.
-            </p>
+            <p class="field-hint">More seats means each passenger's share is smaller.</p>
           </div>
         </div>
       </fieldset>
@@ -205,7 +181,7 @@
         </div>
         <div class="form-row" style="margin-top:1rem;">
           <div class="form-group">
-            <label for="car_type" class="label">Vehicle type</label>
+            <label for="car_type" class="label">Vehicle type <sup style="color:#B45309;font-weight:700;cursor:help" title="Affects your suggested price">†</sup></label>
             <select id="car_type" name="car_type" class="input"
                     x-model="carType">
               {% for ct in car_types %}
@@ -214,7 +190,7 @@
             </select>
           </div>
           <div class="form-group">
-            <label for="fuel_type_raw" class="label">Fuel type</label>
+            <label for="fuel_type_raw" class="label">Fuel type <sup style="color:#B45309;font-weight:700;cursor:help" title="Affects your suggested price">†</sup></label>
             <select id="fuel_type_raw" name="fuel_type_raw" class="input"
                     x-model="fuelType">
               {% for ft in fuel_types %}
@@ -385,6 +361,71 @@
         </div>
       </fieldset>
 
+      <!-- Price comes last, after every field that determines it (marked † above) -->
+      <fieldset class="form-section">
+        <legend class="form-section__title">Price per seat</legend>
+        <p class="form-hint" style="margin-bottom:1rem;">
+          Set this last. The fields marked
+          <sup style="color:#B45309;font-weight:700;">†</sup> above — your route, seats and vehicle —
+          set the cost-sharing cap below; change any of them and this updates.
+        </p>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="price_per_seat" class="label">Price per seat (ISK) <span class="required">*</span></label>
+
+            <!-- Stepper control -->
+            <div class="price-stepper">
+              <button type="button" class="price-stepper__btn" @click="stepPrice(-250)"
+                      aria-label="Decrease price by 250 ISK">−</button>
+              <input id="price_per_seat" name="price_per_seat" type="number"
+                     class="price-stepper__input" required min="1"
+                     x-model.number="priceVal"
+                     @input="priceNotice = null"
+                     :max="capPerSeat || ''" />
+              <button type="button" class="price-stepper__btn" @click="stepPrice(250)"
+                      aria-label="Increase price by 250 ISK">+</button>
+            </div>
+
+            <!-- Price auto-adjusted notice — shown when a settings change lowered
+                 a price the driver had already set (never silent) -->
+            <div x-show="priceNotice" x-cloak role="status" x-transition
+                 style="margin-top:.625rem; display:flex; align-items:flex-start; gap:.5rem;
+                        padding:.625rem .75rem; border:1px solid #FCD34D; background:#FFFBEB;
+                        border-radius:.5rem; font-size:.875rem; color:#92400E;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                   width="16" height="16" aria-hidden="true" style="flex-shrink:0; margin-top:1px;">
+                <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+              </svg>
+              <span>
+                Heads up — your price dropped from
+                <strong x-text="priceNotice && fmt(priceNotice.from) + ' ISK'"></strong>
+                to <strong x-text="priceNotice && fmt(priceNotice.to) + ' ISK'"></strong>
+                to stay within the cost-sharing cap for your updated ride.
+              </span>
+              <button type="button" @click="priceNotice = null" aria-label="Dismiss"
+                      style="margin-left:auto; background:none; border:none; cursor:pointer;
+                             color:#92400E; font-size:1.1rem; line-height:1; padding:0 .1rem;">×</button>
+            </div>
+
+            <!-- Suggested range badge — only when route is known -->
+            <div x-show="distanceKm && capPerSeat" x-cloak style="margin-top:.625rem; display:flex; align-items:baseline; gap:.5rem; flex-wrap:wrap;">
+              <span class="price-suggestion__badge">
+                Suggested: <span x-text="fmt(suggestedLow) + '–' + fmt(capPerSeat) + ' ISK'"></span>
+              </span>
+              <span class="input-hint" style="margin:0;">
+                Your fair share of trip costs.
+                <a href="/pricing/how-it-works" target="_blank">How is this calculated?</a>
+              </span>
+            </div>
+
+            <!-- No route selected yet -->
+            <p class="input-hint" x-show="!distanceKm">
+              Cover your fuel costs — not a profit.
+            </p>
+          </div>
+        </div>
+      </fieldset>
+
       <div class="form-actions">
         <a href="/trips" class="btn btn-ghost">Cancel</a>
         <button type="submit" class="btn btn-primary btn-lg">Post ride</button>
@@ -405,6 +446,7 @@ function tripPricing(routes, policy, fuelPrice, cities) {
     carType:     '{{ defaults.car_type | default("sedan") | e }}',
     fuelType:    '{{ vals.fuel_type or ("electric" if defaults.car_type == "electric" else "petrol") | e }}',
     priceVal:    {{ vals.price_per_seat or 0 }},
+    priceNotice: null,   // {from, to} set when a settings change lowered a set price
 
     oOpen:false, oShowAll:false, oCursor:-1,
     dOpen:false, dShowAll:false, dCursor:-1,
@@ -458,6 +500,7 @@ function tripPricing(routes, policy, fuelPrice, cities) {
     fmtTotal(v) { return Math.round(this.distanceKm * v).toLocaleString('is-IS'); },
 
     stepPrice(delta) {
+      this.priceNotice = null;   // driver is actively setting the price now
       const cap = this.capPerSeat || Infinity;
       const cur = this.priceVal || 0;
       const next = Math.round((cur + delta) / PRICE_STEP) * PRICE_STEP;
@@ -465,10 +508,19 @@ function tripPricing(routes, policy, fuelPrice, cities) {
     },
 
     init() {
-      // Seed price from cap once route is first resolved
-      this.$watch('capPerSeat', cap => {
+      // Seed the price from the cap, or clamp a too-high price when the cap moves.
+      // Seeding an empty price is silent. But LOWERING a price the driver already
+      // set must be surfaced (priceNotice) — otherwise changing seats/vehicle/fuel/
+      // route quietly rewrites their price and they post at a number they never
+      // chose. prevCap === null is the first resolution (page load), not a change.
+      this.$watch('capPerSeat', (cap, prevCap) => {
         if (cap === null) return;
-        if (!this.priceVal || this.priceVal > cap) this.priceVal = cap;
+        if (!this.priceVal) { this.priceVal = cap; return; }   // seed: silent
+        if (this.priceVal > cap) {
+          const from = this.priceVal;
+          this.priceVal = cap;
+          if (prevCap != null) this.priceNotice = { from, to: cap };
+        }
       });
       this.$watch('carType', (newVal, oldVal) => {
         if ((oldVal === 'electric') !== (newVal === 'electric'))
