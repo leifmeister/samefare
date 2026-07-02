@@ -35,22 +35,15 @@ class Settings(BaseSettings):
     twilio_from_number:  str = Field(default="", alias="TWILIO_FROM_NUMBER")
     twilio_sender_id:    str = Field(default="Samefare", alias="TWILIO_SENDER_ID")
     # Comma-separated country dial-code prefixes that use the alphanumeric sender ID
-    # (which delivers across Europe) instead of the US from-number (which can't route
-    # international SMS — it fails with Twilio 21612). Defaults to the full European
-    # set, since every European country is enabled in our Twilio Geo Permissions and
-    # our riders are European tourists. Non-European numbers fall back to the number.
-    # Override with SMS_ALPHA_COUNTRIES (no deploy needed) to add/remove countries.
-    # Note: a few countries (FR/ES/IT/PL) may need the sender ID pre-registered in
-    # Twilio's Alphanumeric Sender IDs page for reliable delivery.
-    sms_alpha_countries: str = Field(
-        default=(
-            "+30,+31,+32,+33,+34,+36,+39,+40,+41,+43,+44,+45,+46,+47,+48,+49,+90,"
-            "+298,+350,+351,+352,+353,+354,+355,+356,+357,+358,+359,+370,+371,+372,"
-            "+373,+375,+376,+377,+378,+379,+380,+381,+382,+383,+385,+386,+387,+389,"
-            "+420,+421,+423"
-        ),
-        alias="SMS_ALPHA_COUNTRIES",
-    )
+    # instead of the US from-number. Kept deliberately narrow: only countries we have
+    # EVIDENCE about. Iceland (+354) is proven to work on alpha (23 verified users);
+    # Czech (+420) is proven to FAIL on the US number (Twilio 21612, 0 verified) so it
+    # needs alpha. Every other country stays on the US number — its status quo — until
+    # we have a reason to change it, so we never move a working country onto an
+    # untested sender (that's what put Poland at risk). Add a prefix via the
+    # SMS_ALPHA_COUNTRIES env var (no deploy) once a country is confirmed. The sender
+    # also falls back to the number automatically if alpha is rejected (see _send).
+    sms_alpha_countries: str = Field(default="+354,+420", alias="SMS_ALPHA_COUNTRIES")
     # Operator phone for critical operational alerts (e.g. failed driver payouts).
     # Override with ADMIN_ALERT_PHONE; set blank to disable SMS alerts.
     admin_alert_phone:   str = Field(default="+3546257175", alias="ADMIN_ALERT_PHONE")

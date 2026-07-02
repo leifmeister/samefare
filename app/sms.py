@@ -82,6 +82,48 @@ def _classify_sms_error(body_err: str) -> str:
 
 # ── Low-level sender ──────────────────────────────────────────────────────────
 
+def _post_message(s, to: str, sender: str, body: str) -> tuple[bool, str]:
+    """POST one message to Twilio from a specific sender.
+
+    Returns (success, error_token). Split out from _send so the caller can try
+    more than one sender (alpha → number fallback) for the same message.
+    """
+    credentials = b64encode(
+        f"{s.twilio_account_sid}:{s.twilio_auth_token}".encode()
+    ).decode()
+    payload = urllib.parse.urlencode({
+        "To":   to,
+        "From": sender,
+        "Body": body,
+    }).encode("utf-8")
+    url = (f"https://api.twilio.com/2010-04-01/Accounts/"
+           f"{s.twilio_account_sid}/Messages.json")
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        headers={
+            "Authorization": f"Basic {credentials}",
+            "Content-Type":  "application/x-www-form-urlencoded",
+            "User-Agent":    "SameFare/1.0",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            log.info("SMS sent → %s via %r  status=%s", to, sender, resp.status)
+            return True, ""
+    except urllib.error.HTTPError as exc:
+        body_err = exc.read().decode("utf-8", errors="replace")
+        log.warning("SMS failed → %s via %r: %s %s", to, sender, exc.code, body_err)
+        # Classify the Twilio error into a stable, user-safe token. The raw JSON
+        # (carrier names, error URLs, obfuscated 'To') is logged above but must
+        # never reach the browser — see _classify_sms_error.
+        return False, _classify_sms_error(body_err)
+    except Exception as exc:
+        log.warning("SMS failed → %s via %r: %s", to, sender, exc)
+        return False, "generic"
+
+
 def _send(to: str, body: str) -> tuple[bool, str]:
     """Send a single SMS via Twilio REST API.
 
@@ -100,58 +142,31 @@ def _send(to: str, body: str) -> tuple[bool, str]:
     # value (e.g. '6184321') triggers a 21211 rejection.
     to = normalize_phone(to)
 
-    # Use the alphanumeric sender ID for countries where it's enabled (Europe);
-    # fall back to the phone number elsewhere. The US from-number can't route SMS
-    # internationally, so alpha is what actually reaches European mobiles. The list
-    # is env-configurable (SMS_ALPHA_COUNTRIES) — add a prefix once the country is
-    # enabled in Twilio Geo Permissions and supports alphanumeric sender IDs.
+    # Choose the sender(s) to try, in preference order. For countries where the
+    # alphanumeric sender applies (Europe), try it FIRST — it's branded and reaches
+    # most of Europe — then fall back to the phone number if Twilio rejects it. This
+    # matters because sender support is patchy per country: the US number reaches
+    # some European countries (Poland verified fine on it) but not others (Czech
+    # fails 21612), while unregistered alpha is refused in a few countries (e.g.
+    # Poland) but works in most. Trying both maximises delivery. Non-European
+    # numbers use the phone number only (alpha is unsupported in the US/Canada).
     _alpha = s.twilio_sender_id.strip()
     _alpha_prefixes = tuple(
         p.strip() for p in s.sms_alpha_countries.split(",") if p.strip()
     )
-    sender = (
-        _alpha
-        if _alpha and _alpha_prefixes and to.startswith(_alpha_prefixes)
-        else s.twilio_from_number
-    )
+    use_alpha = bool(_alpha and _alpha_prefixes and to.startswith(_alpha_prefixes))
+    candidates = [_alpha, s.twilio_from_number] if use_alpha else [s.twilio_from_number]
+    # De-dupe while preserving order (alpha could equal the number in odd configs).
+    seen: set[str] = set()
+    senders = [x for x in candidates if x and not (x in seen or seen.add(x))]
 
-    credentials = b64encode(
-        f"{s.twilio_account_sid}:{s.twilio_auth_token}".encode()
-    ).decode()
-
-    payload = urllib.parse.urlencode({
-        "To":   to,
-        "From": sender,
-        "Body": body,
-    }).encode("utf-8")
-
-    url = (f"https://api.twilio.com/2010-04-01/Accounts/"
-           f"{s.twilio_account_sid}/Messages.json")
-
-    req = urllib.request.Request(
-        url,
-        data=payload,
-        headers={
-            "Authorization": f"Basic {credentials}",
-            "Content-Type":  "application/x-www-form-urlencoded",
-            "User-Agent":    "SameFare/1.0",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            log.info("SMS sent → %s  status=%s", to, resp.status)
+    last_err = "generic"
+    for sender in senders:
+        ok, err = _post_message(s, to, sender, body)
+        if ok:
             return True, ""
-    except urllib.error.HTTPError as exc:
-        body_err = exc.read().decode("utf-8", errors="replace")
-        log.warning("SMS failed → %s: %s %s", to, exc.code, body_err)
-        # Classify the Twilio error into a stable, user-safe token. The raw
-        # JSON (carrier names, error URLs, the obfuscated 'To' number) is logged
-        # above but must never reach the browser — see _classify_sms_error.
-        return False, _classify_sms_error(body_err)
-    except Exception as exc:
-        log.warning("SMS failed → %s: %s", to, exc)
-        return False, "generic"
+        last_err = err
+    return False, last_err
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
