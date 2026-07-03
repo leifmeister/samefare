@@ -208,7 +208,9 @@ def book_trip_page(
         "discount_locked": discount_locked,
         "segment_pickup": segment_pickup, "segment_dropoff": segment_dropoff,
         "segment_price": segment_price, "less_than_24h": less_than_24h,
-        "instant_book": trip.instant_book,
+        # Effective instant status for THIS booking: a shorter-leg (segment) request
+        # always needs driver approval, so it's never "instant" even on instant trips.
+        "instant_book": trip.instant_book and not is_segment_request,
         "booking_available_seats": booking_available_seats,
         "blikk_payments": settings.blikk_payments,
         "needs_phone": needs_phone,
@@ -378,7 +380,10 @@ def create_booking(
     else:
         service_fee, total, _ = calc_fees(contribution)
 
-    if trip.instant_book:
+    # Shorter-leg (segment) bookings ALWAYS require the driver's approval, even when
+    # the trip has instant booking on — the driver needs to okay an intermediate
+    # pickup/dropoff. Only full-route bookings on an instant-book trip auto-confirm.
+    if trip.instant_book and not is_segment:
         # Instant: hold seats now, go straight to payment.
         # Cap the deadline at departure so a passenger can never sit on an
         # unpaid hold past the point the trip has left.
@@ -436,14 +441,14 @@ def create_booking(
         ))
         db.commit()
 
-    if trip.instant_book:
-        return RedirectResponse(f"/payments/checkout/{booking.id}", status_code=303)
-    else:
-        # Notify driver of the pending request, then collect card details upfront.
-        # Card is saved now (amount=0); MIT fires the moment driver accepts.
-        # No return visit needed from the passenger.
+    # A booking that still needs the driver's approval — any non-instant trip, OR a
+    # shorter-leg booking on an instant trip — notifies the driver now. Keyed on the
+    # booking's actual status (not trip.instant_book) so segment requests on instant
+    # trips still reach the driver. The card is saved at checkout (amount=0) and the
+    # MIT fires the moment the driver accepts; instant full-route bookings just pay.
+    if booking.status == models.BookingStatus.pending:
         mailer.booking_request_to_driver(booking)
-        return RedirectResponse(f"/payments/checkout/{booking.id}", status_code=303)
+    return RedirectResponse(f"/payments/checkout/{booking.id}", status_code=303)
 
 
 def _refund_preview(booking) -> dict:

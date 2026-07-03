@@ -498,7 +498,9 @@
           </div>
           {% endif %}
 
-          {% if trip.instant_book %}
+          {# Instant book applies to full-route bookings only. A shorter-leg (segment)
+             booking always needs driver approval, so show the request-to-book CTA. #}
+          {% if trip.instant_book and not (segment_pickup and segment_dropoff) %}
           <a href="/bookings/trip/{{ trip.id }}{% if segment_pickup and segment_dropoff %}?pickup={{ segment_pickup | urlencode }}&dropoff={{ segment_dropoff | urlencode }}{% endif %}"
              class="btn btn-primary btn-block btn-lg">
             {{ _t('detail_book_seat_btn') }} {{ "{:,}".format(_display_total) }} ISK
