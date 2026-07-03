@@ -1159,8 +1159,15 @@ def home(request: Request):
 
         stats = {
             "trips":      db.query(models.Trip).count(),
+            # "Passengers connected" is cumulative social proof — count everyone who
+            # actually connected with a driver: confirmed (upcoming) AND completed
+            # (already carried). Counting only `confirmed` made this collapse to 0 the
+            # moment rides finished, hiding every completed trip.
             "passengers": db.query(models.Booking)
-                           .filter(models.Booking.status == models.BookingStatus.confirmed)
+                           .filter(models.Booking.status.in_([
+                               models.BookingStatus.confirmed,
+                               models.BookingStatus.completed,
+                           ]))
                            .count(),
             "drivers":    db.query(models.User).count(),
         }
