@@ -57,7 +57,7 @@
   <div class="chat-body"
        id="chat-body"
        hx-get="/inquiries/{{ inquiry.id }}/poll"
-       hx-trigger="every 3s, refresh from:body"
+       hx-trigger="every 1.5s, refresh from:body"
        hx-vals="js:{after: [...document.querySelectorAll('[data-msg-id]')].pop()?.dataset?.msgId || {{ last_id }}}"
        hx-swap="beforeend"
        hx-target="#chat-body"
