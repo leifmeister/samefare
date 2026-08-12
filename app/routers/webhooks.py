@@ -57,6 +57,28 @@ def _load_payment_for_booking(db: Session, booking_id: int) -> models.Payment | 
     )
 
 
+def _platform_matches(metadata: dict, event_type: str = "") -> bool:
+    """Return True if this event's metadata belongs to SameFare.
+
+    We share a Rapyd merchant account with CarFare, so Rapyd delivers that
+    platform's events here too. Both apps key off metadata.booking_id and
+    their IDs overlap, so matching a foreign event by booking_id would update
+    the wrong booking.
+
+    An ABSENT tag counts as ours: payments created before this tag existed
+    carry no `platform` key, and those bookings are still in flight. Only an
+    explicitly foreign tag is rejected — CarFare always sets its own.
+    """
+    tag = (metadata or {}).get("platform")
+    if tag is None or tag == rapyd_client.PLATFORM_TAG:
+        return True
+    log.warning(
+        "%s ignored: metadata.platform=%r is not %r (shared Rapyd account)",
+        event_type or "webhook", tag, rapyd_client.PLATFORM_TAG,
+    )
+    return False
+
+
 def _is_duplicate(payment: models.Payment, webhook_id: str) -> bool:
     """Return True if this webhook ID has already been processed."""
     if not payment.seen_webhook_ids:
@@ -283,6 +305,8 @@ def _handle_checkout_completed(
     webhook can be safely retried.
     """
     metadata    = data.get("metadata") or {}
+    if not _platform_matches(metadata, "CHECKOUT_COMPLETED"):
+        return
     booking_id  = metadata.get("booking_id")
     if not booking_id:
         log.warning("CHECKOUT_COMPLETED missing booking_id in metadata")
@@ -602,6 +626,8 @@ def _handle_payment_failed(
     For Case B MIT failure: move to retry_pending (handled by tasks.py).
     """
     metadata   = data.get("metadata") or {}
+    if not _platform_matches(metadata, "PAYMENT_FAILED"):
+        return
     booking_id = metadata.get("booking_id")
     if not booking_id:
         # Try to find via rapyd_payment_id
@@ -912,6 +938,8 @@ def _handle_payment_expired(
 ) -> None:
     """Payment or checkout expired without being captured."""
     metadata   = data.get("metadata") or {}
+    if not _platform_matches(metadata, "PAYMENT_EXPIRED"):
+        return
     booking_id = metadata.get("booking_id")
     if not booking_id:
         return
