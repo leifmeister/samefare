@@ -510,7 +510,11 @@ def authorise_booking_mit(db, booking: "models.Booking", now: "datetime" = None)
             # Rapyd returning the original declined result. Stable within a
             # single attempt, so the loop re-firing can't double-charge.
             idempotency_key   = f"mit-{payment.id}-{payment.idempotency_key or '0'}",
-            metadata          = {"booking_id": booking.id, "case": "B"},
+            metadata          = {
+                "platform":   rapyd_client.PLATFORM_TAG,
+                "booking_id": booking.id,
+                "case":       "B",
+            },
         )
 
         rapyd_status = mit_data.get("status", "")

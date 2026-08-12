@@ -41,6 +41,19 @@ _SANDBOX_JS  = "https://sandboxclient.rapyd.net/v1/rapyd.js"
 _PROD_JS     = "https://client.rapyd.net/v1/rapyd.js"
 
 
+# Identifies this platform inside Rapyd payment metadata.
+#
+# We share a Rapyd merchant account with CarFare. Rapyd delivers events for the
+# whole account, and both apps resolve payments from metadata.booking_id —
+# whose values overlap, since each has its own booking 5. Tagging every payment
+# we create lets each app ignore the other's events.
+#
+# Payments created before this tag existed carry no `platform` key at all. The
+# webhook therefore treats *absent* as ours (see _platform_matches) so live
+# in-flight bookings keep confirming; only a foreign tag is rejected.
+PLATFORM_TAG = "samefare"
+
+
 class RapydError(Exception):
     """Raised when a Rapyd API call returns an error or cannot be made."""
 
